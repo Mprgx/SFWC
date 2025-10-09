@@ -12,3 +12,7 @@ def _data():
         "url": "http://localhost:8000/",
         "api_key": token,
     }
+
+@pytest.fixture
+def auth_headers(_data):
+    return {"Authorization": f"Bearer {_data['api_key']}"}
