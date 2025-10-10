@@ -43,3 +43,4 @@ def test_get_vehicles_response_time(auth_headers, _data):
 # 1️⃣ GET /vehicles/{userId} – authorized
 def test_get_vehicles_by_userid_authorized(auth_headers, _data):
     pytest.skip("Not implemented yet")
+
