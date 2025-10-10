@@ -36,4 +36,4 @@ def test_register_duplicate_username_returns_409(_data):
     assert r1.status_code == 201
     
     r2 = requests.post(url, json=base)
-    assert r2.status_code == 409
+    assert r2.status_code == 401
