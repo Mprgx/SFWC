@@ -30,3 +30,17 @@ def test_get_payments_returns_user_payments(_data):
     assert "transaction" in payment
     assert "amount" in payment
     assert "initiator" in payment
+
+def test_get_payments_user_requires_auth(_data):
+    url = _data['url'] + 'payments' + '/' + 'Sharad'
+    r = requests.get(url)
+    assert r.status_code == 401
+
+def test_get_payments_user_requires_admin(_data):
+    user = "Sharad"
+    r = requests.get(_data['url'] + f"payments/{user}", headers={"Authorization": _data["api_key"]})
+    assert r.status_code == 403
+
+def test_get_payments_user_admin(_data):
+    baseUrl = _data['url']
+    user = "Sharad"
