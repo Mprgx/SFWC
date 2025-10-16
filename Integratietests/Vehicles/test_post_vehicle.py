@@ -19,15 +19,6 @@ def test_post_vehicle_status_unauthorized(_data):
     assert status_code == 403
 
 
-def test_post_vehicle_status_ok(_data):
-    url = _data['url'] + 'vehicles'
-    response = requests.post(url, json=VEHICLE_PAYLOAD, headers={
-                             "Authorization": _data['api_key']})
-    status_code = response.status_code
-
-    assert status_code == 200
-
-
 def test_post_vehicle_status_bad_request(_data):
     url = _data['url'] + 'vehicles'
     response = requests.post(url, json={}, headers={
@@ -39,13 +30,18 @@ def test_post_vehicle_status_bad_request(_data):
 
 def test_get_vehicles_ok_responsebody(_data):
     url = _data['url'] + 'vehicles'
-    response = requests.get(url, json=VEHICLE_PAYLOAD, headers={
-                            "Authorization": _data['api_key']})
+    response = requests.post(url, json=VEHICLE_PAYLOAD, headers={
+        "Authorization": _data['api_key']})
 
     assert response.status_code == 200
     expected = {
         f"Vehicle with licenseplate: {VEHICLE_PAYLOAD['license_plate']} succesfully added"}
     assert response.json() == expected
+
+    del_resp = requests.delete(
+        url + f"/{VEHICLE_PAYLOAD['license_plate']}", headers={"Authorization": _data['api_key']})
+    assert del_resp.status_code == 200
+
 
 # def test_vehicle_json_adjusted_ok(_data):
 #     url = _data['url'] + 'vehicles'
