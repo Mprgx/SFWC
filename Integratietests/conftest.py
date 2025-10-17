@@ -1,57 +1,22 @@
 import pytest
 import requests
 
+BASE_URL = "http://localhost:8000/"
 
 @pytest.fixture
-def _data():
-    response = requests.post("http://localhost:8000/login",
-                             json={"username": "Mex", "password": "Smpl3Pw!"},)
-    token = response.json()["session_token"]
-
-    return {
-        "url": "http://localhost:8000/",
-        "api_key": token,
-    }
-
+def user_session():
+    resp = requests.post(BASE_URL + "login", json={"username": "Mex", "password": "Smpl3Pw!"})
+    resp.raise_for_status()
+    token = resp.json()["session_token"]
+    return {"url": BASE_URL, "username": "Mex", "session_token": token}
 
 @pytest.fixture
-def auth_headers(_data):
-    return {"Authorization": f"Bearer {_data['api_key']}"}
-
-
-@pytest.fixture
-def login_as_admin():
-
-    url = "http://localhost:8000"
-    login_url = url + 'login'
-
-    login_response = requests.post(
-        login_url, json={"username": "Job", "password": "sendhelp"})
-
-    assert login_response.status_code == 200
-    session_token = login_response.json().get('session_token')
-    assert session_token is not None
-
-    return {
-        'url': url,
-        'session_token': session_token
-    }
-
+def admin_session():
+    resp = requests.post(BASE_URL + "login", json={"username": "Job", "password": "sendhelp"})
+    resp.raise_for_status()
+    token = resp.json()["session_token"]
+    return {"url": BASE_URL, "username": "Job", "session_token": token}
 
 @pytest.fixture
-def login_as_user():
-
-    url = "http://localhost:8000"
-    login_url = url + 'login'
-
-    login_response = requests.post(
-        login_url, json={"username": "Job", "password": "sendhelp"})
-
-    assert login_response.status_code == 200
-    session_token = login_response.json().get('session_token')
-    assert session_token is not None
-
-    return {
-        'url': url,
-        'session_token': session_token
-    }
+def auth_headers(user_session):
+    return {"Authorization": user_session["session_token"]}
