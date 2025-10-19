@@ -27,6 +27,17 @@ namespace MobyPark.Services
             return await CreateTokenResponse(user);
         }
 
+        public async Task<bool> LogoutAsync(Guid userId)
+        {
+            var user = await context.Users.FindAsync(userId);
+            if (user is null) return false;
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+            await context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<User?> RegisterAsync(RegisterRequestDto request)
         {
             var username = request.Username.Trim().ToLowerInvariant();
