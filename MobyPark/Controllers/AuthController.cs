@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
+using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
@@ -33,6 +35,20 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var ok = await authService.LogoutAsync(userId);
+            if (!ok) return NotFound();
+
+            return NoContent();
+        }
+
         [HttpPost("refresh-token")]
         public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
@@ -44,7 +60,7 @@ namespace MobyPark.Controllers
         }
 
         [Authorize]
-        [HttpGet]
+        [HttpGet("authenticated-only")]
         public IActionResult AuthenticatedOnlyEndpoint()
         {
             return Ok("You are authenticated!");
