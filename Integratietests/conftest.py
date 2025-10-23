@@ -6,6 +6,10 @@ import requests
 def _data():
     response = requests.post("http://localhost:8000/login",
                              json={"username": "Mex", "password": "Smpl3Pw!"},)
+
+    if response.status_code != 200:
+        raise Exception(f"Login failed: {response.status_code} - {response.text}")
+
     token = response.json()["session_token"]
 
     return {
