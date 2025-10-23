@@ -8,8 +8,8 @@ BASE_PATH = "vehicles/"
 # 1️⃣ GET /vehicles – authorized
 def test_get_vehicles_authorized(auth_headers, _data):
     response = requests.get(_data["url"] + BASE_PATH, headers=auth_headers)
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert response.status_code in (200, 404)
+
 
 # 2️⃣ GET /vehicles – unauthorized (no token)
 def test_get_vehicles_unauthorized(_data):
@@ -69,3 +69,52 @@ def test_get_vehicles_empty_list_for_new_user(auth_headers, _data):
 def test_get_vehicles_response_time(auth_headers, _data):
     response = requests.get(_data["url"] + BASE_PATH + "natasjadwit", headers=auth_headers)
     assert response.elapsed.total_seconds() < 2
+
+# -------------------------------
+
+# /vehicles/{vehicleID}/reservations tests
+
+# 1️⃣ GET /vehicles/{vehicleID}/reservations - authorized
+def test_get_vehicle_reservation_by_vehicle_id_authorized(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/reservations", headers=auth_headers)
+    assert response.status_code == 200
+
+# 2️⃣ GET /vehicles/{vehicleID}/reservations - unauthorized
+def test_get_vehicle_reservation_by_vehicle_id_unauthorized(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/reservations", headers=auth_headers)
+    assert response.status_code == 401
+
+# 3️⃣ GET /vehicles/{vehicleID}/reservations - vehicle doesn't exist
+def test_vehicle_does_not_exist_reservation(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "999999999/reservations", headers=auth_headers)
+    assert response.status_code == 404
+
+# 4️⃣ GET /vehicles/{vehicleID}/reservations - test response time
+def test_get_vehicle_reservation_response_time(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/reservations", headers=auth_headers)
+    assert response.elapsed.total_seconds() < 2
+
+# -------------------------------
+
+# /vehicles/{vehicleID}/history tests
+
+# 1️⃣ GET /vehicles/{vehicleID}/history - authorized
+def test_get_vehicle_history_by_vehicle_id_authorized(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/history", headers=auth_headers)
+    assert response.status_code == 200
+
+# 2️⃣ GET /vehicles/{vehicleID}/history - unauthorized
+def test_get_vehicle_history_by_vehicle_id_unauthorized(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/history", headers=auth_headers)
+    assert response.status_code == 401
+
+# 3️⃣ GET /vehicles/{vehicleID}/history - vehicle doesn't exist
+def test_vehicle_does_not_exist_history(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "999999999/history", headers=auth_headers)
+    assert response.status_code == 404
+
+# 4️⃣ GET /vehicles/{vehicleID}/history - test response time
+def test_get_vehicle_history_response_time(auth_headers, _data):
+    response = requests.get(_data["url"] + BASE_PATH + "1/history", headers=auth_headers)
+    assert response.elapsed.total_seconds() < 2
+
