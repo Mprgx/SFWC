@@ -17,6 +17,7 @@ def admin_session():
     token = resp.json()["session_token"]
     return {"url": BASE_URL, "username": "Job", "session_token": token}
 
+
 @pytest.fixture
 def auth_headers(user_session):
     return {"Authorization": user_session["session_token"]}
