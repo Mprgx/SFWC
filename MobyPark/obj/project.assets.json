@@ -4538,24 +4538,31 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\samla\\.nuget\\packages\\": {}
+    "C:\\Users\\Soufi\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\samla\\OneDrive\\Bureaublad\\HR-1048748\\software construction\\Mobypark\\SFWC\\MobyPark\\MobyPark.csproj",
+      "projectUniqueName": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\MobyPark.csproj",
       "projectName": "MobyPark",
-      "projectPath": "C:\\Users\\samla\\OneDrive\\Bureaublad\\HR-1048748\\software construction\\Mobypark\\SFWC\\MobyPark\\MobyPark.csproj",
-      "packagesPath": "C:\\Users\\samla\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\samla\\OneDrive\\Bureaublad\\HR-1048748\\software construction\\Mobypark\\SFWC\\MobyPark\\obj\\",
+      "projectPath": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\MobyPark.csproj",
+      "packagesPath": "C:\\Users\\Soufi\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\samla\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Soufi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -4574,7 +4581,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net9.0": {
@@ -4630,7 +4637,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
