@@ -4538,23 +4538,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Shara\\.nuget\\packages\\": {},
+    "C:\\Users\\Soufi\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\MobyPark.csproj",
+      "projectUniqueName": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\MobyPark.csproj",
       "projectName": "MobyPark",
-      "projectPath": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\MobyPark.csproj",
-      "packagesPath": "C:\\Users\\Shara\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\obj\\",
+      "projectPath": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\MobyPark.csproj",
+      "packagesPath": "C:\\Users\\Soufi\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Soufi\\Documents\\GitHub\\SFWC\\MobyPark\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Shara\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Soufi\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -4581,7 +4581,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net9.0": {
@@ -4637,7 +4637,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
