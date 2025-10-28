@@ -895,14 +895,7 @@
           }
         }
       },
-      "System.Formats.Asn1/9.0.10": {
-        "runtime": {
-          "lib/net9.0/System.Formats.Asn1.dll": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.1025.47515"
-          }
-        }
-      },
+      "System.Formats.Asn1/9.0.10": {},
       "System.IdentityModel.Tokens.Jwt/8.14.0": {
         "dependencies": {
           "Microsoft.IdentityModel.JsonWebTokens": "8.14.0",
@@ -1000,14 +993,7 @@
           "System.Runtime.CompilerServices.Unsafe": "6.0.0"
         }
       },
-      "System.Text.Json/9.0.10": {
-        "runtime": {
-          "lib/net9.0/System.Text.Json.dll": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.1025.47515"
-          }
-        }
-      },
+      "System.Text.Json/9.0.10": {},
       "System.Threading.Channels/7.0.0": {},
       "System.Threading.Tasks.Extensions/4.5.4": {},
       "System.Windows.Extensions/6.0.0": {
