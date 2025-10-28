@@ -14,7 +14,7 @@ namespace MobyPark.Controllers
     {
 
         // Voegt een nieuw voertuig toe aan de ingelogde gebruiker.
-        [HttpPost]
+        [HttpPost("vehicle")]
         public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleRequestDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
