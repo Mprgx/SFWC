@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MobyPark.Entities;
 using System.Collections.Generic;
 
@@ -25,4 +25,4 @@ namespace MobyPark.Data
             });
         }
     }
-}s
+}
