@@ -1,5 +1,7 @@
 #############################
+#############################
 # Python
+#############################
 #############################
 __pycache__/
 *.py[cod]
@@ -12,7 +14,28 @@ __pycache__/
 .eggs/
 dist/
 build/
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
 .venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+#############################
+# VSCode / IDE
+#############################
 venv/
 ENV/
 env/
