@@ -1,8 +1,19 @@
 #############################
+#############################
 # Python
+#############################
 #############################
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
 *.pyo
 *.pyd
 *.pdb
@@ -25,6 +36,18 @@ htmlcov/
 #############################
 # VSCode / IDE
 #############################
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+#############################
+# VSCode / IDE
+#############################
 .vscode/
 .idea/
 *.code-workspace
@@ -32,15 +55,15 @@ htmlcov/
 #############################
 # Data & Local Files
 #############################
-Server/data/
-!Server/data/readme.md
-data/
-logs/
-*.log
-*.sqlite
-*.db
-*.bak
-*.tmp
+# Server/data/
+# !Server/data/readme.md
+# data/
+# logs/
+# *.log
+# *.sqlite
+# *.db
+# *.bak
+# *.tmp
 
 #############################
 # C# / .NET / Visual Studio
