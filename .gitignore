@@ -1,11 +1,127 @@
+#############################
 # Python
+#############################
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
 .venv/
+venv/
+ENV/
+env/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# VSCode
+#############################
+# VSCode / IDE
+#############################
 .vscode/
+.idea/
+*.code-workspace
 
-# Data folder
-Server/data
-!Server/data/readme.md
+#############################
+# Data & Local Files
+#############################
+# Server/data/
+# !Server/data/readme.md
+# data/
+# logs/
+# *.log
+# *.sqlite
+# *.db
+# *.bak
+# *.tmp
+
+#############################
+# C# / .NET / Visual Studio
+#############################
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]uild/
+artifacts/
+GeneratedFiles/
+
+# Visual Studio cache and temp files
+*.tlog
+*.pch
+*.ilk
+*.ipch
+*.obj
+*.log
+*.cache
+*.bin
+*.Debug
+*.vsp
+*.vspscc
+*.vssscc
+*.ncb
+*.sdf
+*.opensdf
+*.dbmdl
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio folders
+.vs/
+TestResults/
+PublishProfiles/
+*.pubxml
+*.publishsettings
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+*.nuget.props
+*.nuget.targets
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# ASP.NET Core / EF
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+Migrations/ # optional – only if you generate them dynamically
+*.mdf
+*.ldf
+
+# Others
+_ReSharper*/
+*_ReSharper.Caches/
+*.db-shm
+*.db-wal
+*.DS_Store
+Thumbs.db
