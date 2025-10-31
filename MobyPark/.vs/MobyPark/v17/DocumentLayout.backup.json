@@ -3,18 +3,6 @@
   "WorkspaceRootPath": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\registerrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\registerrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\controllers\\profilecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:controllers\\profilecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -23,32 +11,36 @@
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\updateprofile.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\services\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:services\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\userreaddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\userreaddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\tokenresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\tokenresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\refreshtokenrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\refreshtokenrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\loginrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\loginrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\loginrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\loginrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\registerrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\registerrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\entities\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:entities\\userrole.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -59,8 +51,16 @@
       "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:data\\userdbcontext.cs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\services\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:services\\iauthservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\tokenresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\tokenresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\models\\refreshtokenrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|solutionrelative:models\\refreshtokenrequestdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{16368A59-AFFC-45FD-AAFE-8E387B690F2E}|MobyPark.csproj|c:\\users\\shara\\onedrive\\documents\\class 2 software construction process and tools\\sfwc\\mobypark\\mobypark.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
@@ -74,89 +74,97 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 7,
           "Children": [
             {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "User.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Entities\\User.cs",
+              "RelativeDocumentMoniker": "Entities\\User.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Entities\\User.cs",
+              "RelativeToolTip": "Entities\\User.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwA0AAAA/AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-17T09:10:53.278Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "AuthService.cs",
               "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\AuthService.cs",
               "RelativeDocumentMoniker": "Services\\AuthService.cs",
               "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\AuthService.cs",
               "RelativeToolTip": "Services\\AuthService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD8AAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAACkAAAAAAAAAAAAgwA0AAABgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-17T09:18:59.702Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "RegisterRequestDto.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RegisterRequestDto.cs",
-              "RelativeDocumentMoniker": "Models\\RegisterRequestDto.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RegisterRequestDto.cs",
-              "RelativeToolTip": "Models\\RegisterRequestDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAwAAAAgAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T10:54:08.375Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "ProfileController.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\ProfileController.cs",
-              "RelativeDocumentMoniker": "Controllers\\ProfileController.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\ProfileController.cs",
-              "RelativeToolTip": "Controllers\\ProfileController.cs",
-              "ViewState": "AgIAAEgAAAAAAAAAAAAowBcAAAAfAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-19T01:32:00.611Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "AuthController.cs",
               "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\AuthController.cs",
               "RelativeDocumentMoniker": "Controllers\\AuthController.cs",
               "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\AuthController.cs",
               "RelativeToolTip": "Controllers\\AuthController.cs",
-              "ViewState": "AgIAACwAAAAAAAAAAAAgwD4AAAAnAAAAAAAAAA==",
+              "ViewState": "AgIAAC8AAAAAAAAAAAAgwD4AAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-17T09:08:26.837Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "UpdateProfile.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\UpdateProfile.cs",
-              "RelativeDocumentMoniker": "Models\\UpdateProfile.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\UpdateProfile.cs",
-              "RelativeToolTip": "Models\\UpdateProfile.cs",
-              "ViewState": "AgIAABAAAAAAAAAAAAAYwCgAAAA/AAAAAAAAAA==",
+              "DocumentIndex": 6,
+              "Title": "RegisterRequestDto.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RegisterRequestDto.cs",
+              "RelativeDocumentMoniker": "Models\\RegisterRequestDto.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RegisterRequestDto.cs",
+              "RelativeToolTip": "Models\\RegisterRequestDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwBcAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-19T01:11:31.444Z",
+              "WhenOpened": "2025-10-17T10:54:08.375Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 5,
-              "Title": "IAuthService.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\IAuthService.cs",
-              "RelativeDocumentMoniker": "Services\\IAuthService.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\IAuthService.cs",
-              "RelativeToolTip": "Services\\IAuthService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAcAAAAUAAAAAAAAAA==",
+              "Title": "LoginRequestDto.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\LoginRequestDto.cs",
+              "RelativeDocumentMoniker": "Models\\LoginRequestDto.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\LoginRequestDto.cs",
+              "RelativeToolTip": "Models\\LoginRequestDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAA8AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T09:19:54.093Z",
+              "WhenOpened": "2025-10-17T10:54:59.366Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 0,
+              "Title": "ProfileController.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\ProfileController.cs",
+              "RelativeDocumentMoniker": "Controllers\\ProfileController.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Controllers\\ProfileController.cs",
+              "RelativeToolTip": "Controllers\\ProfileController.cs",
+              "ViewState": "AgIAAC8AAAAAAAAAAAAgwBgAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-19T01:32:00.611Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "UserReadDto.cs",
               "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\UserReadDto.cs",
               "RelativeDocumentMoniker": "Models\\UserReadDto.cs",
@@ -169,59 +177,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "TokenResponseDto.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\TokenResponseDto.cs",
-              "RelativeDocumentMoniker": "Models\\TokenResponseDto.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\TokenResponseDto.cs",
-              "RelativeToolTip": "Models\\TokenResponseDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAhAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "UpdateProfile.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\UpdateProfile.cs",
+              "RelativeDocumentMoniker": "Models\\UpdateProfile.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\UpdateProfile.cs",
+              "RelativeToolTip": "Models\\UpdateProfile.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAAwCgAAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T09:16:49.979Z",
+              "WhenOpened": "2025-10-19T01:11:31.444Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 8,
-              "Title": "RefreshTokenRequestDto.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RefreshTokenRequestDto.cs",
-              "RelativeDocumentMoniker": "Models\\RefreshTokenRequestDto.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RefreshTokenRequestDto.cs",
-              "RelativeToolTip": "Models\\RefreshTokenRequestDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAoAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T09:11:57.327Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "LoginRequestDto.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\LoginRequestDto.cs",
-              "RelativeDocumentMoniker": "Models\\LoginRequestDto.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\LoginRequestDto.cs",
-              "RelativeToolTip": "Models\\LoginRequestDto.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAgAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T10:54:59.366Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "User.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Entities\\User.cs",
-              "RelativeDocumentMoniker": "Entities\\User.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Entities\\User.cs",
-              "RelativeToolTip": "Entities\\User.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAARAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T09:10:53.278Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
               "Title": "UserRole.cs",
               "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Entities\\UserRole.cs",
               "RelativeDocumentMoniker": "Entities\\UserRole.cs",
@@ -234,13 +203,39 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 9,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "appsettings.Development.json",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\appsettings.Development.json",
+              "RelativeToolTip": "appsettings.Development.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-17T11:56:38.017Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADEAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-17T09:21:01.03Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
               "Title": "UserDbContext.cs.cs",
               "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Data\\UserDbContext.cs.cs",
               "RelativeDocumentMoniker": "Data\\UserDbContext.cs.cs",
               "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Data\\UserDbContext.cs.cs",
               "RelativeToolTip": "Data\\UserDbContext.cs.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAPAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-17T09:09:56.837Z",
               "EditorCaption": ""
@@ -248,27 +243,41 @@
             {
               "$type": "Document",
               "DocumentIndex": 12,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Program.cs",
-              "RelativeDocumentMoniker": "Program.cs",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Program.cs",
-              "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAA4AAAAAAAAAAAAkwBMAAAAIAAAAAAAAAA==",
+              "Title": "IAuthService.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\IAuthService.cs",
+              "RelativeDocumentMoniker": "Services\\IAuthService.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Services\\IAuthService.cs",
+              "RelativeToolTip": "Services\\IAuthService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAuwAgAAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-17T09:21:01.03Z",
+              "WhenOpened": "2025-10-17T09:19:54.093Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "TokenResponseDto.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\TokenResponseDto.cs",
+              "RelativeDocumentMoniker": "Models\\TokenResponseDto.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\TokenResponseDto.cs",
+              "RelativeToolTip": "Models\\TokenResponseDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-17T09:16:49.979Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 14,
-              "Title": "appsettings.Development.json",
-              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\appsettings.Development.json",
-              "RelativeDocumentMoniker": "appsettings.Development.json",
-              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\appsettings.Development.json",
-              "RelativeToolTip": "appsettings.Development.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAEAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-10-17T11:56:38.017Z"
+              "Title": "RefreshTokenRequestDto.cs",
+              "DocumentMoniker": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RefreshTokenRequestDto.cs",
+              "RelativeDocumentMoniker": "Models\\RefreshTokenRequestDto.cs",
+              "ToolTip": "C:\\Users\\Shara\\OneDrive\\Documents\\Class 2 Software Construction Process and Tools\\SFWC\\MobyPark\\Models\\RefreshTokenRequestDto.cs",
+              "RelativeToolTip": "Models\\RefreshTokenRequestDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-17T09:11:57.327Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -280,7 +289,16 @@
               "RelativeToolTip": "MobyPark.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-17T09:21:55.939Z"
+              "WhenOpened": "2025-10-17T09:21:55.939Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             }
           ]
         }
