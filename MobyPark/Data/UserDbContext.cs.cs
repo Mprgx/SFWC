@@ -23,6 +23,16 @@ namespace MobyPark.Data
 
                 b.Property(u => u.PhoneNumber).IsRequired().HasMaxLength(30);
             });
+
+            modelBuilder.Entity<Vehicle>()
+                .HasIndex(v => v.LicensePlate)
+                .IsUnique();
+
+            modelBuilder.Entity<Vehicle>()
+                .HasOne(v => v.User)
+                .WithMany(u => u.Vehicles)
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

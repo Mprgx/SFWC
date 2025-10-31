@@ -28,5 +28,6 @@ namespace MobyPark.Entities
         public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
         public ICollection<ParkingSession> ParkingSessions { get; set; } = new List<ParkingSession>();
+        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     }
 }
