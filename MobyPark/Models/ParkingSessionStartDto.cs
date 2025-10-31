@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MobyPark.Dtos
+namespace MobyPark.Models
 {
     public class ParkingSessionStartDto
     {

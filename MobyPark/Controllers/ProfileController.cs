@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/")]
     [ApiController]
     [Authorize]
     public class ProfileController : ControllerBase
