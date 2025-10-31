@@ -1,7 +1,7 @@
-namespace MobyPark.Dtos
+namespace MobyPark.Models
 {
     public class ParkingSessionStopDto
     {
-        public string LicensePlate { get; set; } = string.Empty;
+    
     }
 }

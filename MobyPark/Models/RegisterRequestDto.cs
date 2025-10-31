@@ -19,7 +19,7 @@ namespace MobyPark.Models
         public string Name { get; set; } = string.Empty;
 
         [Required, Phone, MaxLength(30)]
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
 
         [Required, Range(1900, 2100)]
         public int BirthYear { get; set; }

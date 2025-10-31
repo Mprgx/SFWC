@@ -2,17 +2,20 @@ using Microsoft.EntityFrameworkCore;
 using MobyPark.Entities;
 using System.ComponentModel.DataAnnotations;
 
-public class ParkingSession
+namespace MobyPark.Entities
 {
+    [Index(nameof(UserId), nameof(Started))]
+    public class ParkingSession
+    {
     public Guid Id { get; set; }
 
     public Guid UserId { get; set; }
     public User? User { get; set; }
 
-    public int ParkingLotId { get; set; }
-    public ParkingLot? ParkingLot { get; set; }
+    public int VehicleId { get; set; }
+    public Vehicle? Vehicle { get; set; }
 
-    [Required, MaxLength(12)]
+    [Required, MaxLength(20)]
     public string LicensePlate { get; set; } = string.Empty;
 
     public DateTimeOffset Started { get; set; }
@@ -21,9 +24,9 @@ public class ParkingSession
     public int DurationMinutes { get; set; }
 
     [Precision(10, 2)]
-    public double Cost { get; set; }
+    public decimal Cost { get; set; }
 
     [Required, MaxLength(20)]
     public string PaymentStatus { get; set; } = "unpaid";
-    
+    }
 }

@@ -10,6 +10,6 @@ namespace MobyPark.Models
         string Model,
         string Color,
         int Year,
-        DateTime CreatedAt
+        DateTimeOffset CreatedAt
     );
 }

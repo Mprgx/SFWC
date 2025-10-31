@@ -1,12 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
-using System;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 using MobyPark.Models;
+using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
@@ -23,41 +21,53 @@ namespace MobyPark.Controllers
         }
 
         [HttpPost("start-parking-session")]
-        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
+        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto, CancellationToken ct)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized("Invalid or missing token.");
 
-            var username = User.Identity?.Name;
-            if (string.IsNullOrEmpty(username)) return Unauthorized("Invalid or missing token.");
-            
-            var userExists = await _context.Users.AnyAsync(u => u.Username == username);
-            if (!userExists) return Unauthorized("User not found.");
+            var vehicle = await _context.Vehicles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId, ct);
+
+            if (vehicle is null) return BadRequest("Vehicle not found for this user.");
+
+            var existsActive = await _context.ParkingSessions
+                .AsNoTracking()
+                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null, ct);
+
+            if (existsActive) return Conflict("This vehicle already has an active session.");
 
             var session = new ParkingSession
             {
                 Id = Guid.NewGuid(),
-                LicensePlate = dto.LicensePlate,
-                ParkingLotId = dto.ParkingLotId,
-                User = username,
+                UserId = userId,
+                VehicleId = vehicle.Id,
+                LicensePlate = vehicle.LicensePlate,
                 Started = DateTimeOffset.UtcNow,
                 Stopped = null,
                 DurationMinutes = 0,
-                Cost = 0,
+                Cost = 0m,
                 PaymentStatus = "unpaid"
             };
 
-            await _context.AddAsync(session);
-            await _context.SaveChangesAsync();
+            await _context.ParkingSessions.AddAsync(session, ct);
+            await _context.SaveChangesAsync(ct);
 
             return Ok(session);
         }
 
         [HttpGet("get-parking-session-by-id")]
-        public async Task<IActionResult> GetSessionById(Guid id)
+        public async Task<IActionResult> GetSessionById(Guid id, CancellationToken ct)
         {
-            var session = await _context.Set<ParkingSession>().FindAsync(id);
-            if (session == null) return NotFound("Parking session not found.");
-            return Ok(session);
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var session = await _context.ParkingSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, ct);
+
+            return session is null ? NotFound("Parking session not found.") : Ok(session);
         }
     }
 }
