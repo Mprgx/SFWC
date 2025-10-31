@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MobyPark")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+99f61010cd95083fdc13f6de97d302d3c5f78254")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9f9c0c4e22567ae5cc39c09e37e3bcd6321c1cc1")]
 [assembly: System.Reflection.AssemblyProductAttribute("MobyPark")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MobyPark")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
