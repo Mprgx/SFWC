@@ -5,6 +5,7 @@ using MobyPark.Data;
 using MobyPark.Services;
 using Scalar.AspNetCore;
 using System.Text;
+using Microsoft.AspNetCore.Builder;
 
 var builder = WebApplication.CreateBuilder(args);
 
