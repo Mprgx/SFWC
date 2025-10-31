@@ -1,3 +1,4 @@
+# -------------------------
 # Python
 __pycache__/
 *.py[cod]
@@ -9,3 +10,73 @@ __pycache__/
 # Data folder
 Server/data
 !Server/data/readme.md
+
+# -------------------------
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# .NET/C# build outputs
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.log
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# -------------------------
+# IDE / tooling
+# Visual Studio
+.vs/
+
+# Rider / ReSharper
+.idea/
+.ReSharper*/
+*_Resharper.*/
+*.DotSettings.user
+
+# VS user-specific
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NUKE build (if any)
+.nuke/
+
+# -------------------------
+# NuGet
+*.nupkg
+*.snupkg
+# If using packages.config:
+# packages/           # uncomment if you check in packages via packages.config
+
+# -------------------------
+# EF / local DBs / misc
+*.mdf
+*.ldf
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# -------------------------
+# Publish / temp
+# Keep .pubxml (team-specific), but ignore user variants
+*.pubxml.user
+*.publishsettings
+
+# -------------------------
+# Appsettings: ignore all environment files EXCEPT the two you want
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
