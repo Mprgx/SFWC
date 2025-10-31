@@ -15,5 +15,6 @@ namespace MobyPark.Entities
         public string PasswordHash { get; set; } = string.Empty;
         public string? RefreshToken { get; set; }
         public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
+        public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
     }
 }
