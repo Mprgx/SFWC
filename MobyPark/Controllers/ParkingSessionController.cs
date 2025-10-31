@@ -1,14 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
-using MobyPark.Entities;  // your entity
-using MobyPark.Dtos;      // your new DTO
+using MobyPark.Entities;
 using System;
 using Microsoft.AspNetCore.Authorization;
+using MobyPark.Models;
 
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/")]
+    [Authorize]
     public class ParkingSessionController : ControllerBase
     {
         private readonly UserDbContext _context;
@@ -18,20 +20,16 @@ namespace MobyPark.Controllers
             _context = context;
         }
 
-        [Authorize]
-        [HttpPost("startsession")]
-        public IActionResult StartSession([FromBody] ParkingSessionStartDto dto)
+        [HttpPost("start-parking-session")]
+        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var username = User.Identity?.Name;
-            if (string.IsNullOrEmpty(username))
-                return Unauthorized("Invalid or missing token.");
+            if (string.IsNullOrEmpty(username)) return Unauthorized("Invalid or missing token.");
             
-            var userExists = _context.Users.Any(u => u.Username == username);
-            if (!userExists)
-                return Unauthorized("User not found.");
+            var userExists = await _context.Users.AnyAsync(u => u.Username == username);
+            if (!userExists) return Unauthorized("User not found.");
 
             var session = new ParkingSession
             {
@@ -46,19 +44,17 @@ namespace MobyPark.Controllers
                 PaymentStatus = "unpaid"
             };
 
-            _context.Add(session);
-            _context.SaveChanges();
+            await _context.AddAsync(session);
+            await _context.SaveChangesAsync();
 
             return Ok(session);
         }
 
-
-        [HttpGet("{id}")]
-        public IActionResult GetSessionById(Guid id)
+        [HttpGet("get-parking-session-by-id")]
+        public async Task<IActionResult> GetSessionById(Guid id)
         {
-            var session = _context.Set<ParkingSession>().Find(id);
-            if (session == null)
-                return NotFound("Parking session not found.");
+            var session = await _context.Set<ParkingSession>().FindAsync(id);
+            if (session == null) return NotFound("Parking session not found.");
             return Ok(session);
         }
     }

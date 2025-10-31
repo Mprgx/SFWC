@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/")]
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
     {
@@ -17,8 +17,7 @@ namespace MobyPark.Controllers
         public async Task<ActionResult<UserReadDto>> Register(RegisterRequestDto request)
         {
             var user = await authService.RegisterAsync(request);
-            if (user is null)
-                return BadRequest("Username or email already exists.");
+            if (user is null) return Conflict("Username or email already exists.");
 
             var dto = new UserReadDto(user.Id, user.Username, user.Name, user.Email,
                                       user.PhoneNumber, user.BirthYear, user.Role, user.CreatedAt);
@@ -29,9 +28,7 @@ namespace MobyPark.Controllers
         public async Task<ActionResult<TokenResponseDto>> Login(LoginRequestDto request)
         {
             var result = await authService.LoginAsync(request);
-            if (result is null)
-                return BadRequest("Invalid username or password.");
-
+            if (result is null) return Unauthorized("Invalid username or password.");
             return Ok(result);
         }
 
@@ -40,12 +37,8 @@ namespace MobyPark.Controllers
         public async Task<IActionResult> Logout()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized();
-
-            var ok = await authService.LogoutAsync(userId);
-            if (!ok) return NotFound();
-
+            if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+            await authService.LogoutAsync(userId);
             return NoContent();
         }
 
@@ -53,21 +46,19 @@ namespace MobyPark.Controllers
         public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
             var result = await authService.RefreshTokensAsync(request);
-            if (result is null || result.AccessToken is null || result.RefreshToken is null)
-                return Unauthorized("Invalid refresh token.");
-
+            if (result is null) return Unauthorized("Invalid refresh token.");
             return Ok(result);
         }
 
         [Authorize]
-        [HttpGet("authenticated-only")]
+        [HttpGet("test-authenticated-only")]
         public IActionResult AuthenticatedOnlyEndpoint()
         {
             return Ok("You are authenticated!");
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpGet("admin-only")]
+        [HttpGet("test-admin-only")]
         public IActionResult AdminOnlyEndpoint()
         {
             return Ok("You are an admin!");
