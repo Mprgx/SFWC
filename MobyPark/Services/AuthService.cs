@@ -51,8 +51,8 @@ namespace MobyPark.Services
                 Id = Guid.NewGuid(),
                 Username = username,
                 Email = email,
-                Name = request.Name,
-                PhoneNumber = request.PhoneNumber,
+                Name = request.Name.Trim(),
+                PhoneNumber = request.PhoneNumber!.Trim(),
                 BirthYear = request.BirthYear,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Role = UserRole.Customer

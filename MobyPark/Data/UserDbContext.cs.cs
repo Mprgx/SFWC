@@ -1,38 +1,38 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MobyPark.Entities;
-using System.Collections.Generic;
 
 namespace MobyPark.Data
 {
     public class UserDbContext(DbContextOptions<UserDbContext> options) : DbContext(options)
     {
         public DbSet<User> Users => Set<User>();
+        public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<User>(b =>
-            {
-                b.Property(u => u.Username).IsRequired().HasMaxLength(50);
-                b.HasIndex(u => u.Username).IsUnique();
-
-                b.Property(u => u.Email).IsRequired().HasMaxLength(256);
-                b.HasIndex(u => u.Email).IsUnique();
-
-                b.Property(u => u.PhoneNumber).IsRequired().HasMaxLength(30);
-            });
-
+            // Vehicle ↔ User
             modelBuilder.Entity<Vehicle>()
-                .HasIndex(v => v.LicensePlate)
-                .IsUnique();
+                 .HasOne(v => v.User)
+                 .WithMany(u => u.Vehicles)
+                 .HasForeignKey(v => v.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Vehicle>()
-                .HasOne(v => v.User)
-                .WithMany(u => u.Vehicles)
-                .HasForeignKey(v => v.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Session ↔ User
+            modelBuilder.Entity<ParkingSession>()
+                 .HasOne(s => s.User)
+                 .WithMany(u => u.ParkingSessions)
+                 .HasForeignKey(s => s.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Session ↔ Vehicle
+            modelBuilder.Entity<ParkingSession>()
+                 .HasOne(s => s.Vehicle)
+                 .WithMany()
+                 .HasForeignKey(s => s.VehicleId)
+                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
