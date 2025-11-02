@@ -48,3 +48,12 @@ def test_get_own_sessions_as_user(login_as_user):
     sessions = response.json()
     for s in sessions:
         assert s['user'] == "User"
+
+
+#nieuwe test, moet nog getest worden
+def test_get_session_not_found_as_admin(login_as_admin):
+    url = login_as_admin['url'] + '/parking-lots/1/sessions/9999'
+    response = requests.get(url, headers={"Authorization": login_as_admin['session_token']})
+    assert response.status_code == 404
+    assert "Session not found" in response.text
+
