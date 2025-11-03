@@ -2,11 +2,17 @@ import pytest
 import requests
 
 RESERVATION_DATA = {
-    "UserID": "1",
     "licenseplate": "AB-123-CD",
     "startdate": "11.12.2025",
     "enddate": "12.12.2025",
     "parkinglot": "1",
+}
+
+RESERVATION_DATA_ALREADY_RESERVED = {
+    "licenseplate": "AB-123-CD",
+    "startdate": "11.12.2025",
+    "enddate": "12.12.2025",
+    "parkinglot": "4",
 }
 
 
@@ -26,7 +32,7 @@ def test_post_reservation_status_authorized(_data):
     assert status_code == 201
 
 
-def test_post_reservation_responsebody(_data):
+def test_post_reservation_message(_data):
     url = _data['url'] + 'reservations/'
     response = requests.post(url, json=RESERVATION_DATA, headers={
                              "Authorization": _data['api_key']})
@@ -57,4 +63,14 @@ def test_post_reservation_missing_field(_data):
     assert response.status_code == 400
     expected = {
         "message": "Missing required field: licenseplate"}
+    assert response.json() == expected
+
+
+def test_post_reservation_parkinglot_already_reserved_message(_data):
+    url = _data['url'] + 'reservations/'
+    response = requests.post(url, json=RESERVATION_DATA_ALREADY_RESERVED, headers={
+                             "Authorization": _data['api_key']})
+    assert response.status_code == 400
+    expected = {
+        "message": f"Parkinglot {RESERVATION_DATA_ALREADY_RESERVED['parkinglot']}is already booked for date: {RESERVATION_DATA_ALREADY_RESERVED['startdate']}"}
     assert response.json() == expected

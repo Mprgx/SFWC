@@ -9,7 +9,7 @@ def test_post_vehicle_entry_status_unauthorized(_data):
     response = requests.post(url, headers={})
     status_code = response.status_code
 
-    assert status_code == 403
+    assert status_code == 401
 
 
 def test_post_vehicle_entry_status_authorized(_data):

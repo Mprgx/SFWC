@@ -16,7 +16,7 @@ def test_post_vehicle_status_unauthorized(_data):
     response = requests.post(url, json=VEHICLE_PAYLOAD, headers={})
     status_code = response.status_code
 
-    assert status_code == 403
+    assert status_code == 401
 
 
 def test_post_vehicle_status_bad_request(_data):
@@ -28,7 +28,7 @@ def test_post_vehicle_status_bad_request(_data):
     assert status_code == 400
 
 
-def test_get_vehicles_ok_responsebody(_data):
+def test_get_vehicles_ok_message(_data):
     url = _data['url'] + 'vehicles'
     response = requests.post(url, json=VEHICLE_PAYLOAD, headers={
         "Authorization": _data['api_key']})
