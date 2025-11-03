@@ -8,6 +8,7 @@ namespace MobyPark.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
+        public DbSet<Reservation> Reservations => Set<Reservation>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
