@@ -1,38 +1,68 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
+    [ApiController]
     [Route("api/[controller]")]
 
-    [ApiController]
     public class ReservationsController : ControllerBase
     {
-        [HttpPost("reservations")]
-        public async Task<ActionResult<ReservationDto>> CreateReservation(CreateReservationDto request)
+        private readonly ReservationService _reservationService;
+
+        public ReservationsController(ReservationService reservationService)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing user ID.");
-
-            var vehicle = await vehicleService.CreateVehicleAsync(userId, request);
-            if (vehicle is null) return Conflict("License plate may already exist.");
-
-            var dto = new VehicleReadDto(
-                vehicle.Id,
-                vehicle.UserId,
-                vehicle.LicensePlate,
-                vehicle.Make,
-                vehicle.Model,
-                vehicle.Color,
-                vehicle.Year,
-                vehicle.CreatedAt
-            );
-
-            return Ok(dto);
+            _reservationService = reservationService;
         }
+
+        [HttpGet("{reservationid}")]
+        public ActionResult<Reservation> GetById(int reservationid)
+        {
+            var reservation = _reservationService.GetById(reservationid);
+            if (reservation == null)
+                return NotFound($"Reservation with id {reservationid} not found");
+
+            return Ok(reservation);
+        }
+
+        [HttpPost]
+        public ActionResult<Reservation> CreateReservation(CreateReservationDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var reservation = _reservationService.CreateReservation(dto);
+            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
+        }
+
+        [HttpDelete("{reservationid}")]
+        public ActionResult<Reservation> DeleteReservation(int reservationid)
+        {
+            var reservation = _reservationService.GetById(reservationid);
+            if (reservation == null)
+                return NotFound($"Reservation with id {reservationid} not found");
+
+            _reservationService.DeleteReservation(reservation);
+
+            return NoContent(); // retturns 204 if deletion successful
+        }
+
+        [HttpPut("{reservationid}")]
+        public ActionResult<Reservation> UpdateReservation(int reservationid, CreateReservationDto dto)
+        {
+            var reservation = _reservationService.GetById(reservationid);
+            if (reservation == null)
+                return NotFound($"Reservation with id {reservationid} not found");
+
+            _reservationService.UpdateReservation(reservation, dto);
+            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
+
+        }
+
     }
 }
+
