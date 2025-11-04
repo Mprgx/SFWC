@@ -9,7 +9,7 @@ namespace MobyPark.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-
+    [Authorize]
     public class ReservationsController : ControllerBase
     {
         private readonly ReservationService _reservationService;
@@ -24,7 +24,11 @@ namespace MobyPark.Controllers
         {
             var reservation = _reservationService.GetById(reservationid);
             if (reservation == null)
-                return NotFound($"Reservation with id {reservationid} not found");
+                return NotFound(new
+                {
+                    statuscode = 404,
+                    message = $"Reservation with id {reservationid} not found"
+                });
 
             return Ok(reservation);
         }
@@ -33,7 +37,12 @@ namespace MobyPark.Controllers
         public ActionResult<Reservation> CreateReservation(CreateReservationDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(
+                    new
+                    {
+                        statuscode = 400,
+                        message = ModelState
+                    });
 
             var reservation = _reservationService.CreateReservation(dto);
             return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
@@ -44,7 +53,11 @@ namespace MobyPark.Controllers
         {
             var reservation = _reservationService.GetById(reservationid);
             if (reservation == null)
-                return NotFound($"Reservation with id {reservationid} not found");
+                return NotFound(new
+                {
+                    statuscode = 404,
+                    message = $"Reservation with id {reservationid} not found"
+                });
 
             _reservationService.DeleteReservation(reservation);
 
@@ -56,7 +69,11 @@ namespace MobyPark.Controllers
         {
             var reservation = _reservationService.GetById(reservationid);
             if (reservation == null)
-                return NotFound($"Reservation with id {reservationid} not found");
+                return NotFound(new
+                {
+                    statuscode = 404,
+                    message = $"Reservation with id {reservationid} not found"
+                });
 
             _reservationService.UpdateReservation(reservation, dto);
             return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);

@@ -1,0 +1,2 @@
+1. The ReservationMargin is the amount of extra spaces that should be free when there is at least 1 reservation.
+   This margin exists to ensure the customer has a parking spot, if for example another car takes up 2 spots.

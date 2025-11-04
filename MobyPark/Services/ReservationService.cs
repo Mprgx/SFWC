@@ -4,7 +4,7 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ReservationService
+    public class ReservationService : IReservationService
     {
         private readonly UserDbContext _context;
 
@@ -24,6 +24,7 @@ namespace MobyPark.Services
             {
                 ParkingLotId = dto.ParkingLotId,
                 UserId = dto.UserId,
+                LicensePlate = dto.LicensePlate,
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
             };

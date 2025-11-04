@@ -30,7 +30,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+
+// Register services 
+
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ReservationService>();
+
+var provider = builder.Services.BuildServiceProvider();
+var test = provider.GetService<ReservationService>();
+Console.WriteLine(test != null ? "ReservationService registered" : "Not registered");
+
 
 var app = builder.Build();
 

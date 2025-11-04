@@ -12,11 +12,15 @@ namespace MobyPark.Models
         [Required]
         public Guid UserId { get; set; }
 
-        [Required]
-        public DateTime StartTime { get; set; }
+        [Required, MaxLength(10)]
+        [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
+        public required string LicensePlate { get; set; }
 
         [Required]
-        public DateTime EndTime { get; set; }
+        public DateTimeOffset StartTime { get; set; }
+
+        [Required]
+        public DateTimeOffset EndTime { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext _)
         {
@@ -30,7 +34,7 @@ namespace MobyPark.Models
             }
 
             // Check if reservation is in the future.
-            if (StartTime < DateTime.UtcNow)
+            if (StartTime < DateTimeOffset.UtcNow)
                 yield return new ValidationResult(
                     "StartTime can not be in the past.",
                     new[] { nameof(StartTime) });

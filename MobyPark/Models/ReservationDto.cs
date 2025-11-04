@@ -11,9 +11,11 @@ namespace MobyPark.Models
         [Required]
         public Guid UserId { get; set; }
         [Required]
-        public DateTime StartTime { get; set; }
+        public required string LicensePlate { get; set; }
         [Required]
-        public DateTime EndTime { get; set; }
+        public DateTimeOffset StartTime { get; set; }
+        [Required]
+        public DateTimeOffset EndTime { get; set; }
         [Required]
         public bool IsActive { get; set; }
     }
