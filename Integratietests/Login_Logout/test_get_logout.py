@@ -3,8 +3,8 @@ import requests
 # Checks if a admin token is not valid
 
 
-def test_logout(login_as_admin):
-    url = login_as_admin['url'] + '/logout'
+def test_logout(admin_session):
+    url = admin_session['url'] + '/logout'
 
     response = requests.get(url)
 
@@ -14,8 +14,8 @@ def test_logout(login_as_admin):
 # Checks if a user token is not valid
 
 
-def test_logout(login_as_user):
-    url = login_as_user['url'] + '/logout'
+def test_logout(user_session):
+    url = user_session['url'] + '/logout'
 
     response = requests.get(url)
 
@@ -25,8 +25,8 @@ def test_logout(login_as_user):
 # Checks if a admin can log out
 
 
-def test_logout(login_as_admin):
-    url = login_as_admin['url'] + '/logout'
+def test_logout(admin_session):
+    url = admin_session['url'] + '/logout'
 
     response = requests.get(url)
 
@@ -36,8 +36,8 @@ def test_logout(login_as_admin):
 # Checks if a user can log out
 
 
-def test_logout(login_as_user):
-    url = login_as_user['url'] + '/logout'
+def test_logout(user_session):
+    url = user_session['url'] + '/logout'
 
     response = requests.get(url)
 
