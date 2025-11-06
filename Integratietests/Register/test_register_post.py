@@ -6,7 +6,7 @@ def _unique_username():
 
 def test_register_creates_user_returns_201_and_json_contract(user_session):
     url = user_session['url'] + 'register'
-    username = _unique_username('ok')
+    username = _unique_username()
     password = 'Smpl3Pw!'
     payload = {
         'username': username,

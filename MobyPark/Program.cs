@@ -11,6 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+var cs = builder.Configuration.GetConnectionString("UserDatabase") ?? throw new InvalidOperationException("Missing ConnectionStrings:UserDatabase");
+
+var tokenKey = builder.Configuration["AppSettings:Token"] ?? throw new InvalidOperationException("Missing AppSettings:Token");
+
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase")));
 
