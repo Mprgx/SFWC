@@ -7,16 +7,16 @@ LOGIN_CREDENTIALS = {
 }
 
 
-def test_get_login_status_successful(_data):
-    url = _data['url'] + 'login'
+def test_get_login_status_successful(user_session):
+    url = user_session['url'] + 'login'
     response = requests.get(
         url, json={LOGIN_CREDENTIALS['username'], LOGIN_CREDENTIALS['password']})
     status_code = response.status_code
     assert status_code == 200
 
 
-def test_get_login_responsebody(_data):
-    url = _data['url'] + 'login'
+def test_get_login_responsebody(user_session):
+    url = user_session['url'] + 'login'
     response = requests.get(
         url, json={LOGIN_CREDENTIALS['username'], LOGIN_CREDENTIALS['password']})
     assert response.status_code == 200
@@ -25,23 +25,23 @@ def test_get_login_responsebody(_data):
     assert response.json() == expected
 
 
-def test_get_login_status_bad_request(_data):
-    url = _data['url'] + 'login'
+def test_get_login_status_bad_request(user_session):
+    url = user_session['url'] + 'login'
     response = requests.get(url, json={})
     status_code = response.status_code
     assert status_code == 400
 
 
-def test_get_login_status_account_doesnt_exist(_data):
-    url = _data['url'] + 'login'
+def test_get_login_status_account_doesnt_exist(user_session):
+    url = user_session['url'] + 'login'
     response = requests.get(
         url, json={"username": "nonexistentuser", "password": "wrongpassword"})
     status_code = response.status_code
     assert status_code == 400
 
 
-def test_get_login_responsebody_invalid_login(_data):
-    url = _data['url'] + 'login'
+def test_get_login_responsebody_invalid_login(user_session):
+    url = user_session['url'] + 'login'
     response = requests.get(
         url, json={"username": "nonexistentuser", "password": "wrongpassword"})
     assert response.status_code == 400
