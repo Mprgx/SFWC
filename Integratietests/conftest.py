@@ -5,7 +5,7 @@ BASE_URL = "http://localhost:8000/"
 
 
 @pytest.fixture
-def user_session_():
+def user_session():
     resp = requests.post(BASE_URL + "login",
                          json={"username": "Mex", "password": "Smpl3Pw!"})
     resp.raise_for_status()
