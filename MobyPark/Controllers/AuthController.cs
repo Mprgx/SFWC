@@ -6,7 +6,7 @@ using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
-    [Route("api/")]
+    [Route("api")]
     [ApiController]
     public class AuthController(IAuthService authService) : ControllerBase
     {
