@@ -1,8 +1,7 @@
 import pytest
 import requests
 
-BASE_URL = "http://localhost:5280/"
-
+BASE_URL = "http://localhost:5280/api"
 
 
 @pytest.fixture
@@ -26,6 +25,7 @@ def admin_session():
 @pytest.fixture
 def auth_headers(user_session):
     return {"Authorization": user_session["session_token"]}
+
 
 @pytest.fixture
 def auth_headers_empty_user():
