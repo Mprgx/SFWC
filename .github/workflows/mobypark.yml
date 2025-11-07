@@ -4,48 +4,16 @@ on:
   push:
     branches: [ "dev", "main" ]
     paths:
-      - 'MobyPark/**'
-      - 'Integratietest/**'
+      - 'MobyPark/'
+      - 'Integratietests/'
       - '.github/workflows/**'
 
 jobs:
-  setup:
+  setup-and-build:
     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v4
-
-    # ----- Setup Python -----
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
-        cache: 'pip'
-
-    # ----- Setup .NET -----
-    - name: Set up .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
-
-  install:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-    - uses: actions/checkout@v4
-
-    # ----- Install dependencies -----
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest pytest-cov python-dateutil jsonschema requests
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-  build:
-    runs-on: ubuntu-latest
-    needs: install
-    services: 
-      mssql: 
+    services:
+      mssql:
         image: mcr.microsoft.com/mssql/server:2022-latest
         ports:
           - 1433:1433
@@ -53,60 +21,56 @@ jobs:
           SA_PASSWORD: "testing"
           ACCEPT_EULA: "Y"
         options: >-
-          --health-cmd "exit 0" 
-          --health-interval 10s 
-          --health-timeout 5s 
+          --health-cmd "exit 0"
+          --health-interval 10s
+          --health-timeout 5s
           --health-retries 5
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    # ----- Build C# project -----
-    - name: Build C# server
-      run: |
-        dotnet restore ./MobyPark/MobyPark.csproj
-        dotnet build ./MobyPark/MobyPark.csproj --configuration Release
+      # ----- Setup Python -----
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    # ----- Start C# server -----
-    - name: Start C# server
-      run: |
-        dotnet run --project ./MobyPark/ --urls "http://localhost:5280" > server.log 2>&1 &
-        echo "Waiting for server to start..."
-        sleep 10
-        curl --fail http://localhost:5280/scalar || (echo "Server failed to start" && cat server.log && exit 1)
+      # ----- Setup .NET -----
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
-    - name: Upload server log
-      uses: actions/upload-artifact@v4
-      with:
-        name: server-log
-        path: server.log
+      # ----- Install Python dependencies -----
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest pytest-cov python-dateutil jsonschema requests
 
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-    services: 
-      mssql: 
-        image: mcr.microsoft.com/mssql/server:2022-latest
-        ports:
-          - 1433:1433
-        env:
-          SA_PASSWORD: "testing"
-          ACCEPT_EULA: "Y"
-        options: >-
-          --health-cmd "exit 0" 
-          --health-interval 10s 
-          --health-timeout 5s 
-          --health-retries 5
-    steps:
-    - uses: actions/checkout@v4
+      # ----- Build C# project -----
+      - name: Build C# server
+        run: |
+          dotnet restore ./MobyPark/MobyPark.csproj
+          dotnet build ./MobyPark/MobyPark.csproj --configuration Release
 
-    - name: Download server log
-      uses: actions/download-artifact@v4
-      with:
-        name: server-log
-        path: .
+      # ----- Start C# server -----
+      - name: Start C# server
+        run: |
+          nohup dotnet run --project ./MobyPark/MobyPark.csproj --urls "http://localhost:5280" > server.log 2>&1 &
+          echo "Waiting for server to start..."
+          sleep 10
+          curl --fail http://localhost:5280/scalar || (echo "Server failed to start" && cat server.log && exit 1)
 
-    # ----- Run Python tests -----
-    - name: Run pytest
-      run: |
-        tail -f server.log &
-        pytest ./Integratietests/ --maxfail=1 --disable-warnings -q --cov --cov-report term --cov-report xml:coverage.xml
+      # ----- Upload server log (optional) -----
+      - name: Upload server log
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server.log
+
+      # ----- Run Python tests -----
+      - name: Run pytest
+        run: |
+          tail -f server.log &
+          pytest ./Integratietests/ --maxfail=1 --disable-warnings -q --cov --cov-report term --cov-report xml:coverage.xml
+
