@@ -1,0 +1,55 @@
+name: Mobypark application
+
+on:
+  push:
+    branches: [ "dev" ]
+    paths:
+      - 'Mobypark/**'
+      - 'Integratietest/**'
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # ----- Setup Python -----
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+        cache: 'pip'
+
+    # ----- Setup .NET -----
+    - name: Set up .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    # ----- Install dependencies -----
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest pytest-cov python-dateutil jsonschema
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # ----- Build C# project -----
+    - name: Build C# server
+      run: |
+        dotnet restore
+        dotnet build --configuration Release
+
+    # ----- Start C# server -----
+    - name: Start C# server
+      run: |
+        dotnet run --project ./Mobypark/ --urls "http://localhost:5000" &
+        echo "Waiting for server to start..."
+        sleep 10
+        curl --fail http://localhost:5000 || (echo "Server failed to start" && exit 1)
+
+    # ----- Run Python tests -----
+    - name: Run pytest
+      run: |
+        pytest Integratietest/ --maxfail=1 --disable-warnings -q --cov --cov-report term --cov-report xml:coverage.xml
