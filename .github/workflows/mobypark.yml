@@ -38,8 +38,8 @@ jobs:
     # ----- Build C# project -----
     - name: Build C# server
       run: |
-        dotnet restore
-        dotnet build --configuration Release
+        dotnet restore ./MobyPark/MobyPark.csproj
+        dotnet build ./MobyPark/MobyPark.csproj --configuration Release
 
     # ----- Start C# server -----
     - name: Start C# server
