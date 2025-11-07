@@ -45,10 +45,10 @@ jobs:
     # ----- Start C# server -----
     - name: Start C# server
       run: |
-        dotnet run --project ./MobyPark/ --urls "http://localhost:5280" &
+        dotnet run --project ./MobyPark/ --urls "http://localhost:5280" > server.log 2>&1 &
         echo "Waiting for server to start..."
         sleep 10
-        curl --fail http://localhost:5280/scalar || (echo "Server failed to start" && exit 1)
+        curl --fail http://localhost:5280/scalar || (echo "Server failed to start" && cat server.log && exit 1)
 
     # ----- Run Python tests -----
     - name: Run pytest
