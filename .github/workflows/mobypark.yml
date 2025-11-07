@@ -3,9 +3,9 @@ name: Mobypark application
 on:
   push:
     branches: [ "dev" ]
-    paths:
-      - 'Mobypark/**'
-      - 'Integratietest/**'
+    # paths:
+    #   - 'Mobypark/**'
+    #   - 'Integratietest/**'
 
 
 jobs:
