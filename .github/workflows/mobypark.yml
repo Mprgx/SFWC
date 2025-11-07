@@ -3,9 +3,9 @@ name: Mobypark application
 on:
   push:
     branches: [ "dev" ]
-    # paths:
-    #   - 'Mobypark/**'
-    #   - 'Integratietest/**'
+    paths:
+      - 'MobyPark/**'
+      - 'Integratietest/**'
 
 
 jobs:
@@ -44,7 +44,7 @@ jobs:
     # ----- Start C# server -----
     - name: Start C# server
       run: |
-        dotnet run --project ./Mobypark/ --urls "http://localhost:5000" &
+        dotnet run --project ./MobyPark/ --urls "http://localhost:5000" &
         echo "Waiting for server to start..."
         sleep 10
         curl --fail http://localhost:5000 || (echo "Server failed to start" && exit 1)
