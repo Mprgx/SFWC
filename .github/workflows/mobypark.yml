@@ -53,4 +53,4 @@ jobs:
     # ----- Run Python tests -----
     - name: Run pytest
       run: |
-        pytest ./Integratietests/** --maxfail=1 --disable-warnings -q --cov --cov-report term --cov-report xml:coverage.xml
+        pytest ./Integratietests/ --maxfail=1 --disable-warnings -q --cov --cov-report term --cov-report xml:coverage.xml
