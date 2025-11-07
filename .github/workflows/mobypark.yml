@@ -2,10 +2,11 @@ name: Mobypark application
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "dev", "main" ]
     paths:
       - 'MobyPark/**'
       - 'Integratietest/**'
+      - '.github/workflows/**'
 
 
 jobs:
