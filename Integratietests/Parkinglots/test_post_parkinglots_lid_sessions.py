@@ -6,279 +6,284 @@ from dateutil import parser as dateparser
 
 
 #Post route tests start sessions
-def test_start_session_unauthorized(base_url):
-    url = base_url + "parking-lots/1/sessions/start"
+def test_session_start_unauthorized(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/start"
+
     r = requests.post(url, json={"licenseplate": "TEST123"})
     assert r.status_code == 401
 
 
-def test_start_session_missing_licenseplate(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions/start"
-    token = user_session["token"]
+def test_session_start_missing_licenseplate(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/start"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token}, json={})
+    r = requests.post(url, headers=headers, json={})
     assert r.status_code == 401
     assert r.json()["field"] == "licenseplate"
 
 
-def test_start_session_success(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions/start"
-    token = user_session["token"]
+def test_session_start_success(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/start"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token},
-                      json={"licenseplate": "ABC111"})
+    r = requests.post(url, headers=headers, json={"licenseplate": "NEWCAR1"})
     assert r.status_code == 200
-    assert "Session started for: ABC111" in r.text
+    assert "Session started for: NEWCAR1" in r.text
 
 
-def test_start_session_twice_fails(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions/start"
-    token = user_session["token"]
-    lp = "DOUBLE555"
+def test_session_start_twice_fails(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/start"
+    headers = {"Authorization": user_session["session_token"]}
 
-    first = requests.post(url, headers={"Authorization": token}, json={"licenseplate": lp})
+    lp = "DUPLICATE1"
+
+    first = requests.post(url, headers=headers, json={"licenseplate": lp})
     assert first.status_code == 200
 
-    second = requests.post(url, headers={"Authorization": token}, json={"licenseplate": lp})
+    second = requests.post(url, headers=headers, json={"licenseplate": lp})
     assert second.status_code == 401
     assert b"already started" in second.content
 
 
-def test_start_session_invalid_lid(user_session):
-    url = user_session["url"] + "parking-lots/9999/sessions/start"
-    token = user_session["token"]
+def test_session_start_invalid_lid(user_session):
+    lid = 9999
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/start"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token},
-                      json={"licenseplate": "CAR123"})
-    # depends on implementation, but typically 500 or missing file
+    r = requests.post(url, headers=headers, json={"licenseplate": "CAR123"})
     assert r.status_code in [400, 404, 500]
+
 
 #Post route tests end sessions
 
-def test_stop_session_unauthorized(base_url):
-    url = base_url + "parking-lots/1/sessions/stop"
-    r = requests.post(url, json={"licenseplate": "TEST123"})
+def test_session_stop_unauthorized(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/stop"
+
+    r = requests.post(url, json={"licenseplate": "CAR123"})
     assert r.status_code == 401
 
 
-def test_stop_session_missing_licenseplate(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions/stop"
-    token = user_session["token"]
+def test_session_stop_missing_licenseplate(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/stop"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token}, json={})
+    r = requests.post(url, headers=headers, json={})
     assert r.status_code == 401
     assert r.json()["field"] == "licenseplate"
 
 
-def test_stop_session_success(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions"
-    token = user_session["token"]
-    lp = "STOP444"
+def test_session_stop_success(user_session):
+    lid = 1
+    base = user_session["url"] + f"parking-lots/{lid}/sessions"
+    headers = {"Authorization": user_session["session_token"]}
 
-    # Start session first
-    r1 = requests.post(url + "/start",
-                       headers={"Authorization": token},
-                       json={"licenseplate": lp})
-    assert r1.status_code == 200
+    lp = "STOPME1"
 
-    # Stop session
-    r2 = requests.post(url + "/stop",
-                       headers={"Authorization": token},
-                       json={"licenseplate": lp})
-    assert r2.status_code == 200
-    assert "Session stopped for" in r2.text
+    # starten
+    start = requests.post(base + "/start", headers=headers, json={"licenseplate": lp})
+    assert start.status_code == 200
+
+    # stoppen
+    stop = requests.post(base + "/stop", headers=headers, json={"licenseplate": lp})
+    assert stop.status_code == 200
+    assert "Session stopped for" in stop.text
 
 
-def test_stop_session_without_active_session(user_session):
-    url = user_session["url"] + "parking-lots/1/sessions/stop"
-    token = user_session["token"]
+def test_session_stop_without_active_session(user_session):
+    lid = 1
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/stop"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token},
-                      json={"licenseplate": "NOSUCHCAR"})
-    # jouw code heeft bug: `if len(filtered) < 0` → nooit uitgevoerd → stopt sessie altijd
-    # daarom status 200 verwacht (bug)
-    assert r.status_code == 200 or r.status_code == 401
+    r = requests.post(url, headers=headers, json={"licenseplate": "NOSUCHCAR"})
+    assert r.status_code in [200, 401]   # door bug in code
 
 
-def test_stop_session_invalid_lid(user_session):
-    url = user_session["url"] + "parking-lots/999/sessions/stop"
-    token = user_session["token"]
+def test_session_stop_invalid_lid(user_session):
+    lid = 9999
+    url = user_session["url"] + f"parking-lots/{lid}/sessions/stop"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.post(url, headers={"Authorization": token},
-                      json={"licenseplate": "CAR1"})
+    r = requests.post(url, headers=headers, json={"licenseplate": "CAR1"})
     assert r.status_code in [400, 404, 500]
+
 
 #Put route tests
 
-def test_update_parking_lot_unauthorized(base_url):
-    url = base_url + "parking-lots/1"
-    r = requests.put(url, json={"name": "NewName"})
+import requests
+import json
+
+def test_update_parking_lot_unauthorized(user_session):
+    url = user_session["url"] + "parking-lots/1"
+    r = requests.put(url, json={"name": "NewLot"})
     assert r.status_code == 401
-    assert b"Unauthorized" in r.content
+    assert "Unauthorized" in r.text
 
 
 def test_update_parking_lot_forbidden_non_admin(user_session):
-    token = user_session["token"]
     url = user_session["url"] + "parking-lots/1"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.put(url, headers={"Authorization": token},
-                     json={"name": "HackEdit"})
+    r = requests.put(url, headers=headers, json={"name": "HackLot"})
     assert r.status_code == 403
     assert r.text == "Access denied"
 
 
 def test_update_parking_lot_not_found(admin_session):
-    token = admin_session["token"]
-    url = admin_session["url"] + "parking-lots/9999"
+    url = admin_session["url"] + "parking-lots/99999"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    r = requests.put(url, headers={"Authorization": token},
-                     json={"name": "DoesNotExist"})
+    r = requests.put(url, headers=headers, json={"name": "DoesNotExist"})
     assert r.status_code == 404
     assert r.text == "Parking lot not found"
 
 
 def test_update_parking_lot_success(admin_session):
-    token = admin_session["token"]
     url = admin_session["url"] + "parking-lots/1"
+    headers = {"Authorization": admin_session["session_token"]}
 
     data = {
         "name": "UpdatedLot",
-        "location": "City",
-        "address": "Street 10",
+        "location": "CenterCity",
+        "address": "New Street 10",
         "capacity": 120,
         "reserved": 5,
         "tariff": 3.0,
         "daytariff": 15,
         "currency": "EUR",
         "created_at": "2024-01-01",
-        "coordinates": {"lat": 52.0, "lng": 4.0}
+        "coordinates": {"lat": 52.0, "lng": 4.1}
     }
 
-    r = requests.put(url, headers={"Authorization": token}, json=data)
+    r = requests.put(url, headers=headers, json=data)
     assert r.status_code == 200
     assert r.text == "Parking lot modified"
 
 
 def test_update_parking_lot_invalid_json(admin_session):
-    token = admin_session["token"]
     url = admin_session["url"] + "parking-lots/1"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    r = requests.put(url, headers={"Authorization": token},
-                     data="not a json")
-
+    r = requests.put(url, headers=headers, data="INVALID_JSON")
     assert r.status_code in [400, 500]
+
 
 #Delete route tests
 
-def test_delete_parking_lot_unauthorized(base_url):
-    url = base_url + "parking-lots/1"
+def test_delete_parking_lot_unauthorized(user_session):
+    url = user_session["url"] + "parking-lots/1"
     r = requests.delete(url)
     assert r.status_code == 401
 
 
-def test_delete_parking_lot_forbidden_non_admin(user_session):
-    token = user_session["token"]
+def test_delete_parking_lot_forbidden(user_session):
     url = user_session["url"] + "parking-lots/1"
-    r = requests.delete(url, headers={"Authorization": token})
+    headers = {"Authorization": user_session["session_token"]}
 
+    r = requests.delete(url, headers=headers)
     assert r.status_code == 403
     assert r.text == "Access denied"
 
 
 def test_delete_parking_lot_not_found(admin_session):
-    token = admin_session["token"]
-    url = admin_session["url"] + "parking-lots/9999"
+    url = admin_session["url"] + "parking-lots/99999"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    r = requests.delete(url, headers={"Authorization": token})
+    r = requests.delete(url, headers=headers)
     assert r.status_code == 404
     assert r.text == "Parking lot not found"
 
 
 def test_delete_parking_lot_success(admin_session):
-    token = admin_session["token"]
-
-    # eerst een lot aanmaken zodat hij zeker bestaat
+    # eerst een parking lot maken zodat hij zeker bestaat
     create_url = admin_session["url"] + "parking-lots"
-    data = {
-        "name": "ToDelete",
-        "location": "Town",
-        "address": "Road 21",
-        "capacity": 80,
-        "reserved": 10,
-        "tariff": 2.0,
-        "daytariff": 12,
+    headers = {"Authorization": admin_session["session_token"]}
+
+    new_lot = {
+        "name": "TempLot",
+        "location": "TestCity",
+        "address": "Temp 1",
+        "capacity": 50,
+        "reserved": 2,
+        "tariff": 2.5,
+        "daytariff": 15,
         "currency": "EUR",
         "created_at": "2024-01-01",
-        "coordinates": {"lat": 53.0, "lng": 5.0}
+        "coordinates": {"lat": 51.0, "lng": 4.0}
     }
-    create = requests.post(create_url, headers={"Authorization": token}, json=data)
+
+    create = requests.post(create_url, headers=headers, json=new_lot)
     assert create.status_code == 201
 
-    # extract id from response
     new_id = create.text.split(":")[-1].strip()
 
     delete_url = admin_session["url"] + f"parking-lots/{new_id}"
-    r = requests.delete(delete_url, headers={"Authorization": token})
 
+    r = requests.delete(delete_url, headers=headers)
     assert r.status_code == 200
     assert r.text == "Parking lot deleted"
 
 
-def test_delete_parking_lot_no_id(base_url):
-    url = base_url + "parking-lots/"  # trailing slash → lid = ''
-    r = requests.delete(url)
+def test_delete_parking_lot_invalid_path(admin_session):
+    url = admin_session["url"] + "parking-lots/"
+    headers = {"Authorization": admin_session["session_token"]}
+
+    r = requests.delete(url, headers=headers)
     assert r.status_code in [400, 404]
 
-def test_delete_session_unauthorized(base_url):
-    url = base_url + "parking-lots/1/sessions/1"
+
+
+#Delete session tests
+def test_delete_session_unauthorized(user_session):
+    url = user_session["url"] + "parking-lots/1/sessions/1"
     r = requests.delete(url)
     assert r.status_code == 401
 
 
-def test_delete_session_forbidden_non_admin(user_session):
-    token = user_session["token"]
+def test_delete_session_forbidden(user_session):
     url = user_session["url"] + "parking-lots/1/sessions/1"
+    headers = {"Authorization": user_session["session_token"]}
 
-    r = requests.delete(url, headers={"Authorization": token})
+    r = requests.delete(url, headers=headers)
     assert r.status_code == 403
     assert r.text == "Access denied"
 
 
-def test_delete_session_non_numeric_id(admin_session):
-    token = admin_session["token"]
-    url = admin_session["url"] + "parking-lots/1/sessions/abc"
+def test_delete_session_non_numeric(admin_session):
+    url = admin_session["url"] + "parking-lots/1/sessions/notanumber"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    r = requests.delete(url, headers={"Authorization": token})
-
-    # code: non-numeric → 403 with message
+    r = requests.delete(url, headers=headers)
     assert r.status_code == 403
     assert r.text == "Session ID is required, cannot delete all sessions"
 
 
 def test_delete_session_not_found(admin_session):
-    token = admin_session["token"]
-    url = admin_session["url"] + "parking-lots/1/sessions/999"
+    url = admin_session["url"] + "parking-lots/1/sessions/99999"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    r = requests.delete(url, headers={"Authorization": token})
+    r = requests.delete(url, headers=headers)
 
-    # jouw code: del sessions[sid] → KeyError → server likely returns 500
+    # afhankelijk van of KeyError wordt opgevangen → 404 of 500
     assert r.status_code in [404, 500]
 
 
 def test_delete_session_success(admin_session):
-    token = admin_session["token"]
     base = admin_session["url"] + "parking-lots/1/sessions"
+    headers = {"Authorization": admin_session["session_token"]}
 
-    # 1. Start a session (as admin → admin is allowed)
-    start = requests.post(base + "/start",
-                          headers={"Authorization": token},
-                          json={"licenseplate": "DEL123"})
+    # eerst sessie starten
+    start = requests.post(base + "/start", headers=headers, json={"licenseplate": "DELME123"})
     assert start.status_code == 200
 
-    # sessions.json uses numeric keys starting at 1
+    # sessies krijgen numerieke ID's (1, 2, ...)
     delete_url = admin_session["url"] + "parking-lots/1/sessions/1"
 
-    r = requests.delete(delete_url, headers={"Authorization": token})
-
+    r = requests.delete(delete_url, headers=headers)
     assert r.status_code == 200
     assert r.text == "Sessions deleted"
