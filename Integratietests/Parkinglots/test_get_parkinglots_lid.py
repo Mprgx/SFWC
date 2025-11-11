@@ -45,3 +45,14 @@ def test_sessions_unauthorized(user_session):
     response = requests.get(url)
     assert response.status_code == 403
     assert response.text == "Unauthorized: Invalid or missing session token"
+
+
+#nieuwe tests, moet nog getest worden
+def test_get_all_parking_lots_as_admin(login_as_admin):
+    url = login_as_admin['url'] + '/parking-lots'
+    response = requests.get(url, headers={"Authorization": login_as_admin['session_token']})
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/json"
+    data = response.json()
+    assert isinstance(data, dict)
+    assert len(data) > 0
