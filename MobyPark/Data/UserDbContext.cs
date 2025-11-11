@@ -8,6 +8,7 @@ namespace MobyPark.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
+        public DbSet<Payment> Payments => Set<Payment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +34,12 @@ namespace MobyPark.Data
                  .WithMany()
                  .HasForeignKey(s => s.VehicleId)
                  .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.Payments)
+                .HasForeignKey(p => p.Initiator)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
