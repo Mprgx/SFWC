@@ -2,28 +2,32 @@ import uuid
 import requests
 
 
+def _new_pid():
+    return uuid.uuid4().hex[:12]
+
 def _seed_payment(user_session, amount=5.0):
-    """Create a payment and return (tx_id, secret_hash)."""
     headers = {"Authorization": user_session["session_token"]}
-    tx = "tx-" + uuid.uuid4().hex[:12]
-    r = requests.post(
+    pid = _new_pid()
+    resp = requests.post(
         user_session["url"] + "payments",
-        json={"transaction": tx, "amount": amount},
+        json={"transaction": pid, "amount": amount},
         headers=headers,
     )
-    assert r.status_code == 201, f"{r.status_code} {r.text}"
-    p = r.json()["payment"]
-    return tx, p["hash"]
+    assert resp.status_code == 201, f"{resp.status_code} {resp.text}"
+    assert resp.headers.get("Content-Type", "").startswith("application/json")
+    payment = resp.json()["payment"]
+    return pid, payment["hash"]
 
-
-def test_put_payment_requires_auth(user_session):
-    pid = "tx-" + uuid.uuid4().hex[:12]
+def test_put_payments_requires_auth(user_session):
+    pid = _new_pid()
     body = {"t_data": {"note": "x"}, "validation": "abc"}
+
     resp = requests.put(user_session["url"] + f"payments/{pid}", json=body)
+
     assert resp.status_code == 401
+    assert resp.headers.get("Content-Type", "").startswith("application/json")
 
-
-def test_put_payment_missing_fields_returns_400(user_session):
+def test_put_payments_missing_fields_returns_400(user_session):
     pid, secret = _seed_payment(user_session)
     headers = {"Authorization": user_session["session_token"]}
 
@@ -33,6 +37,7 @@ def test_put_payment_missing_fields_returns_400(user_session):
         headers=headers,
     )
     assert r1.status_code == 400, f"Expected 400, got {r1.status_code}: {r1.text}"
+    assert r1.headers.get("Content-Type", "").startswith("application/json")
 
     r2 = requests.put(
         user_session["url"] + f"payments/{pid}",
@@ -40,38 +45,43 @@ def test_put_payment_missing_fields_returns_400(user_session):
         headers=headers,
     )
     assert r2.status_code == 400, f"Expected 400, got {r2.status_code}: {r2.text}"
+    assert r2.headers.get("Content-Type", "").startswith("application/json")
 
-
-def test_put_payment_not_found_returns_404(user_session):
+def test_put_payments_not_found_returns_404(user_session):
     headers = {"Authorization": user_session["session_token"]}
-    fake_pid = "tx-" + uuid.uuid4().hex[:12]
+    fake_pid = _new_pid()
     body = {"t_data": {"note": "nope"}, "validation": "whatever"}
+
     resp = requests.put(user_session["url"] + f"payments/{fake_pid}", json=body, headers=headers)
+
     assert resp.status_code == 404, f"Expected 404, got {resp.status_code}: {resp.text}"
+    assert resp.headers.get("Content-Type", "").startswith("application/json")
 
-
-def test_put_payment_wrong_validation_returns_401(user_session):
+def test_put_payments_wrong_validation_returns_401(user_session):
     pid, _secret = _seed_payment(user_session)
     headers = {"Authorization": user_session["session_token"]}
     body = {"t_data": {"ok": False}, "validation": "WRONG"}
-    r = requests.put(user_session["url"] + f"payments/{pid}", json=body, headers=headers)
-    assert r.status_code == 401
 
+    resp = requests.put(user_session["url"] + f"payments/{pid}", json=body, headers=headers)
 
-def test_put_payment_happy_path_marks_completed_and_echoes_tdata(user_session):
+    assert resp.status_code == 401
+    assert resp.headers.get("Content-Type", "").startswith("application/json")
+
+def test_put_payments_marks_completed_and_echoes_tdata(user_session):
     pid, secret = _seed_payment(user_session, amount=12.34)
     headers = {"Authorization": user_session["session_token"]}
     t_data = {"psp": "mock", "id": "abc123"}
 
-    upd = requests.put(
+    resp = requests.put(
         user_session["url"] + f"payments/{pid}",
         json={"t_data": t_data, "validation": secret},
         headers=headers,
     )
-    assert upd.status_code == 200, f"{upd.status_code} {upd.text}"
-    assert upd.headers.get("Content-Type", "").startswith("application/json")
 
-    body = upd.json()
+    assert resp.status_code == 200, f"{resp.status_code} {resp.text}"
+    assert resp.headers.get("Content-Type", "").startswith("application/json")
+
+    body = resp.json()
     assert body.get("status") == "Success"
     payment = body.get("payment")
     assert isinstance(payment, dict)

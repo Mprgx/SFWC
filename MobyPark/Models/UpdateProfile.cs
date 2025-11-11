@@ -2,44 +2,29 @@
 
 namespace MobyPark.Models
 {
-    public class UpdateNameRequestDto
+    public class UpdateProfileDto
     {
-        [Required, MaxLength(100)]
-        public string Name { get; set; } = string.Empty;
-    }
+        [StringLength(60)]
+        public string? Name { get; set; }
 
-    public class UpdateUsernameRequestDto
-    {
-        [Required, MinLength(3), MaxLength(50)]
-        public string Username { get; set; } = string.Empty;
-    }
+        [RegularExpression(@"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$",
+            ErrorMessage = "Email is not valid.")]
+        public string? Email { get; set; }
 
-    public class UpdateEmailRequestDto
-    {
-        [Required, EmailAddress, MaxLength(256)]
-        public string Email { get; set; } = string.Empty;
-    }
+        [RegularExpression(@"^$|^\+?[0-9\s\-\(\)\.]{6,}$",
+            ErrorMessage = "Phone number is not valid.")]
+        public string? PhoneNumber { get; set; }
 
-    public class UpdatePhoneRequestDto
-    {
-        [Required, Phone, MaxLength(30)]
-        public string PhoneNumber { get; set; } = string.Empty;
-    }
+        [Range(0, 2030)]
+        public int? BirthYear { get; set; }
 
-    public class UpdateBirthYearRequestDto
-    {
-        [Required, Range(1900, 2100)]
-        public int BirthYear { get; set; }
+        [RegularExpression(@"^$|^[a-zA-Z0-9_.-]{3,32}$")]
+        public string? Username { get; set; }
     }
 
     public class UpdatePasswordRequestDto
     {
-        [Required]
-        public string CurrentPassword { get; set; } = string.Empty;
-
-        [Required, MinLength(8)]
-        [RegularExpression(@"^(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$",
-            ErrorMessage = "Password must be at least 8 characters and include a number and a special character.")]
-        public string NewPassword { get; set; } = string.Empty;
+        public string? CurrentPassword { get; set; }
+        public string? NewPassword { get; set; }
     }
 }
