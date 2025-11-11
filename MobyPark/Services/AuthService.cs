@@ -41,19 +41,23 @@ namespace MobyPark.Services
         public async Task<User?> RegisterAsync(RegisterRequestDto request)
         {
             var username = request.Username.Trim().ToLowerInvariant();
-            var email = request.Email.Trim().ToLowerInvariant();
+            var name = request.Name.Trim();
+            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var phone = (request.PhoneNumber ?? string.Empty).Trim();
+
+            var birth = request.BirthYear ?? 0;
 
             if (await context.Users.AnyAsync(u => u.Username == username)) return null;
-            if (await context.Users.AnyAsync(u => u.Email == email)) return null;
+            if (!string.IsNullOrEmpty(email) && await context.Users.AnyAsync(u => u.Email == email)) return null;
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 Username = username,
-                Email = email,
-                Name = request.Name.Trim(),
-                PhoneNumber = request.PhoneNumber!.Trim(),
-                BirthYear = request.BirthYear,
+                Name = name,
+                Email = email,   
+                PhoneNumber = phone,   
+                BirthYear = birth,   
                 CreatedAt = DateTimeOffset.UtcNow,
                 Role = UserRole.Customer
             };
