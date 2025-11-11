@@ -2,9 +2,10 @@ import pytest
 import requests
 
 
-def test_parking_lots_authorized(_data):
-    url = _data['url'] + 'parking-lots/'
-    response = requests.get(url, headers={"Authorization": _data['api_key']})
+def test_parking_lots_authorized(user_session):
+    url = user_session['url'] + 'parking-lots/'
+    response = requests.get(
+        url, headers={"Authorization": user_session['session_token']})
 
     assert response.status_code == 200
     assert list(response.json().values())[0] == {
@@ -21,16 +22,17 @@ def test_parking_lots_authorized(_data):
     }
 
 
-def test_parking_lots_unauthorized(_data):
-    url = _data['url'] + 'parking-lots/'
+def test_parking_lots_unauthorized(user_session):
+    url = user_session['url'] + 'parking-lots/'
     response = requests.get(url, headers={})
 
     assert response.status_code == 401
 
 
-def test_parking_lots_lid_authorized(_data):
-    url = _data['url'] + 'parking-lots/1485'
-    response = requests.get(url, headers={"Authorization": _data['api_key']})
+def test_parking_lots_lid_authorized(user_session):
+    url = user_session['url'] + 'parking-lots/1485'
+    response = requests.get(
+        url, headers={"Authorization": user_session['session_token']})
     assert response.status_code == 200
     assert response.json() == {
         "id": "1485",
@@ -48,9 +50,9 @@ def test_parking_lots_lid_authorized(_data):
         }
     }
 
-#nieuwe tests, moet nog getest worden
-def test_parking_lots_lid_unauthorized(_data):
-    url = _data['url'] + 'parking-lots/1485'
+
+def test_parking_lots_lid_unauthorized(user_session):
+    url = user_session['url'] + 'parking-lots/1485'
     response = requests.get(url, headers={})
     assert response.status_code == 401
 

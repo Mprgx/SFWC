@@ -9,7 +9,6 @@ using System.Security.Claims;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/")]
     [Authorize]
     public class ParkingSessionController : ControllerBase
     {
@@ -20,21 +19,21 @@ namespace MobyPark.Controllers
             _context = context;
         }
 
-        [HttpPost("start-parking-session")]
-        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto, CancellationToken ct)
+        [HttpPost("/start-parking-session")]
+        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing token.");
 
             var vehicle = await _context.Vehicles
                 .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId, ct);
+                .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId);
 
             if (vehicle is null) return BadRequest("Vehicle not found for this user.");
 
             var existsActive = await _context.ParkingSessions
                 .AsNoTracking()
-                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null, ct);
+                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
 
             if (existsActive) return Conflict("This vehicle already has an active session.");
 
@@ -51,21 +50,21 @@ namespace MobyPark.Controllers
                 PaymentStatus = "unpaid"
             };
 
-            await _context.ParkingSessions.AddAsync(session, ct);
-            await _context.SaveChangesAsync(ct);
+            await _context.ParkingSessions.AddAsync(session);
+            await _context.SaveChangesAsync();
 
             return Ok(session);
         }
 
-        [HttpGet("get-parking-session-by-id")]
-        public async Task<IActionResult> GetSessionById(Guid id, CancellationToken ct)
+        [HttpGet("/get-parking-session-by-id")]
+        public async Task<IActionResult> GetSessionById(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
             var session = await _context.ParkingSessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, ct);
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
             return session is null ? NotFound("Parking session not found.") : Ok(session);
         }

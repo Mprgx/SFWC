@@ -8,6 +8,11 @@ def test_profile_get_unauthorized():
     r = requests.get("http://localhost:8000/profile")
     assert r.status_code == 401
 
+def test_get_profile_authorized(user_session):
+    url = user_session['url'] + 'profile'
+    response = requests.get(
+        url, headers={"Authorization": user_session['session_token']})
+    status_code = response.status_code
 
 def test_profile_get_success(user_session):
     url = user_session["url"] + "profile"
@@ -80,4 +85,8 @@ def test_profile_put_invalid_json(user_session):
     r = requests.post(url, headers=headers, data="INVALID")
     assert r.status_code in [400, 500]   # afhankelijk van server implementatie
 
+def test_get_profile_unauthorized(user_session):
+    url = user_session['url'] + 'profile'
+    response = requests.get(url, headers={})
+    status_code = response.status_code
 
