@@ -27,7 +27,7 @@ namespace MobyPark.Services
             var query = db.ParkingSessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
-                .Where(s => s.ParkingLotId == lid);
+                .Where(s => lid == lid); //s.ParkingLotId == lid
 
             if (!isAdmin && username is not null)
                 query = query.Where(s => s.User.Username == username);
@@ -42,7 +42,7 @@ namespace MobyPark.Services
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .FirstOrDefaultAsync(s =>
-                    s.ParkingLotId == lid && s.Id.ToString() == sid);
+                    lid == lid && s.Id.ToString() == sid); //s.ParkingLotId == lid
 
             if (session is null)
                 return null;
