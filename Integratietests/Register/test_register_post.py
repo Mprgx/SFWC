@@ -6,7 +6,7 @@ def _unique_username():
 
 def test_register_creates_user_returns_201_and_json_contract(user_session):
     url = user_session['url'] + 'register'
-    username = _unique_username('ok')
+    username = _unique_username()
     password = 'Smpl3Pw!'
     payload = {
         'username': username,
@@ -26,6 +26,7 @@ def test_register_missing_fields_returns_400(user_session):
     url = user_session['url'] + 'register'
     r = requests.post(url, json={})
     assert r.status_code == 400
+    assert r.headers.get('Content-Type', '').startswith('application/json')
 
 def test_register_duplicate_username_returns_409(user_session):
     url = user_session['url'] + 'register'
@@ -34,6 +35,8 @@ def test_register_duplicate_username_returns_409(user_session):
 
     r1 = requests.post(url, json=base)
     assert r1.status_code == 201
+    assert r1.headers.get('Content-Type', '').startswith('application/json')
     
     r2 = requests.post(url, json=base)
     assert r2.status_code == 409
+    assert r2.headers.get('Content-Type', '').startswith('application/json')

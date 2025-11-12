@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
-    [Route("api/")]
+    [Route("profile")]
     [ApiController]
     [Authorize]
     public class ProfileController : ControllerBase
@@ -20,7 +20,7 @@ namespace MobyPark.Controllers
             _db = db;
         }
 
-        [HttpGet("my-profile")]
+        [HttpGet]
         public async Task<ActionResult<UserReadDto>> GetMe()
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
@@ -35,77 +35,71 @@ namespace MobyPark.Controllers
             return me is null ? NotFound() : Ok(me);
         }
 
-        [HttpPut("name")]
-        public async Task<IActionResult> UpdateName(UpdateNameRequestDto req)
+        [HttpPut]
+        public async Task<ActionResult<UserReadDto>> Update([FromBody] UpdateProfileDto dto)
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user is null) return NotFound();
 
-            user.Name = req.Name;
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
+            bool changed = false;
 
-        [HttpPut("username")]
-        public async Task<IActionResult> UpdateUsername(UpdateUsernameRequestDto req)
-        {
-            if (!TryGetUserId(out var userId)) return Unauthorized();
+            var newUsername = dto.Username?.Trim().ToLowerInvariant();
+            var newEmail = dto.Email?.Trim().ToLowerInvariant();
+            var newName = dto.Name?.Trim();
+            var newPhone = dto.PhoneNumber?.Trim();
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user is null) return NotFound();
+            if (!string.IsNullOrEmpty(newUsername) && !string.Equals(newUsername, user.Username, StringComparison.Ordinal))
+            {
+                var usernameTaken = await _db.Users.AnyAsync(u => u.Id != userId && u.Username == newUsername);
+                if (usernameTaken) return Conflict("Username already in use.");
+                user.Username = newUsername;
+                changed = true;
+            }
 
-            var newUsername = req.Username.Trim().ToLowerInvariant();
-            var taken = await _db.Users.AnyAsync(u => u.Username == newUsername && u.Id != userId);
-            if (taken) return BadRequest("Username already exists.");
+            if (!string.IsNullOrEmpty(newEmail) && !string.Equals(newEmail, user.Email, StringComparison.Ordinal))
+            {
+                var emailTaken = await _db.Users.AnyAsync(u => u.Id != userId && u.Email == newEmail);
+                if (emailTaken) return Conflict("Email already in use.");
+                user.Email = newEmail;
+                changed = true;
+            }
 
-            user.Username = newUsername;
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
+            if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, user.Name, StringComparison.Ordinal))
+            {
+                user.Name = newName;
+                changed = true;
+            }
 
-        [HttpPut("email")]
-        public async Task<IActionResult> UpdateEmail(UpdateEmailRequestDto req)
-        {
-            if (!TryGetUserId(out var userId)) return Unauthorized();
+            if (!string.IsNullOrWhiteSpace(newPhone) && !string.Equals(newPhone, user.PhoneNumber, StringComparison.Ordinal))
+            {
+                user.PhoneNumber = newPhone;
+                changed = true;
+            }
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user is null) return NotFound();
+            if (dto.BirthYear.HasValue)
+            {
+                var by = dto.BirthYear.Value;
 
-            var newEmail = req.Email.Trim().ToLowerInvariant();
-            var taken = await _db.Users.AnyAsync(u => u.Email == newEmail && u.Id != userId);
-            if (taken) return BadRequest("Email already exists.");
+                if (by == 0)
+                {
+                    
+                }
+                else if (by >= 1900 && by <= 2030 && by != user.BirthYear)
+                {
+                    user.BirthYear = by;
+                    changed = true;
+                }
+            }
 
-            user.Email = newEmail;
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
+            if (changed) await _db.SaveChangesAsync();
 
-        [HttpPut("phone")]
-        public async Task<IActionResult> UpdatePhone(UpdatePhoneRequestDto req)
-        {
-            if (!TryGetUserId(out var userId)) return Unauthorized();
+            var updated = new UserReadDto(
+                user.Id, user.Username, user.Name, user.Email,
+                user.PhoneNumber, user.BirthYear, user.Role, user.CreatedAt);
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user is null) return NotFound();
-
-            user.PhoneNumber = req.PhoneNumber;
-            await _db.SaveChangesAsync();
-            return NoContent();
-        }
-
-        [HttpPut("birthyear")]
-        public async Task<IActionResult> UpdateBirthYear(UpdateBirthYearRequestDto req)
-        {
-            if (!TryGetUserId(out var userId)) return Unauthorized();
-
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user is null) return NotFound();
-
-            user.BirthYear = req.BirthYear;
-            await _db.SaveChangesAsync();
-            return NoContent();
+            return Ok(updated);
         }
 
         [HttpPut("password")]
@@ -113,16 +107,26 @@ namespace MobyPark.Controllers
         {
             if (!TryGetUserId(out var userId)) return Unauthorized();
 
+            if (string.IsNullOrWhiteSpace(req.NewPassword))
+                return NoContent();
+
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user is null) return NotFound();
+
+            if (string.IsNullOrEmpty(req.CurrentPassword))
+                return BadRequest("Current password is required.");
 
             var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
             var verify = hasher.VerifyHashedPassword(user, user.PasswordHash, req.CurrentPassword);
             if (verify == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
                 return BadRequest("Current password is incorrect.");
 
-            user.PasswordHash = hasher.HashPassword(user, req.NewPassword);
+            bool strong = req.NewPassword.Length >= 8
+                          && req.NewPassword.Any(char.IsDigit)
+                          && req.NewPassword.Any(ch => !char.IsLetterOrDigit(ch));
+            if (!strong) return BadRequest("New password must be 8+ chars with a number and a special character.");
 
+            user.PasswordHash = hasher.HashPassword(user, req.NewPassword);
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
 

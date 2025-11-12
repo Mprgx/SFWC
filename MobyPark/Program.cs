@@ -11,6 +11,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+var cs = builder.Configuration.GetConnectionString("UserDatabase") ?? throw new InvalidOperationException("Missing ConnectionStrings:UserDatabase");
+
+var tokenKey = builder.Configuration["AppSettings:Token"] ?? throw new InvalidOperationException("Missing AppSettings:Token");
+
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase")));
 
@@ -34,6 +38,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // Register services 
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<ReservationService>();
 
 var provider = builder.Services.BuildServiceProvider();
