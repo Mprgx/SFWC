@@ -28,5 +28,7 @@ namespace MobyPark.Entities
 
         public ICollection<ParkingSession> ParkingSessions { get; set; } = new List<ParkingSession>();
         public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+
+        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }
