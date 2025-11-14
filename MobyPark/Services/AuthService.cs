@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -11,7 +12,7 @@ using System.Text;
 
 namespace MobyPark.Services
 {
-    public class AuthService(UserDbContext context, IConfiguration configuration) : IAuthService
+    public class AuthService(UserDbContext context, IConfiguration configuration, IEncryptionService encryption) : IAuthService
     {
         public async Task<TokenResponseDto?> LoginAsync(LoginRequestDto request)
         {
@@ -42,22 +43,36 @@ namespace MobyPark.Services
         {
             var username = request.Username.Trim().ToLowerInvariant();
             var name = request.Name.Trim();
-            var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
-            var phone = (request.PhoneNumber ?? string.Empty).Trim();
-
+            var emailPlain = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var phonePlain = (request.PhoneNumber ?? string.Empty).Trim();
             var birth = request.BirthYear ?? 0;
 
-            if (await context.Users.AnyAsync(u => u.Username == username)) return null;
-            if (!string.IsNullOrEmpty(email) && await context.Users.AnyAsync(u => u.Email == email)) return null;
+            if (await context.Users.AnyAsync(u => u.Username == username))
+                return null;
+
+            if (!string.IsNullOrEmpty(emailPlain))
+            {
+                var users = await context.Users.AsNoTracking().ToListAsync();
+
+                var emailTaken = users.Any(u =>
+                {
+                    if (string.IsNullOrEmpty(u.Email)) return false;
+
+                    var existingPlain = encryption.Decrypt(u.Email)!.Trim().ToLowerInvariant();
+                    return string.Equals(existingPlain, emailPlain, StringComparison.OrdinalIgnoreCase);
+                });
+
+                if (emailTaken) return null;
+            }
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 Username = username,
                 Name = name,
-                Email = email,   
-                PhoneNumber = phone,   
-                BirthYear = birth,   
+                Email = string.IsNullOrEmpty(emailPlain) ? string.Empty : encryption.Encrypt(emailPlain)!,
+                PhoneNumber = string.IsNullOrEmpty(phonePlain) ? string.Empty : encryption.Encrypt(phonePlain)!,
+                BirthYear = birth,
                 CreatedAt = DateTimeOffset.UtcNow,
                 Role = UserRole.Customer
             };
@@ -81,7 +96,15 @@ namespace MobyPark.Services
         private async Task<User?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
         {
             var user = await context.Users.FindAsync(userId);
-            if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTimeOffset.UtcNow)
+            if (user is null || user.RefreshTokenExpiryTime <= DateTimeOffset.UtcNow)
+                return null;
+
+            if (string.IsNullOrEmpty(user.RefreshToken))
+                return null;
+
+            var storedPlain = encryption.Decrypt(user.RefreshToken)!;
+
+            if (!string.Equals(storedPlain, refreshToken, StringComparison.Ordinal))
                 return null;
 
             return user;
@@ -106,9 +129,12 @@ namespace MobyPark.Services
 
         private async Task<string> GenerateAndSaveRefreshTokenAsync(User user)
         {
-            var refreshToken = GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
+            var refreshToken = GenerateRefreshToken();                 
+            var protectedToken = encryption.Encrypt(refreshToken)!;   
+
+            user.RefreshToken = protectedToken;
             user.RefreshTokenExpiryTime = DateTimeOffset.UtcNow.AddDays(7);
+
             await context.SaveChangesAsync();
             return refreshToken;
         }

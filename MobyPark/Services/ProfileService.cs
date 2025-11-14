@@ -6,58 +6,97 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ProfileService : IProfileService
+    public class ProfileService(UserDbContext context, IEncryptionService encryption) : IProfileService
     {
-        private readonly UserDbContext _db;
-
-        public ProfileService(UserDbContext db) => _db = db;
-
         public async Task<UserReadDto?> GetProfileAsync(Guid userId)
         {
-            return await _db.Users.AsNoTracking()
-                .Where(u => u.Id == userId)
-                .Select(u => new UserReadDto(
-                    u.Id, u.Username, u.Name, u.Email, u.PhoneNumber, u.BirthYear, u.Role, u.CreatedAt))
-                .FirstOrDefaultAsync();
+            var user = await context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user is null) return null;
+
+            var emailPlain = string.IsNullOrEmpty(user.Email)
+                ? string.Empty
+                : encryption.Decrypt(user.Email) ?? string.Empty;
+
+            var phonePlain = string.IsNullOrEmpty(user.PhoneNumber)
+                ? string.Empty
+                : encryption.Decrypt(user.PhoneNumber) ?? string.Empty;
+
+            return new UserReadDto(
+                user.Id,
+                user.Username,
+                user.Name,
+                emailPlain,
+                phonePlain,
+                user.BirthYear,
+                user.Role,
+                user.CreatedAt
+            );
         }
 
         public async Task<(UserReadDto? dto, string? error, int? status)> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user is null) return (null, null, 404);
 
             bool changed = false;
 
             var newUsername = dto.Username?.Trim().ToLowerInvariant();
-            var newEmail = dto.Email?.Trim().ToLowerInvariant();
+            var newEmailPlain = dto.Email?.Trim().ToLowerInvariant();
             var newName = dto.Name?.Trim();
-            var newPhone = dto.PhoneNumber?.Trim();
+            var newPhonePlain = dto.PhoneNumber?.Trim();
 
-            if (!string.IsNullOrEmpty(newUsername) && !string.Equals(newUsername, user.Username, StringComparison.Ordinal))
+            var currentEmailPlain = string.IsNullOrEmpty(user.Email)
+                ? string.Empty
+                : encryption.Decrypt(user.Email)!.Trim().ToLowerInvariant();
+
+            var currentPhonePlain = string.IsNullOrEmpty(user.PhoneNumber)
+                ? string.Empty
+                : encryption.Decrypt(user.PhoneNumber)!.Trim();
+
+            if (!string.IsNullOrEmpty(newUsername) &&
+                !string.Equals(newUsername, user.Username, StringComparison.Ordinal))
             {
-                var taken = await _db.Users.AnyAsync(u => u.Id != userId && u.Username == newUsername);
+                var taken = await context.Users
+                    .AnyAsync(u => u.Id != userId && u.Username == newUsername);
                 if (taken) return (null, "Username already in use.", 409);
+
                 user.Username = newUsername;
                 changed = true;
             }
 
-            if (!string.IsNullOrEmpty(newEmail) && !string.Equals(newEmail, user.Email, StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(newEmailPlain) &&
+                !string.Equals(newEmailPlain, currentEmailPlain, StringComparison.OrdinalIgnoreCase))
             {
-                var taken = await _db.Users.AnyAsync(u => u.Id != userId && u.Email == newEmail);
+                var others = await context.Users.AsNoTracking()
+                    .Where(u => u.Id != userId)
+                    .ToListAsync();
+
+                var taken = others.Any(u =>
+                {
+                    if (string.IsNullOrEmpty(u.Email)) return false;
+                    var existingPlain = encryption.Decrypt(u.Email)!.Trim().ToLowerInvariant();
+                    return string.Equals(existingPlain, newEmailPlain, StringComparison.OrdinalIgnoreCase);
+                });
+
                 if (taken) return (null, "Email already in use.", 409);
-                user.Email = newEmail;
+
+                user.Email = encryption.Encrypt(newEmailPlain)!;
                 changed = true;
             }
 
-            if (!string.IsNullOrWhiteSpace(newName) && !string.Equals(newName, user.Name, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(newName) &&
+                !string.Equals(newName, user.Name, StringComparison.Ordinal))
             {
                 user.Name = newName;
                 changed = true;
             }
 
-            if (!string.IsNullOrWhiteSpace(newPhone) && !string.Equals(newPhone, user.PhoneNumber, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(newPhonePlain) &&
+                !string.Equals(newPhonePlain, currentPhonePlain, StringComparison.Ordinal))
             {
-                user.PhoneNumber = newPhone;
+                user.PhoneNumber = encryption.Encrypt(newPhonePlain)!;
                 changed = true;
             }
 
@@ -66,7 +105,7 @@ namespace MobyPark.Services
                 var by = dto.BirthYear.Value;
                 if (by == 0)
                 {
-
+                    // no change
                 }
                 else if (by >= 1900 && by <= 2030 && by != user.BirthYear)
                 {
@@ -75,11 +114,25 @@ namespace MobyPark.Services
                 }
             }
 
-            if (changed) await _db.SaveChangesAsync();
+            if (changed) await context.SaveChangesAsync();
+
+            var updatedEmail = string.IsNullOrEmpty(user.Email)
+                ? string.Empty
+                : encryption.Decrypt(user.Email) ?? string.Empty;
+
+            var updatedPhone = string.IsNullOrEmpty(user.PhoneNumber)
+                ? string.Empty
+                : encryption.Decrypt(user.PhoneNumber) ?? string.Empty;
 
             var result = new UserReadDto(
-                user.Id, user.Username, user.Name, user.Email,
-                user.PhoneNumber, user.BirthYear, user.Role, user.CreatedAt);
+                user.Id,
+                user.Username,
+                user.Name,
+                updatedEmail,
+                updatedPhone,
+                user.BirthYear,
+                user.Role,
+                user.CreatedAt);
 
             return (result, null, null);
         }
@@ -88,7 +141,7 @@ namespace MobyPark.Services
         {
             if (string.IsNullOrWhiteSpace(newPassword)) return (false, null, 204);
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user is null) return (false, null, 404);
 
             if (string.IsNullOrEmpty(currentPassword))
@@ -109,7 +162,7 @@ namespace MobyPark.Services
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
 
-            await _db.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, null, 204);
         }
     }

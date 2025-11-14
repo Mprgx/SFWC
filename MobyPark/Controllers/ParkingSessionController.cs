@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
+using MobyPark.Services;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
@@ -12,14 +13,8 @@ namespace MobyPark.Controllers
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class ParkingSessionController : ControllerBase
+    public class ParkingSessionController(UserDbContext context, IEncryptionService encryption) : ControllerBase
     {
-        private readonly UserDbContext _context;
-
-        public ParkingSessionController(UserDbContext context)
-        {
-            _context = context;
-        }
 
         [HttpPost("/start-parking-session")]
         public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
@@ -27,39 +22,50 @@ namespace MobyPark.Controllers
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            var vehicle = await _context.Vehicles
+            var vehicle = await context.Vehicles
                 .AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId);
 
-            if (vehicle is null)
-                return BadRequest("Vehicle not found for this user.");
+            if (vehicle is null) return BadRequest("Vehicle not found for this user.");
 
-            var existsActive = await _context.ParkingSessions
+            var existsActive = await context.ParkingSessions
                 .AsNoTracking()
                 .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
 
-            if (existsActive)
-                return Conflict("This vehicle already has an active session.");
+            if (existsActive) return Conflict("This vehicle already has an active session.");
 
             var session = new ParkingSession
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 VehicleId = vehicle.Id,
-                LicensePlate = vehicle.LicensePlate,
+                LicensePlate = vehicle.LicensePlate, // encrypted in DB
+                ParkingLotId = dto.ParkingLotId,
                 Started = DateTimeOffset.UtcNow,
+                Stopped = null,
                 DurationMinutes = 0,
                 Cost = 0m,
                 PaymentStatus = "unpaid"
             };
 
-            await _context.ParkingSessions.AddAsync(session);
-            await _context.SaveChangesAsync();
+            await context.ParkingSessions.AddAsync(session);
+            await context.SaveChangesAsync();
 
-            return Ok(session);
+            return Ok(new
+            {
+                session.Id,
+                session.UserId,
+                session.VehicleId,
+                LicensePlate = string.IsNullOrEmpty(session.LicensePlate) ? string.Empty : encryption.Decrypt(session.LicensePlate) ?? string.Empty,
+                session.ParkingLotId,
+                session.Started,
+                session.Stopped,
+                session.DurationMinutes,
+                session.Cost,
+                session.PaymentStatus
+            });
         }
 
-        [Authorize]
         [HttpPost("stopsession")]
         public async Task<IActionResult> StopSession([FromBody] ParkingSessionStopDto dto)
         {
@@ -68,17 +74,28 @@ namespace MobyPark.Controllers
 
             var lp = dto.LicensePlate.Trim().ToUpperInvariant();
 
-            string pattern = @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
+            string pattern =
+                @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
             if (!Regex.IsMatch(lp, pattern, RegexOptions.IgnoreCase))
                 return BadRequest("licensePlate filled in incorrectly.");
 
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            var session = await _context.ParkingSessions
-                .FirstOrDefaultAsync(s =>
-                    s.Stopped == null &&
-                    s.LicensePlate.ToUpper() == lp);
+            // Because LicensePlate is encrypted in DB, we must decrypt to compare
+            var activeSessions = await context.ParkingSessions
+                .Where(s => s.Stopped == null)
+                .ToListAsync();
+
+            var session = activeSessions.FirstOrDefault(s =>
+            {
+                if (string.IsNullOrEmpty(s.LicensePlate)) return false;
+                var platePlain = encryption.Decrypt(s.LicensePlate);
+                if (string.IsNullOrWhiteSpace(platePlain)) return false;
+
+                var normalized = platePlain.Trim().ToUpperInvariant();
+                return normalized == lp;
+            });
 
             if (session == null)
                 return NotFound("No parking session found for this license plate.");
@@ -96,9 +113,6 @@ namespace MobyPark.Controllers
             session.Cost = amount;
             session.PaymentStatus = "unpaid";
 
-            var initiator = User.Identity?.Name ?? string.Empty;
-
-
             var payment = new Payment
             {
                 Id = Guid.NewGuid(),
@@ -109,9 +123,9 @@ namespace MobyPark.Controllers
                 Hash = null,
             };
 
-            _context.ParkingSessions.Update(session);
-            await _context.Payments.AddAsync(payment);
-            await _context.SaveChangesAsync();
+            context.ParkingSessions.Update(session);
+            await context.Payments.AddAsync(payment);
+            await context.SaveChangesAsync();
 
             return Created("payments", new
             {
@@ -129,16 +143,37 @@ namespace MobyPark.Controllers
 
 
         [HttpGet("get-parking-session-by-id")]
-        public async Task<IActionResult> GetSessionById(Guid id, CancellationToken ct)
+        public async Task<IActionResult> GetSessionById(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var session = await _context.ParkingSessions
+            var session = await context.ParkingSessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, ct);
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
 
-            return session is null ? NotFound("Parking session not found.") : Ok(session);
+            if (session is null)
+                return NotFound("Parking session not found.");
+
+            return Ok(new
+            {
+                session.Id,
+                session.UserId,
+                session.VehicleId,
+                LicensePlate = string.IsNullOrEmpty(session.LicensePlate)
+                    ? string.Empty
+                    : encryption.Decrypt(session.LicensePlate) ?? string.Empty,
+                session.ParkingLotId,
+                session.Started,
+                session.Stopped,
+                session.DurationMinutes,
+                session.Cost,
+                session.PaymentStatus,
+                session.IsCancelled,
+                session.CancelledAt,
+                session.IsRefunded,
+                session.RefundDate
+            });
         }
 
         private static string GenerateTransactionNumber()
@@ -147,7 +182,7 @@ namespace MobyPark.Controllers
             return random.Next(100000000, 999999999).ToString("D12");
         }
 
-        string GeneratePaymentHash(string transaction, decimal amt)
+        private string GeneratePaymentHash(string transaction, decimal amt)
         {
             using var sha = System.Security.Cryptography.SHA256.Create();
             var input = $"{transaction}:{amt}:{DateTimeOffset.UtcNow.Ticks}";
@@ -155,6 +190,7 @@ namespace MobyPark.Controllers
             var hash = sha.ComputeHash(bytes);
             return Convert.ToBase64String(hash);
         }
+
         [HttpPut("/stop-parking-session/{id:guid}")]
         public async Task<IActionResult> StopSession(Guid id)
         {
@@ -162,11 +198,11 @@ namespace MobyPark.Controllers
             if (!Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            var session = await _context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
+            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
             if (session is null)
                 return NotFound("Parking session not found.");
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await context.Users.FindAsync(userId);
             var isAdmin = user?.Role == UserRole.Admin;
 
             if (session.UserId != userId && !isAdmin)
@@ -178,15 +214,12 @@ namespace MobyPark.Controllers
             if (session.IsCancelled)
                 return BadRequest("Cancelled sessions cannot be stopped.");
 
-            // Stop the session
             session.Stopped = DateTimeOffset.UtcNow;
-
-            // Calculate duration and simple cost (for demo)
             session.DurationMinutes = (int)(session.Stopped.Value - session.Started).TotalMinutes;
-            session.Cost = Math.Round((decimal)session.DurationMinutes * 0.05m, 2); // €0.05/min
+            session.Cost = Math.Round((decimal)session.DurationMinutes * 0.05m, 2);
             session.PaymentStatus = "awaiting_payment";
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             return Ok(new
             {
@@ -205,14 +238,13 @@ namespace MobyPark.Controllers
             if (!Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            var session = await _context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
+            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
             if (session is null)
                 return NotFound("Parking session not found.");
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await context.Users.FindAsync(userId);
             var isAdmin = user?.Role == UserRole.Admin;
 
-            // 🧑‍⚖️ Admin must provide a reason
             if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason))
                 return BadRequest("Admin must provide a reason when cancelling a parking session.");
 
@@ -228,7 +260,7 @@ namespace MobyPark.Controllers
             session.IsCancelled = true;
             session.CancelledAt = DateTimeOffset.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             return Ok(new
             {
@@ -249,14 +281,13 @@ namespace MobyPark.Controllers
             if (!Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            var session = await _context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
+            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
             if (session is null)
                 return NotFound("Parking session not found.");
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await context.Users.FindAsync(userId);
             var isAdmin = user?.Role == UserRole.Admin;
 
-            // 1️⃣ Eligibility checks
             if (!session.IsCancelled)
                 return BadRequest("Refunds can only be issued for cancelled sessions.");
 
@@ -272,7 +303,6 @@ namespace MobyPark.Controllers
             if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason))
                 return BadRequest("Admin must provide a reason for refund.");
 
-            // 2️⃣ Prevent refund abuse
             const int MAX_REFUNDS_PER_USER = 3;
             if (!RefundAttempts.TryGetValue(userId, out int attempts))
                 RefundAttempts[userId] = 0;
@@ -282,40 +312,35 @@ namespace MobyPark.Controllers
 
             RefundAttempts[userId]++;
 
-            // 3️⃣ Calculate parking cost
-            const decimal RatePerMinute = 0.05m; // €0.05/minute
+            const decimal RatePerMinute = 0.05m;
             session.DurationMinutes = (int)(session.Stopped.Value - session.Started).TotalMinutes;
             session.Cost = Math.Max(Math.Round(session.DurationMinutes * RatePerMinute, 2), 0.50m);
 
-            // 4️⃣ Determine refund percentage (tiered logic)
             decimal refundPercentage;
             if (session.DurationMinutes <= 10)
-                refundPercentage = 1.0m; // 100%
+                refundPercentage = 1.0m;
             else if (session.DurationMinutes <= 30)
-                refundPercentage = 0.5m; // 50%
+                refundPercentage = 0.5m;
             else
-                refundPercentage = 0.0m; // 0%
+                refundPercentage = 0.0m;
 
             var refundAmount = Math.Round(session.Cost * refundPercentage, 2);
 
             if (refundAmount <= 0)
                 return BadRequest("Refund not applicable for this session duration.");
 
-            // 5️⃣ Validate IBAN
             if (string.IsNullOrWhiteSpace(dto?.IBAN))
                 return BadRequest("IBAN is required for refund processing.");
 
-            if (!System.Text.RegularExpressions.Regex.IsMatch(dto.IBAN, @"^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$"))
+            if (!Regex.IsMatch(dto.IBAN, @"^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$"))
                 return BadRequest("Invalid IBAN format. Example: NL91ABNA0417164300");
 
-            // 6️⃣ Process refund
             session.IsRefunded = true;
             session.RefundDate = DateTimeOffset.UtcNow;
             session.PaymentStatus = "refunded";
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            // ✅ Return full response
             return Ok(new
             {
                 message = "Refund processed successfully.",
@@ -329,7 +354,6 @@ namespace MobyPark.Controllers
                 attemptsLeft = MAX_REFUNDS_PER_USER - RefundAttempts[userId]
             });
         }
-
 
         private static readonly Dictionary<Guid, int> RefundAttempts = new();
     }

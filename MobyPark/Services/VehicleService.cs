@@ -5,19 +5,12 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class VehicleService : IVehicleService
+    public class VehicleService(UserDbContext context) : IVehicleService
     {
-        private readonly UserDbContext _context;
-
-        public VehicleService(UserDbContext context)
-        {
-            _context = context;
-        }
-
         public async Task<Vehicle?> CreateVehicleAsync(Guid userId, VehicleRequestDto request)
         {
             // Check for duplicate license plate for the same user
-            bool exists = await _context.Vehicles
+            bool exists = await context.Vehicles
                 .AnyAsync(v => v.LicensePlate == request.LicensePlate && v.UserId == userId);
 
             if (exists)
@@ -34,8 +27,8 @@ namespace MobyPark.Services
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
-            _context.Vehicles.Add(vehicle);
-            await _context.SaveChangesAsync();
+            context.Vehicles.Add(vehicle);
+            await context.SaveChangesAsync();
 
             return vehicle;
         }
