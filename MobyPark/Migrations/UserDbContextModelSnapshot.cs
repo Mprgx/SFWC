@@ -22,6 +22,55 @@ namespace MobyPark.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("DayTariff")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Reserved")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Tariff")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParkingLots");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
             // -------------------------------
             // ParkingSession
             // -------------------------------
@@ -41,6 +90,13 @@ namespace MobyPark.Migrations
                 b.Property<int>("DurationMinutes")
                     .HasColumnType("int");
 
+                    b.Property<int>("ParkingLotId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
                 b.Property<bool>("IsCancelled")
                     .HasColumnType("bit");
 
@@ -63,6 +119,9 @@ namespace MobyPark.Migrations
                 b.Property<DateTimeOffset>("Started")
                     .HasColumnType("datetimeoffset");
 
+                    b.HasIndex("ParkingLotId");
+
+                    b.HasIndex("VehicleId");
                 b.Property<DateTimeOffset?>("Stopped")
                     .HasColumnType("datetimeoffset");
 
@@ -161,6 +220,19 @@ namespace MobyPark.Migrations
                 b.Property<int>("BirthYear")
                     .HasColumnType("int");
 
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
+                {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("ParkingSessions")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany("ParkingSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 b.Property<DateTimeOffset>("CreatedAt")
                     .HasColumnType("datetimeoffset");
 
@@ -183,6 +255,9 @@ namespace MobyPark.Migrations
                     .HasMaxLength(30)
                     .HasColumnType("nvarchar(30)");
 
+                    b.Navigation("ParkingLot");
+
+                    b.Navigation("User");
                 b.Property<string>("RefreshToken")
                     .HasColumnType("nvarchar(max)");
 
@@ -213,6 +288,14 @@ namespace MobyPark.Migrations
 
                 SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Navigation("ParkingSessions");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.User", b =>
+                {
+                    b.Navigation("ParkingSessions");
                 b.Property<string>("Color")
                     .IsRequired()
                     .HasMaxLength(30)

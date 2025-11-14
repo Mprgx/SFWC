@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251031144238_CompleteRelationalDatabaseRebuildAndUpdatesToAllDTOsControllersAndDbContext")]
-    partial class CompleteRelationalDatabaseRebuildAndUpdatesToAllDTOsControllersAndDbContext
+    [Migration("20251114112622_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,51 @@ namespace MobyPark.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("DayTariff")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Reserved")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Tariff")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParkingLots");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -42,6 +86,9 @@ namespace MobyPark.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ParkingLotId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
@@ -61,6 +108,8 @@ namespace MobyPark.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParkingLotId");
 
                     b.HasIndex("VehicleId");
 
@@ -164,8 +213,14 @@ namespace MobyPark.Migrations
                     b.ToTable("Vehicles");
                 });
 
-            modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
                 {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("ParkingSessions")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("MobyPark.Entities.User", "User")
                         .WithMany("ParkingSessions")
                         .HasForeignKey("UserId")
@@ -177,6 +232,8 @@ namespace MobyPark.Migrations
                         .HasForeignKey("VehicleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ParkingLot");
 
                     b.Navigation("User");
 
@@ -192,6 +249,11 @@ namespace MobyPark.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Navigation("ParkingSessions");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.User", b =>

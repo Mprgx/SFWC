@@ -4,8 +4,10 @@ using System.ComponentModel.DataAnnotations;
 namespace MobyPark.Entities
 {
     [Index(nameof(UserId), nameof(Started))]
-    public class ParkingSession
+    public class Session
     {
+        public int ParkingLotId { get; set; }
+        public ParkingLot? ParkingLot { get; set; }
         public Guid Id { get; set; }
 
         public Guid UserId { get; set; }
