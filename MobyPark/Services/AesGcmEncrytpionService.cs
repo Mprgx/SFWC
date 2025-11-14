@@ -9,69 +9,58 @@ namespace MobyPark.Services
 
         public AesGcmEncryptionService(IConfiguration configuration)
         {
-            var keyBase64 = configuration["Encryption:Key"]
-                ?? throw new InvalidOperationException("Missing Encryption:Key in configuration.");
+            var keyBase64 = configuration["Encryption:Key"];
+            if (string.IsNullOrWhiteSpace(keyBase64))
+                throw new InvalidOperationException("Missing Encryption:Key in configuration.");
 
             _key = Convert.FromBase64String(keyBase64);
-
             if (_key.Length != 32)
-                throw new InvalidOperationException("Encryption:Key must be a 32-byte key (Base64 of 32 bytes).");
+                throw new InvalidOperationException("Encryption:Key must be a 32-byte key in Base64 (256-bit).");
         }
 
         public string? Encrypt(string? plaintext)
         {
-            if (plaintext is null) return null;
-            if (plaintext.Length == 0) return string.Empty;
+            if (string.IsNullOrEmpty(plaintext))
+                return plaintext;
 
-            var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-
-            byte[] nonce = RandomNumberGenerator.GetBytes(12);
-            byte[] ciphertext = new byte[plaintextBytes.Length];
-            byte[] tag = new byte[16];
+            var nonce = RandomNumberGenerator.GetBytes(12);
+            var plainBytes = Encoding.UTF8.GetBytes(plaintext);
+            var cipher = new byte[plainBytes.Length];
+            var tag = new byte[16];
 
             using var aes = new AesGcm(_key);
-            aes.Encrypt(nonce, plaintextBytes, ciphertext, tag);
+            aes.Encrypt(nonce, plainBytes, cipher, tag);
 
-            byte[] combined = new byte[nonce.Length + tag.Length + ciphertext.Length];
+            var combined = new byte[nonce.Length + tag.Length + cipher.Length];
             Buffer.BlockCopy(nonce, 0, combined, 0, nonce.Length);
             Buffer.BlockCopy(tag, 0, combined, nonce.Length, tag.Length);
-            Buffer.BlockCopy(ciphertext, 0, combined, nonce.Length + tag.Length, ciphertext.Length);
+            Buffer.BlockCopy(cipher, 0, combined, nonce.Length + tag.Length, cipher.Length);
 
             return Convert.ToBase64String(combined);
         }
 
         public string? Decrypt(string? ciphertext)
         {
-            if (ciphertext is null) return null;
-            if (ciphertext.Length == 0) return string.Empty;
+            if (string.IsNullOrEmpty(ciphertext))
+                return ciphertext;
 
-            byte[] combined;
-            try
-            {
-                combined = Convert.FromBase64String(ciphertext);
-            }
-            catch (FormatException ex)
-            {
-                throw new CryptographicException("Invalid ciphertext format.", ex);
-            }
+            var data = Convert.FromBase64String(ciphertext);
+            if (data.Length < 12 + 16)
+                throw new InvalidOperationException("Ciphertext too short.");
 
-            if (combined.Length < 12 + 16)
-                throw new CryptographicException("Ciphertext is too short.");
+            var nonce = new byte[12];
+            var tag = new byte[16];
+            var cipher = new byte[data.Length - nonce.Length - tag.Length];
 
-            byte[] nonce = new byte[12];
-            byte[] tag = new byte[16];
-            byte[] cipherBytes = new byte[combined.Length - nonce.Length - tag.Length];
+            Buffer.BlockCopy(data, 0, nonce, 0, nonce.Length);
+            Buffer.BlockCopy(data, nonce.Length, tag, 0, tag.Length);
+            Buffer.BlockCopy(data, nonce.Length + tag.Length, cipher, 0, cipher.Length);
 
-            Buffer.BlockCopy(combined, 0, nonce, 0, nonce.Length);
-            Buffer.BlockCopy(combined, nonce.Length, tag, 0, tag.Length);
-            Buffer.BlockCopy(combined, nonce.Length + tag.Length, cipherBytes, 0, cipherBytes.Length);
-
-            byte[] plaintextBytes = new byte[cipherBytes.Length];
-
+            var plain = new byte[cipher.Length];
             using var aes = new AesGcm(_key);
-            aes.Decrypt(nonce, cipherBytes, tag, plaintextBytes);
+            aes.Decrypt(nonce, cipher, tag, plain);
 
-            return Encoding.UTF8.GetString(plaintextBytes);
+            return Encoding.UTF8.GetString(plain);
         }
     }
 }

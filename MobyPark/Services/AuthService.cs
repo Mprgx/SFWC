@@ -20,8 +20,7 @@ namespace MobyPark.Services
             var user = await context.Users.FirstOrDefaultAsync(u => u.Username == uname);
             if (user is null) return null;
 
-            var result = new PasswordHasher<User>()
-                .VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            var result = new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password);
 
             if (result == PasswordVerificationResult.Failed) return null;
 
@@ -39,7 +38,7 @@ namespace MobyPark.Services
             return true;
         }
 
-        public async Task<User?> RegisterAsync(RegisterRequestDto request)
+        public async Task<UserReadDto?> RegisterAsync(RegisterRequestDto request)
         {
             var username = request.Username.Trim().ToLowerInvariant();
             var name = request.Name.Trim();
@@ -52,14 +51,19 @@ namespace MobyPark.Services
 
             if (!string.IsNullOrEmpty(emailPlain))
             {
-                var users = await context.Users.AsNoTracking().ToListAsync();
+                var users = await context.Users
+                    .Where(u => u.Email != null && u.Email != "")
+                    .ToListAsync();
 
                 var emailTaken = users.Any(u =>
                 {
-                    if (string.IsNullOrEmpty(u.Email)) return false;
+                    var existingPlain = encryption.Decrypt(u.Email);
+                    if (string.IsNullOrEmpty(existingPlain)) return false;
 
-                    var existingPlain = encryption.Decrypt(u.Email)!.Trim().ToLowerInvariant();
-                    return string.Equals(existingPlain, emailPlain, StringComparison.OrdinalIgnoreCase);
+                    return string.Equals(
+                        existingPlain.Trim().ToLowerInvariant(),
+                        emailPlain,
+                        StringComparison.OrdinalIgnoreCase);
                 });
 
                 if (emailTaken) return null;
@@ -81,7 +85,15 @@ namespace MobyPark.Services
 
             context.Users.Add(user);
             await context.SaveChangesAsync();
-            return user;
+            return new UserReadDto(
+                user.Id,
+                user.Username,
+                user.Name,
+                emailPlain,
+                phonePlain,
+                user.BirthYear,
+                user.Role,
+                user.CreatedAt);
         }
 
         public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
