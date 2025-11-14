@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using MobyPark.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Entities
@@ -31,5 +30,12 @@ namespace MobyPark.Entities
         [Required, MaxLength(20)]
         public string PaymentStatus { get; set; } = "unpaid";
 
+        public bool IsCancelled { get; set; } = false;
+
+        public DateTimeOffset? CancelledAt { get; set; }
+
+        public bool IsRefunded { get; set; } = false;
+
+        public DateTimeOffset? RefundDate { get; set; }
     }
 }
