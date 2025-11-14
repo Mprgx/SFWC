@@ -7,7 +7,7 @@ namespace MobyPark.Data
     {
         public DbSet<User> Users => Set<User>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
-        public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
+        public DbSet<Session> ParkingSessions => Set<Session>();
         public DbSet<ParkingLot> ParkingLots => Set<ParkingLot>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -22,18 +22,24 @@ namespace MobyPark.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Session ↔ User
-            modelBuilder.Entity<ParkingSession>()
+            modelBuilder.Entity<Session>()
                 .HasOne(s => s.User)
                 .WithMany(u => u.ParkingSessions)
                 .HasForeignKey(s => s.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Session ↔ Vehicle
-            modelBuilder.Entity<ParkingSession>()
+            modelBuilder.Entity<Session>()
                 .HasOne(s => s.Vehicle)
                 .WithMany()
                 .HasForeignKey(s => s.VehicleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Session ↔ ParkingLot
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.ParkingLotID)
+                .WithMany(p => p.ParkingSessions)
+                .HasForeignKey(s => s.ParkingLotID);
 
             // ParkingLots primary key
             modelBuilder.Entity<ParkingLot>()

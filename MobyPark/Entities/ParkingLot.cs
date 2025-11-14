@@ -6,7 +6,7 @@ namespace MobyPark.Entities
     {
         [Key]
         [Required]
-        public string Id { get; set; } = default!;
+        public int Id { get; set; } = default!;
 
         [Required]
         public string Name { get; set; } = default!;
@@ -19,7 +19,7 @@ namespace MobyPark.Entities
         public double DayTariff { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        public Dictionary<string, double> Coordinates { get; set; } = new Dictionary<string, double>();
+        public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
     }
 }

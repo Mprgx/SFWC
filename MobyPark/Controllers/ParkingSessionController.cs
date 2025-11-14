@@ -37,7 +37,7 @@ namespace MobyPark.Controllers
 
             if (existsActive) return Conflict("This vehicle already has an active session.");
 
-            var session = new ParkingSession
+            var session = new Session
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
