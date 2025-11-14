@@ -37,9 +37,9 @@ namespace MobyPark.Data
 
             // Session ↔ ParkingLot
             modelBuilder.Entity<Session>()
-                .HasOne(s => s.ParkingLotID)
+                .HasOne(s => s.ParkingLot)
                 .WithMany(p => p.ParkingSessions)
-                .HasForeignKey(s => s.ParkingLotID);
+                .HasForeignKey(s => s.ParkingLotId);
 
             // ParkingLots primary key
             modelBuilder.Entity<ParkingLot>()

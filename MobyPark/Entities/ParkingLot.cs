@@ -19,7 +19,7 @@ namespace MobyPark.Entities
         public double DayTariff { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public Dictionary<string, double> Coordinates { get; set; } = new Dictionary<string, double>();
+        public string Coordinates { get; set; } = "{}";
         public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
     }
 }

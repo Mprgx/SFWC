@@ -11,14 +11,14 @@ namespace MobyPark.Services
             return await db.Set<ParkingLot>().ToListAsync();
         }
 
-        public async Task<ParkingLot?> GetByIdAsync(string lid)
+        public async Task<ParkingLot?> GetByIdAsync(int lid)
         {
             return await db.Set<ParkingLot>()
                 .FirstOrDefaultAsync(p => p.Id == lid);
         }
 
         public async Task<List<Session>> GetSessionsAsync(
-            string lid, string? username, bool isAdmin)
+            int lid, string? username, bool isAdmin)
         {
             var lot = await db.Set<ParkingLot>().AnyAsync(p => p.Id == lid);
             if (!lot)
@@ -36,13 +36,13 @@ namespace MobyPark.Services
         }
 
         public async Task<Session?> GetSessionByIdAsync(
-            string lid, string sid, string? username, bool isAdmin)
+            int lid, string sid, string? username, bool isAdmin)
         {
             var session = await db.ParkingSessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .FirstOrDefaultAsync(s =>
-                    lid == lid && s.Id.ToString() == sid); //s.ParkingLotId == lid
+                    s.ParkingLotId == lid && s.Id.ToString() == sid);
 
             if (session is null)
                 return null;

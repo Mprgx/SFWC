@@ -1,16 +1,33 @@
 namespace MobyPark.Models
 {
-    public record ParkingLotReadDto(
-        string Id,
-        string Name,
-        string Location,
-        string Address,
-        int Capacity,
-        int Reserved,
-        double Tariff,
-        double DayTariff,
-        DateTime CreatedAt,
-        double Latitude,
-        double Longitude
-    );
+    public class ParkingLotRequestDto
+    {
+        public ParkingLotRequestDto(string name, string location, string address, int capacity, int reserved, double tariff, double dayTariff, Dictionary<string, double> coordinates)
+        {
+            Name = name;
+            Location = location;
+            Address = address;
+            Capacity = capacity;
+            Reserved = reserved;
+            Tariff = tariff;
+            DayTariff = dayTariff;
+            Coordinates = coordinates;
+        }
+
+        public string Name { get; set; } = default!;
+        public string Location { get; set; } = default!;
+        public string Address { get; set; } = default!;
+        public int Capacity { get; set; }
+        public int Reserved { get; set; }
+        public double Tariff { get; set; }
+        public double DayTariff { get; set; }
+        public Dictionary<string, double> Coordinates { get; set; }
+            = new Dictionary<string, double>
+            {
+            { "latitude", 0 },
+            { "longitude", 0 }
+            };
+    }
+
 }
+

@@ -5,6 +5,7 @@ using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace MobyPark.Controllers
 {
@@ -20,14 +21,14 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots
         [HttpGet("/parking-lots")]
-        public async Task<ActionResult<List<ParkingLotReadDto>>> GetAll()
+        public async Task<ActionResult<List<ParkingLotRequestDto>>> GetAll()
         {
             var lots = await db.ParkingLots.ToListAsync();
 
-            var dtos = lots.Select(l => new ParkingLotReadDto(
-                l.Id, l.Name, l.Location, l.Address, l.Capacity,
-                l.Reserved, l.Tariff, l.DayTariff, l.CreatedAt,
-                l.Latitude, l.Longitude
+            var dtos = lots.Select(l => new ParkingLotRequestDto(
+                l.Name, l.Location, l.Address, l.Capacity,
+                l.Reserved, l.Tariff, l.DayTariff,
+                JsonSerializer.Deserialize<Dictionary<string, double>>(l.Coordinates) ?? default
             )).ToList();
 
             return Ok(dtos);
@@ -35,15 +36,16 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots/{lid}
         [HttpGet("/parking-lots/{lid}")]
-        public async Task<ActionResult<ParkingLotReadDto>> GetById(string lid)
+        public async Task<ActionResult<ParkingLotRequestDto>> GetById(string lid)
         {
             var lot = await db.ParkingLots.FindAsync(lid);
             if (lot is null) return NotFound("Parking lot not found.");
 
-            var dto = new ParkingLotReadDto(
-                lot.Id, lot.Name, lot.Location, lot.Address, lot.Capacity,
-                lot.Reserved, lot.Tariff, lot.DayTariff, lot.CreatedAt,
-                lot.Latitude, lot.Longitude
+            var dto = new ParkingLotRequestDto(
+                lot.Name, lot.Location, lot.Address, lot.Capacity,
+                lot.Reserved, lot.Tariff, lot.DayTariff,
+                JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? default
+
             );
 
             return Ok(dto);
@@ -51,7 +53,7 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots/{lid}/sessions
         [HttpGet("/parking-lots/{lid}/sessions")]
-        public async Task<ActionResult> GetSessions(string lid)
+        public async Task<ActionResult> GetSessions(int lid)
         {
             var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
             if (!exists) return NotFound("Parking lot not found.");
@@ -71,13 +73,13 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots/{lid}/sessions/{sid}
         [HttpGet("/parking-lots/{lid}/sessions/{sid}")]
-        public async Task<ActionResult> GetSessionById(string lid, string sid)
+        public async Task<ActionResult> GetSessionById(int lid, string sid)
         {
             var session = await db.ParkingSessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .FirstOrDefaultAsync(s =>
-                    lid == lid && //s.ParkingLotId == lid
+                    s.ParkingLotId == lid && //s.ParkingLotId == lid
                     s.Id.ToString() == sid);
 
             if (session is null)

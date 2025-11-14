@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Entities;
-using MobyPark.Migrations;
 using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Entities
@@ -9,6 +8,7 @@ namespace MobyPark.Entities
     public class Session
     {
         public int ParkingLotId { get; set; }
+        public ParkingLot? ParkingLot { get; set; }
         public Guid Id { get; set; }
 
         public Guid UserId { get; set; }
