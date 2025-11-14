@@ -16,11 +16,9 @@ namespace MobyPark.Controllers
             if (by != 0 && (by < 1900 || by > 2030))
                 return BadRequest("BirthYear must be 0 (unset) or between 1900 and 2030.");
 
-            var user = await authService.RegisterAsync(request);
-            if (user is null) return Conflict("Username or email already exists.");
+            var dto = await authService.RegisterAsync(request);
+            if (dto is null) return Conflict("Username or email already exists.");
 
-            var dto = new UserReadDto(user.Id, user.Username, user.Name, user.Email,
-                                      user.PhoneNumber, user.BirthYear, user.Role, user.CreatedAt);
             return Ok(dto);
         }
 

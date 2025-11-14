@@ -21,7 +21,6 @@ namespace MobyPark.Models
         [Phone, MaxLength(30)]
         public string? PhoneNumber { get; set; }
 
-        [Range(0, 2030)]
         public int? BirthYear { get; set; }
     }
 }
