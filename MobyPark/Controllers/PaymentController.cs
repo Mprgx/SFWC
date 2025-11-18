@@ -5,6 +5,7 @@ using MobyPark.Data;
 using MobyPark.Models;
 using System.Security.Claims;
 using MobyPark.Entities;
+using MobyPark.Services;
 
 namespace MobyPark.Controllers
 {
@@ -15,9 +16,12 @@ namespace MobyPark.Controllers
     {
         private readonly UserDbContext _context;
 
-        public PaymentsController(UserDbContext context)
+        private readonly IPaymentService _paymentService;
+
+        public PaymentsController(UserDbContext context, IPaymentService paymentService)
         {
             _context = context;
+            _paymentService = paymentService;
         }
 
         [HttpPost("payments")]
@@ -36,50 +40,9 @@ namespace MobyPark.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var session = await _context.ParkingSessions
-                .FirstOrDefaultAsync(s => s.UserId == userId);
+            var result = await _paymentService.FulfillPaymentAsync(userId, paymentRequest);
 
-
-            decimal expectedAmount = session.Cost;
-            if (paymentRequest.Amount != expectedAmount)
-                return BadRequest($"Invalid payment amount. Expected: {expectedAmount:C}, Received: {paymentRequest.Amount:C}");
-
-            var payment = await _context.Payments
-                .FirstOrDefaultAsync(p => p.Transaction == paymentRequest.Transaction);
-
-            if (payment == null)
-                return NotFound($"No payment record found for transaction: {paymentRequest.Transaction}");
-
-            payment.Completed = true;
-            payment.Hash = GeneratePaymentHash(payment.Transaction, payment.Amount);
-            session.PaymentStatus = "paid";
-
-            _context.Payments.Update(payment);
-            _context.ParkingSessions.Update(session);
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                status = "Success",
-                payment = new
-                {
-                    transaction = payment.Transaction,
-                    amount = payment.Amount,
-                    initiator = payment.Initiator,
-                    completed = payment.Completed,
-                    hash = payment.Hash
-                }
-            });
-        }
-
-        private static string GeneratePaymentHash(string transaction, decimal amount)
-        {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var input = $"{transaction}:{amount}:{DateTimeOffset.UtcNow.Ticks}";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(input);
-            var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
+            return Ok(result);
         }
     }
 }

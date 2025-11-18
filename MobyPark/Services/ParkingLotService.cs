@@ -52,5 +52,60 @@ namespace MobyPark.Services
 
             return session;
         }
+
+        public async Task<Payment?> StopSessionAsync(string licensePlate, Guid userId, IEncryptionService encryption)
+        {
+            if (string.IsNullOrWhiteSpace(licensePlate))
+                return null;
+
+            var lp = licensePlate.Trim().ToUpperInvariant();
+
+            var activeSessions = await db.ParkingSessions
+                .Include(s => s.User)
+                .Include(s => s.Vehicle)
+                .Where(s => s.Stopped == null)
+                .ToListAsync();
+
+            var session = activeSessions.FirstOrDefault(s =>
+            {
+                if (string.IsNullOrEmpty(s.LicensePlate)) return false;
+                var platePlain = encryption.Decrypt(s.LicensePlate);
+                if (string.IsNullOrWhiteSpace(platePlain)) return false;
+
+                return platePlain.Trim().ToUpperInvariant() == lp;
+            });
+
+            if (session == null || session.UserId != userId)
+                return null;
+
+            session.Stopped = DateTimeOffset.UtcNow;
+            session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
+
+            const decimal RATE_PER_HOUR = 2.00m;
+            var hours = Math.Ceiling(session.DurationMinutes / 60.0m);
+            session.Cost = hours * RATE_PER_HOUR;
+            session.PaymentStatus = "unpaid";
+
+            var payment = new Payment
+            {
+                Id = Guid.NewGuid(),
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                Initiator = userId,
+                Completed = false,
+                Hash = null
+            };
+
+            db.ParkingSessions.Update(session);
+            await db.Payments.AddAsync(payment);
+            await db.SaveChangesAsync();
+
+            return payment;
+        }
+        private static string GenerateTransactionNumber()
+        {
+            var random = new Random();
+            return random.Next(100000000, 999999999).ToString("D12");
+        }
     }
 }
