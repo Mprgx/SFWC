@@ -9,7 +9,7 @@ namespace MobyPark.Data
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<Session> ParkingSessions => Set<Session>();
         public DbSet<ParkingLot> ParkingLots => Set<ParkingLot>();
-        public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
+        // public DbSet<ParkingSession> ParkingSessions => Set<ParkingSession>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Reservation> Reservations => Set<Reservation>();
 
