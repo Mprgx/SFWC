@@ -380,11 +380,6 @@ namespace MobyPark.Migrations
                 {
                     b.Navigation("Sessions");
                 });
-#pragma warning restore 612, 618
-                });
-
-                    });
-                });
         }
     }
 }
