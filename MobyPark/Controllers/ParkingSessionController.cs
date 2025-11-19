@@ -13,7 +13,7 @@ namespace MobyPark.Controllers
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class ParkingSessionController(UserDbContext context, IEncryptionService encryption) : ControllerBase
+    public class ParkingSessionController(UserDbContext context, IEncryptionService encryption, IParkingLotService parkingLotService) : ControllerBase
     {
 
         [HttpPost("/start-parking-session")]
@@ -70,62 +70,23 @@ namespace MobyPark.Controllers
         public async Task<IActionResult> StopSession([FromBody] ParkingSessionStopDto dto)
         {
             if (dto == null || string.IsNullOrWhiteSpace(dto.LicensePlate))
-                return BadRequest("licensePlate is required in the request body.");
+                return BadRequest("licensePlate is required.");
 
             var lp = dto.LicensePlate.Trim().ToUpperInvariant();
 
             string pattern =
                 @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
-            if (!Regex.IsMatch(lp, pattern, RegexOptions.IgnoreCase))
+
+            if (!Regex.IsMatch(lp, pattern))
                 return BadRequest("licensePlate filled in incorrectly.");
 
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing token.");
 
-            // Because LicensePlate is encrypted in DB, we must decrypt to compare
-            var activeSessions = await context.ParkingSessions
-                .Where(s => s.Stopped == null)
-                .ToListAsync();
+            var payment = await parkingLotService.StopSessionAsync(lp, userId, encryption);
 
-            var session = activeSessions.FirstOrDefault(s =>
-            {
-                if (string.IsNullOrEmpty(s.LicensePlate)) return false;
-                var platePlain = encryption.Decrypt(s.LicensePlate);
-                if (string.IsNullOrWhiteSpace(platePlain)) return false;
-
-                var normalized = platePlain.Trim().ToUpperInvariant();
-                return normalized == lp;
-            });
-
-            if (session == null)
-                return NotFound("No parking session found for this license plate.");
-
-            if (session.UserId != userId)
-                return Forbid("You can only stop your own sessions.");
-
-            session.Stopped = DateTimeOffset.UtcNow;
-            var minutes = (session.Stopped.Value - session.Started).TotalMinutes;
-            session.DurationMinutes = (int)Math.Ceiling(minutes);
-
-            const decimal RATE_PER_HOUR = 2.00m;
-            var hours = Math.Ceiling(session.DurationMinutes / 60.0m);
-            var amount = hours * RATE_PER_HOUR;
-            session.Cost = amount;
-            session.PaymentStatus = "unpaid";
-
-            var payment = new Payment
-            {
-                Id = Guid.NewGuid(),
-                Transaction = GenerateTransactionNumber(),
-                Amount = amount,
-                Initiator = userId,
-                Completed = false,
-                Hash = null,
-            };
-
-            context.ParkingSessions.Update(session);
-            await context.Payments.AddAsync(payment);
-            await context.SaveChangesAsync();
+            if (payment == null)
+                return NotFound("No active session found for this license plate belonging to you.");
 
             return Created("payments", new
             {
@@ -140,7 +101,6 @@ namespace MobyPark.Controllers
                 }
             });
         }
-
 
         [HttpGet("get-parking-session-by-id")]
         public async Task<IActionResult> GetSessionById(Guid id)
