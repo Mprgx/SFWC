@@ -185,7 +185,8 @@ namespace MobyPark.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParkingLotId");
+                        b.Property<DateTimeOffset?>("RefundDate")
+                            .HasColumnType("datetimeoffset");
 
                     b.HasIndex("UserId");
 
@@ -314,7 +315,7 @@ namespace MobyPark.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ParkingLot");
+                        b.Navigation("ParkingLot");
 
                     b.Navigation("User");
                 });
@@ -357,14 +358,14 @@ namespace MobyPark.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                    modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
                 {
                     b.Navigation("Reservations");
 
                     b.Navigation("Sessions");
                 });
 
-            modelBuilder.Entity("MobyPark.Entities.User", b =>
+                    modelBuilder.Entity("MobyPark.Entities.User", b =>
                 {
                     b.Navigation("Payments");
 
@@ -380,6 +381,10 @@ namespace MobyPark.Migrations
                     b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
+                });
+
+                    });
+                });
         }
     }
 }
