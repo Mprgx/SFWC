@@ -4,18 +4,11 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ReservationService : IReservationService
+    public class ReservationService(UserDbContext context) : IReservationService
     {
-        private readonly UserDbContext _context;
-
-        public ReservationService(UserDbContext context)
-        {
-            _context = context;
-        }
-
         public Reservation? GetById(int reservationId)
         {
-            return _context.Reservations.FirstOrDefault(r => r.ReservationId == reservationId);
+            return context.Reservations.FirstOrDefault(r => r.ReservationId == reservationId);
         }
 
         public Reservation CreateReservation(CreateReservationDto dto)
@@ -29,15 +22,15 @@ namespace MobyPark.Services
                 EndTime = dto.EndTime,
             };
 
-            _context.Reservations.Add(reservation);
-            _context.SaveChanges();
+            context.Reservations.Add(reservation);
+            context.SaveChanges();
             return reservation;
         }
 
         public void DeleteReservation(Reservation reservation)
         {
-            _context.Reservations.Remove(reservation);
-            _context.SaveChanges();
+            context.Reservations.Remove(reservation);
+            context.SaveChanges();
         }
 
         public void UpdateReservation(Reservation reservation, CreateReservationDto dto)
@@ -47,7 +40,7 @@ namespace MobyPark.Services
             reservation.EndTime = dto.EndTime;
             reservation.UserId = dto.UserId;
 
-            _context.SaveChanges();
+            context.SaveChanges();
         }
     }
 }

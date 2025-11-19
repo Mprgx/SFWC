@@ -4,22 +4,29 @@ namespace MobyPark.Entities
 {
     public class ParkingLot
     {
-        [Key]
-        [Required]
-        public int Id { get; set; } = default!;
+        public int Id { get; set; }
 
         [Required]
-        public string Name { get; set; } = default!;
+        public string Name { get; set; } = string.Empty;
 
-        public string Location { get; set; } = default!;
-        public string Address { get; set; } = default!;
+        [Required]
+        public string Location { get; set; } = string.Empty;
+
+        [Required]
+        public string Address { get; set; } = string.Empty;
+
         public int Capacity { get; set; }
         public int Reserved { get; set; }
+
         public double Tariff { get; set; }
         public double DayTariff { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public string Coordinates { get; set; } = "{}";
-        public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
+
+        public ICollection<Session> Sessions { get; set; } = new List<Session>();
+
+        public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     }
 }

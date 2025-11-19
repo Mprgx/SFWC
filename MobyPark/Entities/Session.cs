@@ -3,11 +3,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Entities
 {
-    [Index(nameof(UserId), nameof(Started))]
     public class Session
     {
-        public int ParkingLotId { get; set; }
-        public ParkingLot? ParkingLot { get; set; }
         public Guid Id { get; set; }
 
         public Guid UserId { get; set; }
@@ -15,6 +12,9 @@ namespace MobyPark.Entities
 
         public int VehicleId { get; set; }
         public Vehicle? Vehicle { get; set; }
+
+        public int ParkingLotId { get; set; }
+        public ParkingLot? ParkingLot { get; set; }
 
         [Required, MaxLength(20)]
         public string LicensePlate { get; set; } = string.Empty;
@@ -30,12 +30,10 @@ namespace MobyPark.Entities
         [Required, MaxLength(20)]
         public string PaymentStatus { get; set; } = "unpaid";
 
-        public bool IsCancelled { get; set; } = false;
-
+        public bool IsCancelled { get; set; }
         public DateTimeOffset? CancelledAt { get; set; }
 
-        public bool IsRefunded { get; set; } = false;
-
+        public bool IsRefunded { get; set; }
         public DateTimeOffset? RefundDate { get; set; }
     }
 }

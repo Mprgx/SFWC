@@ -11,6 +11,7 @@ namespace MobyPark.Entities
         public Guid UserId { get; set; }
         public User User { get; set; } = null!;
 
+
         [Required, MaxLength(20)]
         public string LicensePlate { get; set; } = string.Empty;
 
@@ -25,7 +26,8 @@ namespace MobyPark.Entities
 
         [Range(1900, 2100)]
         public int Year { get; set; }
-
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<Session> Sessions { get; set; } = new List<Session>();
     }
 }

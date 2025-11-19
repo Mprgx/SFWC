@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251104145911_ChangeReservationTimeToOffset")]
-    partial class ChangeReservationTimeToOffset
+    [Migration("20251119121407_RebuildApiAndDatabase")]
+    partial class RebuildApiAndDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,48 +25,79 @@ namespace MobyPark.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("DayTariff")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Reserved")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Tariff")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParkingLots");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Payment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal>("Cost")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("DurationMinutes")
-                        .HasColumnType("int");
+                    b.Property<bool>("Completed")
+                        .HasColumnType("bit");
 
-                    b.Property<string>("LicensePlate")
+                    b.Property<string>("Hash")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PaymentStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTimeOffset>("Started")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<DateTimeOffset?>("Stopped")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid>("Initiator")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("VehicleId")
-                        .HasColumnType("int");
+                    b.Property<string>("Transaction")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VehicleId");
+                    b.HasIndex("Initiator");
 
-                    b.HasIndex("UserId", "Started");
-
-                    b.ToTable("ParkingSessions");
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.Reservation", b =>
@@ -98,7 +129,72 @@ namespace MobyPark.Migrations
 
                     b.HasKey("ReservationId");
 
+                    b.HasIndex("ParkingLotId");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("Reservations");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRefunded")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LicensePlate")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ParkingLotId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("RefundDate")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("Started")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("Stopped")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VehicleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParkingLotId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VehicleId");
+
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.User", b =>
@@ -196,19 +292,57 @@ namespace MobyPark.Migrations
                     b.ToTable("Vehicles");
                 });
 
-            modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
+            modelBuilder.Entity("MobyPark.Entities.Payment", b =>
                 {
                     b.HasOne("MobyPark.Entities.User", "User")
-                        .WithMany("ParkingSessions")
+                        .WithMany("Payments")
+                        .HasForeignKey("Initiator")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Reservation", b =>
+                {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("Reservations")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany("Reservations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ParkingLot");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
+                {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany("Sessions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MobyPark.Entities.Vehicle", "Vehicle")
-                        .WithMany()
+                        .WithMany("Sessions")
                         .HasForeignKey("VehicleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ParkingLot");
 
                     b.Navigation("User");
 
@@ -226,11 +360,27 @@ namespace MobyPark.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Navigation("Reservations");
+
+                    b.Navigation("Sessions");
+                });
+
             modelBuilder.Entity("MobyPark.Entities.User", b =>
                 {
-                    b.Navigation("ParkingSessions");
+                    b.Navigation("Payments");
+
+                    b.Navigation("Reservations");
+
+                    b.Navigation("Sessions");
 
                     b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
+                {
+                    b.Navigation("Sessions");
                 });
 #pragma warning restore 612, 618
         }

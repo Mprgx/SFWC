@@ -10,19 +10,13 @@ namespace MobyPark.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ReservationsController : ControllerBase
+    public class ReservationsController(ReservationService reservationService) : ControllerBase
     {
-        private readonly ReservationService _reservationService;
-
-        public ReservationsController(ReservationService reservationService)
-        {
-            _reservationService = reservationService;
-        }
 
         [HttpGet("{reservationid}")]
         public ActionResult<Reservation> GetById(int reservationid)
         {
-            var reservation = _reservationService.GetById(reservationid);
+            var reservation = reservationService.GetById(reservationid);
             if (reservation == null)
                 return NotFound(new
                 {
@@ -44,14 +38,14 @@ namespace MobyPark.Controllers
                         message = ModelState
                     });
 
-            var reservation = _reservationService.CreateReservation(dto);
+            var reservation = reservationService.CreateReservation(dto);
             return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
         }
 
         [HttpDelete("{reservationid}")]
         public ActionResult<Reservation> DeleteReservation(int reservationid)
         {
-            var reservation = _reservationService.GetById(reservationid);
+            var reservation = reservationService.GetById(reservationid);
             if (reservation == null)
                 return NotFound(new
                 {
@@ -59,7 +53,7 @@ namespace MobyPark.Controllers
                     message = $"Reservation with id {reservationid} not found"
                 });
 
-            _reservationService.DeleteReservation(reservation);
+            reservationService.DeleteReservation(reservation);
 
             return NoContent(); // retturns 204 if deletion successful
         }
@@ -67,7 +61,7 @@ namespace MobyPark.Controllers
         [HttpPut("{reservationid}")]
         public ActionResult<Reservation> UpdateReservation(int reservationid, CreateReservationDto dto)
         {
-            var reservation = _reservationService.GetById(reservationid);
+            var reservation = reservationService.GetById(reservationid);
             if (reservation == null)
                 return NotFound(new
                 {
@@ -75,7 +69,7 @@ namespace MobyPark.Controllers
                     message = $"Reservation with id {reservationid} not found"
                 });
 
-            _reservationService.UpdateReservation(reservation, dto);
+            reservationService.UpdateReservation(reservation, dto);
             return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
 
         }

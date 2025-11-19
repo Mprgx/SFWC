@@ -66,221 +66,186 @@ namespace MobyPark.Migrations
                     b.ToTable("ParkingLots");
                 });
 
+            modelBuilder.Entity("MobyPark.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Initiator")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Transaction")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Initiator");
+
+                    b.ToTable("Payments");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Reservation", b =>
+                {
+                    b.Property<int>("ReservationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReservationId"));
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LicensePlate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ParkingLotId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ReservationId");
+
+                    b.HasIndex("ParkingLotId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Reservations");
+                });
+
             modelBuilder.Entity("MobyPark.Entities.Session", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-                    // -------------------------------
-                    // ParkingSession
-                    // -------------------------------
-                    modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
-                    {
-                        b.Property<Guid>("Id")
-                            .ValueGeneratedOnAdd()
-                            .HasColumnType("uniqueidentifier");
 
-                        b.Property<DateTimeOffset?>("CancelledAt")
-                            .HasColumnType("datetimeoffset");
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("datetimeoffset");
 
-                        b.Property<decimal>("Cost")
-                            .HasPrecision(10, 2)
-                            .HasColumnType("decimal(10,2)");
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
 
-                        b.Property<int>("DurationMinutes")
-                            .HasColumnType("int");
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
 
-                        b.Property<int>("ParkingLotId")
-                    .HasColumnType("int");
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
 
-                        b.Property<string>("PaymentStatus")
-                    .IsRequired()
-                    .HasMaxLength(20)
-                    .HasColumnType("nvarchar(20)");
-                        b.Property<bool>("IsCancelled")
-                            .HasColumnType("bit");
+                    b.Property<bool>("IsRefunded")
+                        .HasColumnType("bit");
 
-                        b.Property<bool>("IsRefunded")
-                            .HasColumnType("bit");
+                    b.Property<string>("LicensePlate")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                        b.Property<string>("LicensePlate")
-                            .IsRequired()
-                            .HasMaxLength(20)
-                            .HasColumnType("nvarchar(20)");
+                    b.Property<int>("ParkingLotId")
+                        .HasColumnType("int");
 
-                        b.Property<string>("PaymentStatus")
-                            .IsRequired()
-                            .HasMaxLength(20)
-                            .HasColumnType("nvarchar(20)");
+                    b.Property<string>("PaymentStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("RefundDate")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("Started")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("Stopped")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VehicleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
 
                         b.Property<DateTimeOffset?>("RefundDate")
                             .HasColumnType("datetimeoffset");
 
-                        b.Property<DateTimeOffset>("Started")
-                            .HasColumnType("datetimeoffset");
+                    b.HasIndex("UserId");
 
-                        b.HasIndex("ParkingLotId");
+                    b.HasIndex("VehicleId");
 
-                        b.HasIndex("VehicleId");
-                        b.Property<DateTimeOffset?>("Stopped")
-                            .HasColumnType("datetimeoffset");
+                    b.ToTable("Sessions");
+                });
 
-                        b.Property<Guid>("UserId")
-                            .HasColumnType("uniqueidentifier");
+            modelBuilder.Entity("MobyPark.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                        b.Property<int>("VehicleId")
-                            .HasColumnType("int");
+                    b.Property<int>("BirthYear")
+                        .HasColumnType("int");
 
-                        b.HasKey("Id");
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
 
-                        b.HasIndex("VehicleId");
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
-                        b.HasIndex("UserId", "Started");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(70)
+                        .HasColumnType("nvarchar(70)");
 
-                        b.ToTable("ParkingSessions");
-                    });
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    // -------------------------------
-                    // Payment
-                    // -------------------------------
-                    modelBuilder.Entity("MobyPark.Entities.Payment", b =>
-                    {
-                        b.Property<Guid>("Id")
-                            .ValueGeneratedOnAdd()
-                            .HasColumnType("uniqueidentifier");
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
-                        b.Property<decimal>("Amount")
-                            .HasColumnType("decimal(18,2)");
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("nvarchar(max)");
 
-                        b.Property<bool>("Completed")
-                            .HasColumnType("bit");
+                    b.Property<DateTimeOffset?>("RefreshTokenExpiryTime")
+                        .HasColumnType("datetimeoffset");
 
-                        b.Property<string>("Hash")
-                            .IsRequired()
-                            .HasColumnType("nvarchar(max)");
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
 
-                        b.Property<Guid>("Initiator")
-                            .HasColumnType("uniqueidentifier");
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                        b.Property<string>("Transaction")
-                            .IsRequired()
-                            .HasColumnType("nvarchar(max)");
+                    b.HasKey("Id");
 
-                        b.HasKey("Id");
+                    b.ToTable("Users");
+                });
 
-                        b.HasIndex("Initiator");
-
-                        b.ToTable("Payments");
-                    });
-
-                    // -------------------------------
-                    // Reservation
-                    // -------------------------------
-                    modelBuilder.Entity("MobyPark.Entities.Reservation", b =>
-                    {
-                        b.Property<int>("ReservationId")
-                            .ValueGeneratedOnAdd()
-                            .HasColumnType("int");
-
-                        SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReservationId"));
-
-                        b.Property<DateTimeOffset>("EndTime")
-                            .HasColumnType("datetimeoffset");
-
-                        b.Property<bool>("IsActive")
-                            .HasColumnType("bit");
-
-                        b.Property<string>("LicensePlate")
-                            .IsRequired()
-                            .HasColumnType("nvarchar(max)");
-
-                        b.Property<int>("ParkingLotId")
-                            .HasColumnType("int");
-
-                        b.Property<DateTimeOffset>("StartTime")
-                            .HasColumnType("datetimeoffset");
-
-                        b.Property<Guid>("UserId")
-                            .HasColumnType("uniqueidentifier");
-
-                        b.HasKey("ReservationId");
-
-                        b.ToTable("Reservations");
-                    });
-
-                    // -------------------------------
-                    // User
-                    // -------------------------------
-                    modelBuilder.Entity("MobyPark.Entities.User", b =>
-                    {
-                        b.Property<Guid>("Id")
-                            .ValueGeneratedOnAdd()
-                            .HasColumnType("uniqueidentifier");
-
-                        b.Property<int>("BirthYear")
-                            .HasColumnType("int");
-
-                        modelBuilder.Entity("MobyPark.Entities.Session", b =>
-                    {
-                        b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
-                            .WithMany("ParkingSessions")
-                            .HasForeignKey("ParkingLotId")
-                            .OnDelete(DeleteBehavior.Cascade)
-                            .IsRequired();
-
-                        b.HasOne("MobyPark.Entities.User", "User")
-                            .WithMany("ParkingSessions")
-                            .HasForeignKey("UserId")
-                            .OnDelete(DeleteBehavior.Cascade)
-                            .IsRequired();
-                        b.Property<DateTimeOffset>("CreatedAt")
-                    .HasColumnType("datetimeoffset");
-
-                        b.Property<string>("Email")
-                    .IsRequired()
-                    .HasMaxLength(256)
-                    .HasColumnType("nvarchar(256)");
-
-                        b.Property<string>("Name")
-                    .IsRequired()
-                    .HasMaxLength(70)
-                    .HasColumnType("nvarchar(70)");
-
-                        b.Property<string>("PasswordHash")
-                    .IsRequired()
-                    .HasColumnType("nvarchar(max)");
-
-                        b.Property<string>("PhoneNumber")
-                    .IsRequired()
-                    .HasMaxLength(30)
-                    .HasColumnType("nvarchar(30)");
-
-                        b.Navigation("ParkingLot");
-
-                        b.Navigation("User");
-                        b.Property<string>("RefreshToken")
-                    .HasColumnType("nvarchar(max)");
-
-                        b.Property<DateTimeOffset?>("RefreshTokenExpiryTime")
-                    .HasColumnType("datetimeoffset");
-
-                        b.Property<int>("Role")
-                    .HasColumnType("int");
-
-                        b.Property<string>("Username")
-                    .IsRequired()
-                    .HasMaxLength(20)
-                    .HasColumnType("nvarchar(20)");
-
-                        b.HasKey("Id");
-
-                        b.ToTable("Users");
-                    });
-
-                        // -------------------------------
-                        // Vehicle
-                        // -------------------------------
-                        modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
+            modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -288,100 +253,133 @@ namespace MobyPark.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
-                {
-                    b.Navigation("ParkingSessions");
-                });
-
-                    modelBuilder.Entity("MobyPark.Entities.User", b =>
-                {
-                    b.Navigation("ParkingSessions");
                     b.Property<string>("Color")
-                    .IsRequired()
-                    .HasMaxLength(30)
-                    .HasColumnType("nvarchar(30)");
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                    .HasColumnType("datetimeoffset");
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("LicensePlate")
-                    .IsRequired()
-                    .HasMaxLength(20)
-                    .HasColumnType("nvarchar(20)");
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Make")
-                    .IsRequired()
-                    .HasMaxLength(50)
-                    .HasColumnType("nvarchar(50)");
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Model")
-                    .IsRequired()
-                    .HasMaxLength(50)
-                    .HasColumnType("nvarchar(50)");
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("UserId")
-                    .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Year")
-                    .HasColumnType("int");
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "LicensePlate")
-                    .IsUnique();
+                        .IsUnique();
 
                     b.ToTable("Vehicles");
                 });
 
-                    // -------------------------------
-                    // Relationships
-                    // -------------------------------
-                    modelBuilder.Entity("MobyPark.Entities.ParkingSession", b =>
-            {
-                b.HasOne("MobyPark.Entities.User", "User")
-                        .WithMany("ParkingSessions")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                b.HasOne("MobyPark.Entities.Vehicle", "Vehicle")
-                        .WithMany()
-                        .HasForeignKey("VehicleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                b.Navigation("User");
-                b.Navigation("Vehicle");
-            });
-
-                    modelBuilder.Entity("MobyPark.Entities.Payment", b =>
-            {
-                b.HasOne("MobyPark.Entities.User", "User")
+            modelBuilder.Entity("MobyPark.Entities.Payment", b =>
+                {
+                    b.HasOne("MobyPark.Entities.User", "User")
                         .WithMany("Payments")
                         .HasForeignKey("Initiator")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                b.Navigation("User");
-            });
+                    b.Navigation("User");
+                });
 
-                    modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
-            {
-                b.HasOne("MobyPark.Entities.User", "User")
+            modelBuilder.Entity("MobyPark.Entities.Reservation", b =>
+                {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("Reservations")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany("Reservations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                        b.Navigation("ParkingLot");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Session", b =>
+                {
+                    b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ParkingLotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany("Sessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MobyPark.Entities.Vehicle", "Vehicle")
+                        .WithMany("Sessions")
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ParkingLot");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Vehicle");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
+                {
+                    b.HasOne("MobyPark.Entities.User", "User")
                         .WithMany("Vehicles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                b.Navigation("User");
-            });
+                    b.Navigation("User");
+                });
+
+                    modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
+                {
+                    b.Navigation("Reservations");
+
+                    b.Navigation("Sessions");
+                });
 
                     modelBuilder.Entity("MobyPark.Entities.User", b =>
-            {
-                b.Navigation("ParkingSessions");
-                b.Navigation("Payments");
-                b.Navigation("Vehicles");
-            });
+                {
+                    b.Navigation("Payments");
+
+                    b.Navigation("Reservations");
+
+                    b.Navigation("Sessions");
+
+                    b.Navigation("Vehicles");
+                });
+
+            modelBuilder.Entity("MobyPark.Entities.Vehicle", b =>
+                {
+                    b.Navigation("Sessions");
+                });
 #pragma warning restore 612, 618
                 });
 

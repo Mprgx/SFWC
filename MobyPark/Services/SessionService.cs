@@ -6,14 +6,14 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ParkingSessionService(UserDbContext db) : IParkingSessionService
+    public class SessionService(UserDbContext db) : ISessionService
     {
         private static readonly Dictionary<Guid, int> RefundAttempts = new();
 
         private const string PlatePattern =
             @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
 
-        public async Task<Session?> StartSessionAsync(Guid userId, ParkingSessionStartDto dto)
+        public async Task<Session?> StartSessionAsync(Guid userId, SessionStartDto dto)
         {
             var vehicle = await db.Vehicles
                 .AsNoTracking()
@@ -21,7 +21,7 @@ namespace MobyPark.Services
 
             if (vehicle is null) return null;
 
-            var existsActive = await db.ParkingSessions
+            var existsActive = await db.Sessions
                 .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
 
             if (existsActive) return null;
@@ -39,7 +39,7 @@ namespace MobyPark.Services
                 PaymentStatus = "unpaid"
             };
 
-            await db.ParkingSessions.AddAsync(session);
+            await db.Sessions.AddAsync(session);
             await db.SaveChangesAsync();
 
             return session;
@@ -47,40 +47,19 @@ namespace MobyPark.Services
 
         public async Task<Session?> GetSessionByIdAsync(Guid userId, Guid sessionId)
         {
-            return await db.ParkingSessions
+            return await db.Sessions
                 .Where(s => s.Id == sessionId && s.UserId == userId)
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<Session?> StopSessionByIdAsync(Guid userId, bool isAdmin, Guid sessionId)
-        {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
-            if (s is null) return null;
-            if (!isAdmin && s.UserId != userId) return null;
-            if (s.Stopped is not null) return null;
-
-            if (s.IsCancelled) return null;
-
-            s.Stopped = DateTimeOffset.UtcNow;
-            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
-            s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
-            s.PaymentStatus = "awaiting_payment";
-
-            await db.SaveChangesAsync();
-            return s;
-        }
-
-        public async Task<Session?> StopSessionByPlateAsync(Guid userId, ParkingSessionStopDto dto)
+        public async Task<Session?> StopSessionByPlateAsync(Guid userId, SessionStopDto dto)
         {
             var plate = dto.LicensePlate.Trim().ToUpper();
             if (!Regex.IsMatch(plate, PlatePattern)) return null;
 
-            var sessions = await db.ParkingSessions
-                .Where(s => s.Stopped == null)
-                .ToListAsync();
-
-            var session = sessions.FirstOrDefault(s =>
-                s.LicensePlate.ToUpper() == plate);
+            var session = await db.Sessions
+                .Where(s => s.Stopped == null && s.UserId == userId)
+                .FirstOrDefaultAsync(s => s.LicensePlate.ToUpper() == plate);
 
             if (session is null) return null;
             if (session.UserId != userId) return null;
@@ -106,25 +85,35 @@ namespace MobyPark.Services
                 Hash = GeneratePaymentHash()
             };
 
-            db.ParkingSessions.Update(session);
+            db.Sessions.Update(session);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
             return session;
         }
 
-        public async Task<Session?> CancelSessionAsync(Guid userId, bool isAdmin, Guid sessionId, CancelParkingSessionDto dto)
+        public async Task<Session?> StopSessionByIdAsync(Guid userId, Guid sessionId)
         {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
+            var s = await db.Sessions.FindAsync(sessionId);
+            if (s is null) return null;
+            if (s.Stopped is not null) return null;
+            if (s.IsCancelled) return null;
+
+            s.Stopped = DateTimeOffset.UtcNow;
+            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
+            s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
+            s.PaymentStatus = "awaiting_payment";
+
+            await db.SaveChangesAsync();
+            return s;
+        }
+
+        public async Task<Session?> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto)
+        {
+            var s = await db.Sessions.FindAsync(sessionId);
             if (s is null) return null;
 
-            if (!isAdmin && s.UserId != userId)
-                return null;
-
             if (s.IsCancelled)
-                return null;
-
-            if (isAdmin && string.IsNullOrWhiteSpace(dto.Reason))
                 return null;
 
             if (s.Stopped is null)
@@ -137,18 +126,14 @@ namespace MobyPark.Services
             return s;
         }
 
-        public async Task<object?> RequestRefundAsync(Guid userId, bool isAdmin, Guid sessionId, RefundRequestDto? dto)
+        public async Task<object?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
         {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
+            var s = await db.Sessions.FindAsync(sessionId);
             if (s is null) return null;
 
             if (!s.IsCancelled) return null;
             if (s.Stopped is null) return null;
             if (s.IsRefunded) return null;
-            if (!isAdmin && s.UserId != userId) return null;
-
-            if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason)) return null;
-
             
             if (!RefundAttempts.ContainsKey(userId))
                 RefundAttempts[userId] = 0;

@@ -9,23 +9,16 @@ namespace MobyPark.Controllers
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class ParkingSessionController : ControllerBase
+    public class SessionController(ISessionService service) : ControllerBase
     {
-        private readonly IParkingSessionService _service;
 
-        public ParkingSessionController(IParkingSessionService service)
-        {
-            _service = service;
-        }
-
-
-        [HttpPost("/start-parking-session")]
-        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
+        [HttpPost("/start-session")]
+        public async Task<IActionResult> StartSession(SessionStartDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await _service.StartSessionAsync(userId, dto);
+            var result = await service.StartSessionAsync(userId, dto);
 
             if (result is null)
                 return BadRequest("Vehicle not found or session already active.");
@@ -33,13 +26,13 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
-        [HttpPost("stopsession")]
-        public async Task<IActionResult> StopSessionByPlate(ParkingSessionStopDto dto)
+        [HttpPost("/stop-session")]
+        public async Task<IActionResult> StopSessionByPlate(SessionStopDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await _service.StopSessionByPlateAsync(userId, dto);
+            var result = await service.StopSessionByPlateAsync(userId, dto);
 
             if (result is null)
                 return BadRequest("Could not stop session. Check licensePlate.");
@@ -47,16 +40,14 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
-
-        [HttpPut("/stop-parking-session/{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        [HttpPut("/stop-session/{id:guid}")]
         public async Task<IActionResult> StopSession(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
-
-            var result = await _service.StopSessionByIdAsync(userId, isAdmin, id);
+            var result = await service.StopSessionByIdAsync(userId, id);
 
             if (result is null)
                 return BadRequest("Could not stop this session.");
@@ -64,14 +55,14 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
-
-        [HttpGet("/get-parking-session-by-id")]
+        [Authorize(Roles = "Admin")]
+        [HttpGet("/get-session-by-id")]
         public async Task<IActionResult> GetSession(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var session = await _service.GetSessionByIdAsync(userId, id);
+            var session = await service.GetSessionByIdAsync(userId, id);
 
             if (session is null)
                 return NotFound("Parking session not found.");
@@ -79,16 +70,14 @@ namespace MobyPark.Controllers
             return Ok(session);
         }
 
-
-        [HttpPut("/cancel-parking-session/{id:guid}")]
-        public async Task<IActionResult> CancelSession(Guid id, CancelParkingSessionDto dto)
+        [Authorize(Roles = "Admin")]
+        [HttpPut("/cancel-session/{id:guid}")]
+        public async Task<IActionResult> CancelSession(Guid id, CancelSessionDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
-
-            var result = await _service.CancelSessionAsync(userId, isAdmin, id, dto);
+            var result = await service.CancelSessionAsync(userId, id, dto);
 
             if (result is null)
                 return BadRequest("Could not cancel session.");
@@ -96,16 +85,14 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
-
-        [HttpPost("/refund-parking-session/{id:guid}")]
+        [Authorize(Roles = "Admin")]
+        [HttpPost("/refund-session/{id:guid}")]
         public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
-
-            var result = await _service.RequestRefundAsync(userId, isAdmin, id, dto);
+            var result = await service.RequestRefundAsync(userId, id, dto);
 
             if (result is null)
                 return BadRequest("Refund not applicable.");

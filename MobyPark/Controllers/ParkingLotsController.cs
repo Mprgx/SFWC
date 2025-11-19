@@ -36,7 +36,7 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots/{lid}
         [HttpGet("/parking-lots/{lid}")]
-        public async Task<ActionResult<ParkingLotRequestDto>> GetById(string lid)
+        public async Task<ActionResult<ParkingLotRequestDto>> GetById(int lid)
         {
             var lot = await db.ParkingLots.FindAsync(lid);
             if (lot is null) return NotFound("Parking lot not found.");
@@ -44,7 +44,7 @@ namespace MobyPark.Controllers
             var dto = new ParkingLotRequestDto(
                 lot.Name, lot.Location, lot.Address, lot.Capacity,
                 lot.Reserved, lot.Tariff, lot.DayTariff,
-                JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? default
+                JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new Dictionary<string, double>()
 
             );
 
@@ -58,10 +58,10 @@ namespace MobyPark.Controllers
             var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
             if (!exists) return NotFound("Parking lot not found.");
 
-            var query = db.ParkingSessions
+            var query = db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
-                .Where(s => lid == lid); //s.ParkingLotId == lid
+                .Where(s => s.ParkingLotId == lid);
 
             if (!IsAdmin)
                 query = query.Where(s => s.User.Username == Username);
@@ -73,14 +73,12 @@ namespace MobyPark.Controllers
 
         // GET /parking-lots/{lid}/sessions/{sid}
         [HttpGet("/parking-lots/{lid}/sessions/{sid}")]
-        public async Task<ActionResult> GetSessionById(int lid, string sid)
+        public async Task<ActionResult> GetSessionById(int lid, Guid sid)
         {
-            var session = await db.ParkingSessions
+            var session = await db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
-                .FirstOrDefaultAsync(s =>
-                    s.ParkingLotId == lid && //s.ParkingLotId == lid
-                    s.Id.ToString() == sid);
+                .FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
 
             if (session is null)
                 return NotFound("Session not found.");
