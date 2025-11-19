@@ -26,9 +26,9 @@ namespace MobyPark.Entities
         public string? RefreshToken { get; set; }
         public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
-        public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
+        public ICollection<Session> Sessions { get; set; } = new List<Session>();
         public ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
-
+        public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
         public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }

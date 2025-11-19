@@ -1,6 +1,6 @@
 namespace MobyPark.Models
 {
-    public class CancelParkingSessionDto
+    public class CancelSessionDto
     {
         public string? Reason { get; set; }
     }
