@@ -1,4 +1,4 @@
-name: Mobypark application
+name: Mobypark application pipeline
 
 on:
   push:
