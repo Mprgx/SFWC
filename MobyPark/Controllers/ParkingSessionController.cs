@@ -1,321 +1,116 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using MobyPark.Data;
-using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 using System.Security.Claims;
-using System.Text.RegularExpressions;
 
 namespace MobyPark.Controllers
 {
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class ParkingSessionController(UserDbContext context, IEncryptionService encryption, IParkingLotService parkingLotService) : ControllerBase
+    public class ParkingSessionController : ControllerBase
     {
+        private readonly IParkingSessionService _service;
+
+        public ParkingSessionController(IParkingSessionService service)
+        {
+            _service = service;
+        }
+
 
         [HttpPost("/start-parking-session")]
         public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized("Invalid or missing token.");
+                return Unauthorized();
 
-            var vehicle = await context.Vehicles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId);
+            var result = await _service.StartSessionAsync(userId, dto);
 
-            if (vehicle is null) return BadRequest("Vehicle not found for this user.");
+            if (result is null)
+                return BadRequest("Vehicle not found or session already active.");
 
-            var existsActive = await context.ParkingSessions
-                .AsNoTracking()
-                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
-
-            if (existsActive) return Conflict("This vehicle already has an active session.");
-
-            var session = new Session
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                VehicleId = vehicle.Id,
-                LicensePlate = vehicle.LicensePlate, // encrypted in DB
-                ParkingLotId = dto.ParkingLotId,
-                Started = DateTimeOffset.UtcNow,
-                Stopped = null,
-                DurationMinutes = 0,
-                Cost = 0m,
-                PaymentStatus = "unpaid"
-            };
-
-            await context.ParkingSessions.AddAsync(session);
-            await context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                session.Id,
-                session.UserId,
-                session.VehicleId,
-                LicensePlate = string.IsNullOrEmpty(session.LicensePlate) ? string.Empty : encryption.Decrypt(session.LicensePlate) ?? string.Empty,
-                session.ParkingLotId,
-                session.Started,
-                session.Stopped,
-                session.DurationMinutes,
-                session.Cost,
-                session.PaymentStatus
-            });
+            return Ok(result);
         }
 
         [HttpPost("stopsession")]
-        public async Task<IActionResult> StopSession([FromBody] ParkingSessionStopDto dto)
-        {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.LicensePlate))
-                return BadRequest("licensePlate is required.");
-
-            var lp = dto.LicensePlate.Trim().ToUpperInvariant();
-
-            string pattern =
-                @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
-
-            if (!Regex.IsMatch(lp, pattern))
-                return BadRequest("licensePlate filled in incorrectly.");
-
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized("Invalid or missing token.");
-
-            var payment = await parkingLotService.StopSessionAsync(lp, userId, encryption);
-
-            if (payment == null)
-                return NotFound("No active session found for this license plate belonging to you.");
-
-            return Created("payments", new
-            {
-                status = "Success",
-                payment = new
-                {
-                    transaction = payment.Transaction,
-                    amount = payment.Amount,
-                    initiator = payment.Initiator,
-                    completed = payment.Completed,
-                    hash = payment.Hash
-                }
-            });
-        }
-
-        [HttpGet("get-parking-session-by-id")]
-        public async Task<IActionResult> GetSessionById(Guid id)
+        public async Task<IActionResult> StopSessionByPlate(ParkingSessionStopDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var session = await context.ParkingSessions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+            var result = await _service.StopSessionByPlateAsync(userId, dto);
 
-            if (session is null)
-                return NotFound("Parking session not found.");
+            if (result is null)
+                return BadRequest("Could not stop session. Check licensePlate.");
 
-            return Ok(new
-            {
-                session.Id,
-                session.UserId,
-                session.VehicleId,
-                LicensePlate = string.IsNullOrEmpty(session.LicensePlate)
-                    ? string.Empty
-                    : encryption.Decrypt(session.LicensePlate) ?? string.Empty,
-                session.ParkingLotId,
-                session.Started,
-                session.Stopped,
-                session.DurationMinutes,
-                session.Cost,
-                session.PaymentStatus,
-                session.IsCancelled,
-                session.CancelledAt,
-                session.IsRefunded,
-                session.RefundDate
-            });
+            return Ok(result);
         }
 
-        private static string GenerateTransactionNumber()
-        {
-            var random = new Random();
-            return random.Next(100000000, 999999999).ToString("D12");
-        }
-
-        private string GeneratePaymentHash(string transaction, decimal amt)
-        {
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var input = $"{transaction}:{amt}:{DateTimeOffset.UtcNow.Ticks}";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(input);
-            var hash = sha.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
-        }
 
         [HttpPut("/stop-parking-session/{id:guid}")]
         public async Task<IActionResult> StopSession(Guid id)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing token.");
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
-            if (session is null)
-                return NotFound("Parking session not found.");
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
 
-            var user = await context.Users.FindAsync(userId);
-            var isAdmin = user?.Role == UserRole.Admin;
+            var result = await _service.StopSessionByIdAsync(userId, isAdmin, id);
 
-            if (session.UserId != userId && !isAdmin)
-                return Forbid("You can only stop your own parking sessions.");
+            if (result is null)
+                return BadRequest("Could not stop this session.");
 
-            if (session.Stopped is not null)
-                return BadRequest("This parking session has already been stopped.");
-
-            if (session.IsCancelled)
-                return BadRequest("Cancelled sessions cannot be stopped.");
-
-            session.Stopped = DateTimeOffset.UtcNow;
-            session.DurationMinutes = (int)(session.Stopped.Value - session.Started).TotalMinutes;
-            session.Cost = Math.Round((decimal)session.DurationMinutes * 0.05m, 2);
-            session.PaymentStatus = "awaiting_payment";
-
-            await context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Parking session stopped successfully.",
-                session.Id,
-                session.DurationMinutes,
-                session.Cost,
-                session.PaymentStatus
-            });
+            return Ok(result);
         }
 
-        [HttpPut("/cancel-parking-session/{id:guid}")]
-        public async Task<IActionResult> CancelSession(Guid id, [FromBody] CancelParkingSessionDto dto)
-        {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing token.");
 
-            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
+        [HttpGet("/get-parking-session-by-id")]
+        public async Task<IActionResult> GetSession(Guid id)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var session = await _service.GetSessionByIdAsync(userId, id);
+
             if (session is null)
                 return NotFound("Parking session not found.");
 
-            var user = await context.Users.FindAsync(userId);
-            var isAdmin = user?.Role == UserRole.Admin;
+            return Ok(session);
+        }
 
-            if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason))
-                return BadRequest("Admin must provide a reason when cancelling a parking session.");
 
-            if (session.UserId != userId && !isAdmin)
-                return Forbid("You can only cancel your own sessions.");
+        [HttpPut("/cancel-parking-session/{id:guid}")]
+        public async Task<IActionResult> CancelSession(Guid id, CancelParkingSessionDto dto)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            if (session.IsCancelled)
-                return BadRequest("This session is already cancelled.");
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
 
-            if (session.Stopped is null)
-                session.Stopped = DateTimeOffset.UtcNow;
+            var result = await _service.CancelSessionAsync(userId, isAdmin, id, dto);
 
-            session.IsCancelled = true;
-            session.CancelledAt = DateTimeOffset.UtcNow;
+            if (result is null)
+                return BadRequest("Could not cancel session.");
 
-            await context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = isAdmin
-                    ? $"Parking session cancelled by admin. Reason: {dto?.Reason}"
-                    : "Parking session cancelled successfully.",
-                session.Id,
-                session.IsCancelled,
-                session.CancelledAt
-            });
+            return Ok(result);
         }
 
 
         [HttpPost("/refund-parking-session/{id:guid}")]
-        public async Task<IActionResult> RequestRefund(Guid id, [FromBody] RefundRequestDto? dto = null)
+        public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing token.");
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            var session = await context.ParkingSessions.FirstOrDefaultAsync(s => s.Id == id);
-            if (session is null)
-                return NotFound("Parking session not found.");
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
 
-            var user = await context.Users.FindAsync(userId);
-            var isAdmin = user?.Role == UserRole.Admin;
+            var result = await _service.RequestRefundAsync(userId, isAdmin, id, dto);
 
-            if (!session.IsCancelled)
-                return BadRequest("Refunds can only be issued for cancelled sessions.");
+            if (result is null)
+                return BadRequest("Refund not applicable.");
 
-            if (session.Stopped is null)
-                return BadRequest("Session must be stopped before requesting a refund.");
-
-            if (session.IsRefunded)
-                return BadRequest("Refund already processed for this session.");
-
-            if (session.UserId != userId && !isAdmin)
-                return Forbid("You can only refund your own sessions.");
-
-            if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason))
-                return BadRequest("Admin must provide a reason for refund.");
-
-            const int MAX_REFUNDS_PER_USER = 3;
-            if (!RefundAttempts.TryGetValue(userId, out int attempts))
-                RefundAttempts[userId] = 0;
-
-            if (RefundAttempts[userId] >= MAX_REFUNDS_PER_USER)
-                return BadRequest("Refund attempt limit reached. Please try again later.");
-
-            RefundAttempts[userId]++;
-
-            const decimal RatePerMinute = 0.05m;
-            session.DurationMinutes = (int)(session.Stopped.Value - session.Started).TotalMinutes;
-            session.Cost = Math.Max(Math.Round(session.DurationMinutes * RatePerMinute, 2), 0.50m);
-
-            decimal refundPercentage;
-            if (session.DurationMinutes <= 10)
-                refundPercentage = 1.0m;
-            else if (session.DurationMinutes <= 30)
-                refundPercentage = 0.5m;
-            else
-                refundPercentage = 0.0m;
-
-            var refundAmount = Math.Round(session.Cost * refundPercentage, 2);
-
-            if (refundAmount <= 0)
-                return BadRequest("Refund not applicable for this session duration.");
-
-            if (string.IsNullOrWhiteSpace(dto?.IBAN))
-                return BadRequest("IBAN is required for refund processing.");
-
-            if (!Regex.IsMatch(dto.IBAN, @"^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$"))
-                return BadRequest("Invalid IBAN format. Example: NL91ABNA0417164300");
-
-            session.IsRefunded = true;
-            session.RefundDate = DateTimeOffset.UtcNow;
-            session.PaymentStatus = "refunded";
-
-            await context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Refund processed successfully.",
-                session.Id,
-                session.DurationMinutes,
-                session.Cost,
-                refundPercentage = refundPercentage * 100,
-                refundedAmount = refundAmount,
-                session.RefundDate,
-                session.PaymentStatus,
-                attemptsLeft = MAX_REFUNDS_PER_USER - RefundAttempts[userId]
-            });
+            return Ok(result);
         }
-
-        private static readonly Dictionary<Guid, int> RefundAttempts = new();
     }
-
 }
