@@ -1,202 +1,116 @@
-using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
-using MobyPark.Data;
-using MobyPark.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MobyPark.Models;
+using MobyPark.Services;
+using System.Security.Claims;
 
-namespace MobyPark.Services
+namespace MobyPark.Controllers
 {
-    public class ParkingSessionService(UserDbContext db) : IParkingSessionService
+    [ApiController]
+    [Authorize]
+    [Route("api/[controller]")]
+    public class ParkingSessionController : ControllerBase
     {
-        private static readonly Dictionary<Guid, int> RefundAttempts = new();
+        private readonly IParkingSessionService _service;
 
-        private const string PlatePattern =
-            @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
-
-        public async Task<Session?> StartSessionAsync(Guid userId, ParkingSessionStartDto dto)
+        public ParkingSessionController(IParkingSessionService service)
         {
-            var vehicle = await db.Vehicles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId);
-
-            if (vehicle is null) return null;
-
-            var existsActive = await db.ParkingSessions
-                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
-
-            if (existsActive) return null;
-
-            var session = new Session
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                VehicleId = vehicle.Id,
-                LicensePlate = vehicle.LicensePlate,
-                ParkingLotId = dto.ParkingLotId,
-                Started = DateTimeOffset.UtcNow,
-                DurationMinutes = 0,
-                Cost = 0,
-                PaymentStatus = "unpaid"
-            };
-
-            await db.ParkingSessions.AddAsync(session);
-            await db.SaveChangesAsync();
-
-            return session;
+            _service = service;
         }
 
-        public async Task<Session?> GetSessionByIdAsync(Guid userId, Guid sessionId)
+
+        [HttpPost("/start-parking-session")]
+        public async Task<IActionResult> StartSession(ParkingSessionStartDto dto)
         {
-            return await db.ParkingSessions
-                .Where(s => s.Id == sessionId && s.UserId == userId)
-                .FirstOrDefaultAsync();
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var result = await _service.StartSessionAsync(userId, dto);
+
+            if (result is null)
+                return BadRequest("Vehicle not found or session already active.");
+
+            return Ok(result);
         }
 
-        public async Task<Session?> StopSessionByIdAsync(Guid userId, bool isAdmin, Guid sessionId)
+        [HttpPost("stopsession")]
+        public async Task<IActionResult> StopSessionByPlate(ParkingSessionStopDto dto)
         {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
-            if (s is null) return null;
-            if (!isAdmin && s.UserId != userId) return null;
-            if (s.Stopped is not null) return null;
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            if (s.IsCancelled) return null;
+            var result = await _service.StopSessionByPlateAsync(userId, dto);
 
-            s.Stopped = DateTimeOffset.UtcNow;
-            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
-            s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
-            s.PaymentStatus = "awaiting_payment";
+            if (result is null)
+                return BadRequest("Could not stop session. Check licensePlate.");
 
-            await db.SaveChangesAsync();
-            return s;
+            return Ok(result);
         }
 
-        public async Task<Session?> StopSessionByPlateAsync(Guid userId, ParkingSessionStopDto dto)
+
+        [HttpPut("/stop-parking-session/{id:guid}")]
+        public async Task<IActionResult> StopSession(Guid id)
         {
-            var plate = dto.LicensePlate.Trim().ToUpper();
-            if (!Regex.IsMatch(plate, PlatePattern)) return null;
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            var sessions = await db.ParkingSessions
-                .Where(s => s.Stopped == null)
-                .ToListAsync();
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
 
-            var session = sessions.FirstOrDefault(s =>
-                s.LicensePlate.ToUpper() == plate);
+            var result = await _service.StopSessionByIdAsync(userId, isAdmin, id);
 
-            if (session is null) return null;
-            if (session.UserId != userId) return null;
+            if (result is null)
+                return BadRequest("Could not stop this session.");
 
-            session.Stopped = DateTimeOffset.UtcNow;
-
-            session.DurationMinutes = (int)Math.Ceiling(
-                (session.Stopped.Value - session.Started).TotalMinutes
-            );
-
-            const decimal Rate = 2.00m;
-            var hours = Math.Ceiling(session.DurationMinutes / 60m);
-            session.Cost = hours * Rate;
-            session.PaymentStatus = "unpaid";
-
-            var payment = new Payment
-            {
-                Id = Guid.NewGuid(),
-                Transaction = GenerateTransactionNumber(),
-                Amount = session.Cost,
-                Initiator = userId,
-                Completed = false,
-                Hash = GeneratePaymentHash()
-            };
-
-            db.ParkingSessions.Update(session);
-            await db.Payments.AddAsync(payment);
-            await db.SaveChangesAsync();
-
-            return session;
+            return Ok(result);
         }
 
-        public async Task<Session?> CancelSessionAsync(Guid userId, bool isAdmin, Guid sessionId, CancelParkingSessionDto dto)
+
+        [HttpGet("/get-parking-session-by-id")]
+        public async Task<IActionResult> GetSession(Guid id)
         {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
-            if (s is null) return null;
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            if (!isAdmin && s.UserId != userId)
-                return null;
+            var session = await _service.GetSessionByIdAsync(userId, id);
 
-            if (s.IsCancelled)
-                return null;
+            if (session is null)
+                return NotFound("Parking session not found.");
 
-            if (isAdmin && string.IsNullOrWhiteSpace(dto.Reason))
-                return null;
-
-            if (s.Stopped is null)
-                s.Stopped = DateTimeOffset.UtcNow;
-
-            s.IsCancelled = true;
-            s.CancelledAt = DateTimeOffset.UtcNow;
-
-            await db.SaveChangesAsync();
-            return s;
+            return Ok(session);
         }
 
-        public async Task<object?> RequestRefundAsync(Guid userId, bool isAdmin, Guid sessionId, RefundRequestDto? dto)
+
+        [HttpPut("/cancel-parking-session/{id:guid}")]
+        public async Task<IActionResult> CancelSession(Guid id, CancelParkingSessionDto dto)
         {
-            var s = await db.ParkingSessions.FindAsync(sessionId);
-            if (s is null) return null;
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-            if (!s.IsCancelled) return null;
-            if (s.Stopped is null) return null;
-            if (s.IsRefunded) return null;
-            if (!isAdmin && s.UserId != userId) return null;
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
 
-            if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason)) return null;
+            var result = await _service.CancelSessionAsync(userId, isAdmin, id, dto);
 
-            
-            if (!RefundAttempts.ContainsKey(userId))
-                RefundAttempts[userId] = 0;
+            if (result is null)
+                return BadRequest("Could not cancel session.");
 
-            if (RefundAttempts[userId] >= 3)
-                return null;
-
-            RefundAttempts[userId]++;
-
-            const decimal Rate = 0.05m;
-            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
-            s.Cost = Math.Max(Math.Round(s.DurationMinutes * Rate, 2), 0.50m);
-
-            decimal pct =
-                s.DurationMinutes <= 10 ? 1.0m :
-                s.DurationMinutes <= 30 ? 0.5m :
-                0.0m;
-
-            var refundAmount = Math.Round(s.Cost * pct, 2);
-            if (refundAmount <= 0) return null;
-
-            if (string.IsNullOrWhiteSpace(dto?.IBAN)) return null;
-
-            s.IsRefunded = true;
-            s.RefundDate = DateTimeOffset.UtcNow;
-            s.PaymentStatus = "refunded";
-
-            await db.SaveChangesAsync();
-
-            return new
-            {
-                sessionId = s.Id,
-                refunded = refundAmount,
-                percentage = pct * 100,
-                s.DurationMinutes,
-                s.Cost,
-                s.RefundDate
-            };
+            return Ok(result);
         }
 
-        private static string GeneratePaymentHash()
-        {
-            return Guid.NewGuid().ToString("N");
-        }
 
-        private static string GenerateTransactionNumber()
+        [HttpPost("/refund-parking-session/{id:guid}")]
+        public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
         {
-            return Random.Shared.NextInt64(100000000, 999999999).ToString("D12");
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            bool isAdmin = User.FindFirstValue(ClaimTypes.Role) == "Admin";
+
+            var result = await _service.RequestRefundAsync(userId, isAdmin, id, dto);
+
+            if (result is null)
+                return BadRequest("Refund not applicable.");
+
+            return Ok(result);
         }
     }
 }
