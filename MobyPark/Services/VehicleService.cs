@@ -32,5 +32,19 @@ namespace MobyPark.Services
 
             return vehicle;
         }
+
+        public async Task<List<Vehicle>> GetVehiclesByUsernameAsync(string username)
+        {
+            var user = await context.Users
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user is null)
+                return new List<Vehicle>();
+
+            return await context.Vehicles
+                .Where(v => v.UserId == user.Id)
+                .ToListAsync();
+        }
+
     }
 }
