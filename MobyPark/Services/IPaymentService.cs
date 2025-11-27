@@ -1,9 +1,10 @@
 using MobyPark.Models;
+using MobyPark.Entities;
 
 namespace MobyPark.Services
 {
     public interface IPaymentService
     {
-        Task<PaymentResponseDto?> FulfillPaymentAsync(Guid userId, PaymentsDto request);
+        Task<Payment> CompletePaymentAsync(Guid userId, string transactionId, PaymentValidationDto request);
     }
 }

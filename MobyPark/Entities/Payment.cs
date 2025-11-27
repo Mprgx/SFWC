@@ -1,17 +1,27 @@
-using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace MobyPark.Entities
 {
     public class Payment
     {
-        public Guid Id { get; set; }
-        public User User { get; set; } = null!;
-        public Guid Initiator { get; set; }
-        public string Transaction { get; set; } = string.Empty;
+        [Key]
+        public string Transaction { get; set; }
 
-        [Precision(18, 2)]
         public decimal Amount { get; set; }
-        public bool Completed { get; set; }
-        public string Hash { get; set; } = string.Empty;
+
+        public Guid Initiator { get; set; }
+
+        public DateTimeOffset Created_At { get; set; }
+
+        public DateTimeOffset? Completed { get; set; }
+
+        public string Hash { get; set; }
+
+        public string T_Data { get; set; }
+
+        public string Session_Id { get; set; }
+
+        public string Parking_Lot_Id { get; set; }
     }
 }
