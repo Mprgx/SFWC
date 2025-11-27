@@ -6,6 +6,8 @@ namespace MobyPark.Entities
     public class Payment
     {
         [Key]
+
+        public int Id { get; set; }
         public string Transaction { get; set; }
 
         public decimal Amount { get; set; }
