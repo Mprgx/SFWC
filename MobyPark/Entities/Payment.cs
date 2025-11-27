@@ -22,8 +22,8 @@ namespace MobyPark.Entities
 
         public string T_Data { get; set; }
 
-        public string Session_Id { get; set; }
+        public string SessionId { get; set; }
 
-        public string Parking_Lot_Id { get; set; }
+        public string ParkingLotId { get; set; }
     }
 }
