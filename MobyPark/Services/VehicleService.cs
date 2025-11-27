@@ -32,5 +32,20 @@ namespace MobyPark.Services
 
             return vehicle;
         }
+
+        public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
+        {
+            var vehicle = await context.Vehicles
+                .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
+
+            if (vehicle is null)
+                return false;
+
+            context.Vehicles.Remove(vehicle);
+            await context.SaveChangesAsync();
+
+            return true;
+        }
+
     }
 }

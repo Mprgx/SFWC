@@ -99,5 +99,21 @@ namespace MobyPark.Controllers
 
             return Ok(result);
         }
+        
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("/parking-lots/{lid:guid}/sessions/{sid:guid}")]
+        public async Task<IActionResult> DeleteSession(int lid, Guid sid)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var deleted = await service.DeleteSessionAsync(lid, sid);
+
+            if (!deleted)
+                return NotFound("Parking lot or session not found.");
+
+            return Ok("Session deleted.");
+        }
+
     }
 }
