@@ -70,7 +70,7 @@ namespace MobyPark.Services
             return s;
         }
 
-        public async Task<Session?> StopSessionByPlateAsync(Guid userId, ParkingSessionStopDto dto)
+        public async Task<Session?> StopSessionByPlateAsync(string username, Guid userId, ParkingSessionStopDto dto)
         {
             var plate = dto.LicensePlate.Trim().ToUpper();
             if (!Regex.IsMatch(plate, PlatePattern)) return null;
@@ -98,12 +98,13 @@ namespace MobyPark.Services
 
             var payment = new Payment
             {
-                Id = Guid.NewGuid(),
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
-                Initiator = userId,
-                Completed = false,
-                Hash = GeneratePaymentHash()
+                Initiator = username,
+                UserId = userId,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
             };
 
             db.ParkingSessions.Update(session);
@@ -149,7 +150,7 @@ namespace MobyPark.Services
 
             if (isAdmin && string.IsNullOrWhiteSpace(dto?.Reason)) return null;
 
-            
+
             if (!RefundAttempts.ContainsKey(userId))
                 RefundAttempts[userId] = 0;
 

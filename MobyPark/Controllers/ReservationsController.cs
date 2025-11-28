@@ -19,7 +19,7 @@ namespace MobyPark.Controllers
             _reservationService = reservationService;
         }
 
-        [HttpGet("{reservationid}")]
+        [HttpGet("/by-id/{reservationid}")]
         public ActionResult<Reservation> GetById(int reservationid)
         {
             var reservation = _reservationService.GetById(reservationid);
@@ -33,8 +33,22 @@ namespace MobyPark.Controllers
             return Ok(reservation);
         }
 
+        [HttpGet("by-vehicle-id/{vehicleid}")]
+        public ActionResult<Reservation> GetByVehicleId(int vehicleid)
+        {
+            var reservation = _reservationService.GetByVehicleId(vehicleid);
+            if (reservation == null)
+                return NotFound(new
+                {
+                    statuscode = 404,
+                    message = $"No reservation found"
+                });
+
+            return Ok(reservation);
+        }
+
         [HttpPost]
-        public ActionResult<Reservation> CreateReservation(CreateReservationDto dto)
+        public ActionResult<Reservation> CreateReservation(PostReservationDto dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(
@@ -45,7 +59,7 @@ namespace MobyPark.Controllers
                     });
 
             var reservation = _reservationService.CreateReservation(dto);
-            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
+            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.Id }, reservation);
         }
 
         [HttpDelete("{reservationid}")]
@@ -65,7 +79,7 @@ namespace MobyPark.Controllers
         }
 
         [HttpPut("{reservationid}")]
-        public ActionResult<Reservation> UpdateReservation(int reservationid, CreateReservationDto dto)
+        public ActionResult<Reservation> UpdateReservation(int reservationid, PostReservationDto dto)
         {
             var reservation = _reservationService.GetById(reservationid);
             if (reservation == null)
@@ -76,7 +90,7 @@ namespace MobyPark.Controllers
                 });
 
             _reservationService.UpdateReservation(reservation, dto);
-            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.ReservationId }, reservation);
+            return CreatedAtAction(nameof(GetById), new { reservationid = reservation.Id }, reservation);
 
         }
 

@@ -6,9 +6,10 @@ namespace MobyPark.Entities
     [Index(nameof(UserId), nameof(Started))]
     public class Session
     {
+        public Guid Id { get; set; }
+
         public int ParkingLotId { get; set; }
         public ParkingLot? ParkingLot { get; set; }
-        public Guid Id { get; set; }
 
         public Guid UserId { get; set; }
         public User? User { get; set; }

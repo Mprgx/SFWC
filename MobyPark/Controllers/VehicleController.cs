@@ -12,7 +12,7 @@ namespace MobyPark.Controllers
     public class VehicleController(IVehicleService vehicleService) : ControllerBase
     {
         [HttpPost("vehicle")]
-        public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleRequestDto request)
+        public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleReadDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -21,18 +21,7 @@ namespace MobyPark.Controllers
             var vehicle = await vehicleService.CreateVehicleAsync(userId, request);
             if (vehicle is null) return Conflict("License plate may already exist.");
 
-            var dto = new VehicleReadDto(
-                vehicle.Id,
-                vehicle.UserId,
-                vehicle.LicensePlate,
-                vehicle.Make,
-                vehicle.Model,
-                vehicle.Color,
-                vehicle.Year,
-                vehicle.CreatedAt
-            );
-
-            return Ok(dto);
+            return Ok(vehicle);
         }
     }
 }

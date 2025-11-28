@@ -27,7 +27,7 @@ namespace MobyPark.Controllers
 
             var dtos = lots.Select(l => new ParkingLotRequestDto(
                 l.Name, l.Location, l.Address, l.Capacity,
-                l.Reserved, l.Tariff, l.DayTariff,
+                l.ReservedSpots, l.Tariff, l.DayTariff,
                 JsonSerializer.Deserialize<Dictionary<string, double>>(l.Coordinates) ?? default
             )).ToList();
 
@@ -43,7 +43,7 @@ namespace MobyPark.Controllers
 
             var dto = new ParkingLotRequestDto(
                 lot.Name, lot.Location, lot.Address, lot.Capacity,
-                lot.Reserved, lot.Tariff, lot.DayTariff,
+                lot.ReservedSpots, lot.Tariff, lot.DayTariff,
                 JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? default
 
             );

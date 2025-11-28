@@ -31,7 +31,7 @@ namespace MobyPark.Services
             if (payment == null)
                 return null;
 
-            payment.Completed = true;
+            payment.Completed = DateTime.UtcNow;
             payment.Hash = GeneratePaymentHash(payment.Transaction, payment.Amount);
             session.PaymentStatus = "paid";
 
@@ -44,7 +44,18 @@ namespace MobyPark.Services
                 Transaction = payment.Transaction,
                 Amount = payment.Amount,
                 Initiator = payment.Initiator,
-                Completed = payment.Completed,
+                User = new UserReadDto
+                {
+                    Id = payment.User.Id,
+                    Username = payment.User.Username,
+                    Name = payment.User.Name,
+                    Email = payment.User.Email,
+                    PhoneNumber = payment.User.PhoneNumber,
+                    BirthYear = payment.User.BirthYear,
+                    Role = payment.User.Role,
+                    CreatedAt = payment.User.CreatedAt
+                },
+                Completed = payment.Completed.Value,
                 Hash = payment.Hash
             };
         }
