@@ -6,7 +6,7 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class SessionService(UserDbContext db) : ISessionService
+    public class SessionService(UserDbContext db, IEncryptionService encryption) : ISessionService
     {
         private static readonly Dictionary<Guid, int> RefundAttempts = new();
 
@@ -54,12 +54,27 @@ namespace MobyPark.Services
 
         public async Task<Session?> StopSessionByPlateAsync(Guid userId, SessionStopDto dto)
         {
-            var plate = dto.LicensePlate.Trim().ToUpper();
+            var plate = dto.LicensePlate?.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(plate)) return null;
             if (!Regex.IsMatch(plate, PlatePattern)) return null;
 
-            var session = await db.Sessions
-                .Where(s => s.Stopped == null && s.UserId == userId)
-                .FirstOrDefaultAsync(s => s.LicensePlate.ToUpper() == plate);
+            var sessions = await db.Sessions
+                .Where(s => s.Stopped == null)
+                .ToListAsync();
+
+            var session = sessions.FirstOrDefault(s =>
+            {
+                if (string.IsNullOrEmpty(s.LicensePlate)) return false;
+
+                var plain = encryption.Decrypt(s.LicensePlate);
+                if (string.IsNullOrWhiteSpace(plain)) return false;
+
+                return string.Equals(
+                    plain.Trim().ToUpperInvariant(),
+                    plate,
+                    StringComparison.Ordinal
+                );
+            });
 
             if (session is null) return null;
             if (session.UserId != userId) return null;
@@ -157,7 +172,7 @@ namespace MobyPark.Services
             if (!s.IsCancelled) return null;
             if (s.Stopped is null) return null;
             if (s.IsRefunded) return null;
-            
+
             if (!RefundAttempts.ContainsKey(userId))
                 RefundAttempts[userId] = 0;
 
@@ -195,6 +210,23 @@ namespace MobyPark.Services
                 s.Cost,
                 s.RefundDate
             };
+        }
+
+        public async Task<List<Session>> GetAllForUserAsync(Guid userId, bool onlyActive)
+        {
+            var query = db.Sessions
+                .Include(s => s.Vehicle)
+                .Include(s => s.ParkingLot)
+                .Where(s => s.UserId == userId);
+
+            if (onlyActive)
+            {
+                query = query.Where(s => s.Stopped == null && !s.IsCancelled);
+            }
+
+            return await query
+                .OrderByDescending(s => s.Started)
+                .ToListAsync();
         }
 
         private static string GeneratePaymentHash()

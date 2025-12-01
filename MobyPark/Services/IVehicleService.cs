@@ -8,5 +8,7 @@ namespace MobyPark.Services
         Task<Vehicle?> CreateVehicleAsync(Guid userId, VehicleRequestDto request);
         Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId);
 
+        Task<List<Vehicle>> GetVehiclesByUsernameAsync(string username);
     }
+
 }
