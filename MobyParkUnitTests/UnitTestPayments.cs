@@ -9,6 +9,7 @@ using MobyPark.Services;
 using MobyPark.Entities;
 using MobyPark.Models;
 using System.Collections.Generic;
+using System.Text.Json;
 
 namespace MobyPark.Tests
 {
@@ -105,41 +106,68 @@ namespace MobyPark.Tests
         [Fact]
         public async Task CompletePayment_Returns_FullPayment_OnSuccess()
         {
-            var serviceMock = new Mock<IPaymentService>();
-            var payment = new Payment
+            // Arrange
+            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+            // Create the DTO that the service will return
+            var paymentDto = new PaymentResponseDto
             {
                 Transaction = "tx123",
                 Amount = 16.5m,
                 Hash = "correcthash",
-                Initiator = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                Created_At = DateTimeOffset.Parse("2020-03-26T05:40:15Z"),
-                Completed = null,
-                T_Data = "{\"note\":\"done\"}",
-                Session_Id = "1",
-                Parking_Lot_Id = "1"
+                Initiator = userId.ToString(),
+                Completed = null, // Keep null to simulate not completed yet
+                User = new UserReadDto
+                {
+                    Id = userId,
+                    Username = "user1",
+                    Name = "Test User",
+                    Email = "test@example.com",
+                    PhoneNumber = "123456789",
+                    BirthYear = 1990,
+                    Role = UserRole.Customer,
+                    CreatedAt = DateTimeOffset.UtcNow
+                }
             };
 
+            // Mock the IPaymentService
+            var serviceMock = new Mock<IPaymentService>();
+            serviceMock
+                .Setup(s => s.CompletePaymentAsync(userId, "tx123", It.IsAny<PaymentValidationDto>()))
+                .ReturnsAsync(paymentDto);
 
-            serviceMock.Setup(s => s.CompletePaymentAsync(It.IsAny<System.Guid>(), "tx123", It.IsAny<PaymentValidationDto>()))
-                       .ReturnsAsync(payment);
-
+            // Pass the mock object (.Object) to the controller
             var controller = CreateController(serviceMock);
-            var dto = new PaymentValidationDto
+
+            // Prepare input DTO
+            var requestDto = new PaymentValidationDto
             {
-                T_Data = System.Text.Json.JsonDocument.Parse("{\"note\":\"done\"}").RootElement,
+                T_Data = JsonDocument.Parse("{\"note\":\"done\"}").RootElement,
                 Validation = "correcthash"
             };
 
-            var result = await controller.CompletePayment("tx123", dto);
+            // Act
+            var result = await controller.CompletePayment("tx123", requestDto);
 
+            // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnedPayment = Assert.IsType<Payment>(okResult.Value);
+            var returnedPayment = Assert.IsType<PaymentResponseDto>(okResult.Value);
 
-            Assert.Equal(payment.Transaction, returnedPayment.Transaction);
-            Assert.Equal(payment.Amount, returnedPayment.Amount);
-            Assert.Equal(payment.Initiator, returnedPayment.Initiator);
-            Assert.Equal(payment.T_Data, returnedPayment.T_Data);
+            Assert.Equal(paymentDto.Transaction, returnedPayment.Transaction);
+            Assert.Equal(paymentDto.Amount, returnedPayment.Amount);
+            Assert.Equal(paymentDto.Initiator, returnedPayment.Initiator);
+            Assert.Equal(paymentDto.Hash, returnedPayment.Hash);
+
+            // Check User fields
+            Assert.NotNull(returnedPayment.User);
+            Assert.Equal(paymentDto.User!.Id, returnedPayment.User.Id);
+            Assert.Equal(paymentDto.User.Username, returnedPayment.User.Username);
+            Assert.Equal(paymentDto.User.Name, returnedPayment.User.Name);
+            Assert.Equal(paymentDto.User.Email, returnedPayment.User.Email);
+
+            // Completed is still null
             Assert.Null(returnedPayment.Completed);
         }
+
     }
 }
