@@ -37,6 +37,9 @@ namespace MobyPark.Data
                     .HasForeignKey(v => v.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasIndex(v => new { v.UserId, v.LicensePlate })
+                    .IsUnique();
+
                 // Optioneel: unieke combi User + LicensePlate
                 // entity.HasIndex(v => new { v.UserId, v.LicensePlate }).IsUnique();
             });
