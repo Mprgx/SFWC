@@ -23,10 +23,10 @@ namespace MobyPark.Controllers
                 l.Location,
                 l.Address,
                 l.Capacity,
-                l.Reserved,
+                l.ReservedSpots,
                 l.Tariff,
                 l.DayTariff,
-                JsonSerializer.Deserialize<Dictionary<string, double>>(l.Coordinates) ?? new Dictionary<string, double>() 
+                JsonSerializer.Deserialize<Dictionary<string, double>>(l.Coordinates) ?? default
             )).ToList();
 
             return Ok(dtos);
@@ -39,14 +39,10 @@ namespace MobyPark.Controllers
             if (lot is null) return NotFound("Parking lot not found.");
 
             var dto = new ParkingLotRequestDto(
-                lot.Name,
-                lot.Location,
-                lot.Address,
-                lot.Capacity,
-                lot.Reserved,
-                lot.Tariff,
-                lot.DayTariff,
-                JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new Dictionary<string, double>()
+                lot.Name, lot.Location, lot.Address, lot.Capacity,
+                lot.ReservedSpots, lot.Tariff, lot.DayTariff,
+                JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? default
+
             );
 
             return Ok(dto);

@@ -7,14 +7,14 @@ namespace MobyPark.Entities
     {
         public Guid Id { get; set; }
 
+        public int ParkingLotId { get; set; }
+        public ParkingLot? ParkingLot { get; set; }
+
         public Guid UserId { get; set; }
         public User? User { get; set; }
 
         public int VehicleId { get; set; }
         public Vehicle? Vehicle { get; set; }
-
-        public int ParkingLotId { get; set; }
-        public ParkingLot? ParkingLot { get; set; }
 
         [Required, MaxLength(20)]
         public string LicensePlate { get; set; } = string.Empty;

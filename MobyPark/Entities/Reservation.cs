@@ -2,22 +2,27 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Entities
 {
-    public class Reservation
-    {
-        public int ReservationId { get; set; }
+        public class Reservation
+        {
+                public int Id { get; set; }
 
-        public int ParkingLotId { get; set; }
-        public Guid UserId { get; set; }
+                public int ParkingLotId { get; set; }
+                public ParkingLot? ParkingLot { get; set; }
 
-        [Required]
-        public string LicensePlate { get; set; } = string.Empty;
+                public Guid CompanyId { get; set; }
+                public Company? Company { get; set; }
 
-        public DateTimeOffset StartTime { get; set; }
-        public DateTimeOffset EndTime { get; set; }
+                public Guid UserId { get; set; }
+                public User? User { get; set; }
 
-        public bool IsActive { get; set; } = true;
+                public int VehicleId { get; set; }
+                public Vehicle? Vehicle { get; set; }
 
-        public User? User { get; set; }
-        public ParkingLot? ParkingLot { get; set; }
-    }
+                public required string LicensePlate { get; set; }
+                public DateTimeOffset StartTime { get; set; }
+                public DateTimeOffset EndTime { get; set; }
+                public int SpotsReserved { get; set; } = 1;
+                public bool IsActive { get; set; } = true;
+
+        }
 }

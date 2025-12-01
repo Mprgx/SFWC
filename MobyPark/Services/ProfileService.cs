@@ -23,16 +23,17 @@ namespace MobyPark.Services
                 ? string.Empty
                 : encryption.Decrypt(user.PhoneNumber) ?? string.Empty;
 
-            return new UserReadDto(
-                user.Id,
-                user.Username,
-                user.Name,
-                emailPlain,
-                phonePlain,
-                user.BirthYear,
-                user.Role,
-                user.CreatedAt
-            );
+            return new UserReadDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Name = user.Name,
+                Email = emailPlain,
+                PhoneNumber = phonePlain,
+                BirthYear = user.BirthYear,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
         }
 
         public async Task<(UserReadDto? dto, string? error, int? status)> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
@@ -124,15 +125,17 @@ namespace MobyPark.Services
                 ? string.Empty
                 : encryption.Decrypt(user.PhoneNumber) ?? string.Empty;
 
-            var result = new UserReadDto(
-                user.Id,
-                user.Username,
-                user.Name,
-                updatedEmail,
-                updatedPhone,
-                user.BirthYear,
-                user.Role,
-                user.CreatedAt);
+            var result = new UserReadDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Name = user.Name,
+                Email = updatedEmail,
+                PhoneNumber = updatedPhone,
+                BirthYear = user.BirthYear,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
 
             return (result, null, null);
         }

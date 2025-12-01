@@ -53,7 +53,7 @@ namespace MobyPark.Services
             return session;
         }
 
-        public async Task<Payment?> StopSessionAsync(string licensePlate, Guid userId, IEncryptionService encryption)
+        public async Task<Payment?> StopSessionAsync(string licensePlate, string username, Guid userid, IEncryptionService encryption)
         {
             if (string.IsNullOrWhiteSpace(licensePlate))
                 return null;
@@ -75,7 +75,7 @@ namespace MobyPark.Services
                 return platePlain.Trim().ToUpperInvariant() == lp;
             });
 
-            if (session == null || session.UserId != userId)
+            if (session == null || session.UserId != userid)
                 return null;
 
             session.Stopped = DateTimeOffset.UtcNow;

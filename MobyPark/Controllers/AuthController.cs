@@ -14,20 +14,50 @@ namespace MobyPark.Controllers
         {
             var by = request.BirthYear ?? 0;
             if (by != 0 && (by < 1900 || by > 2030))
-                return BadRequest("BirthYear must be 0 (unset) or between 1900 and 2030.");
+            {
+                return BadRequest(new
+                {
+                    status = "error",
+                    message = "BirthYear must be 0 (unset) or between 1900 and 2030."
+                });
+            }
 
             var dto = await authService.RegisterAsync(request);
-            if (dto is null) return Conflict("Username or email already exists.");
+            if (dto is null)
+            {
+                return Conflict(new
+                {
+                    status = "error",
+                    message = "Username or email already exists."
+                });
+            }
 
-            return Ok(dto);
+            return Created(string.Empty, new
+            {
+                status = "success",
+                user = dto
+            });
         }
 
         [HttpPost("/login")]
         public async Task<ActionResult<TokenResponseDto>> Login(LoginRequestDto request)
         {
             var result = await authService.LoginAsync(request);
-            if (result is null) return Unauthorized("Invalid username or password.");
-            return Ok(result);
+            if (result is null)
+            {
+                return Unauthorized(new
+                {
+                    status = "error",
+                    message = "Invalid username or password."
+                });
+            }
+
+            return Ok(new
+            {
+                status = "success",
+                accessToken = result.AccessToken,
+                refreshToken = result.RefreshToken
+            });
         }
 
         [Authorize]
@@ -35,31 +65,65 @@ namespace MobyPark.Controllers
         public async Task<IActionResult> Logout()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized(new
+                {
+                    status = "error",
+                    message = "Missing or invalid user id claim."
+                });
+            }
+
             await authService.LogoutAsync(userId);
-            return NoContent();
+
+            return Ok(new
+            {
+                status = "success",
+                message = "Logged out successfully."
+            });
         }
 
         [HttpPost("/refresh-token")]
         public async Task<ActionResult<TokenResponseDto>> RefreshToken(RefreshTokenRequestDto request)
         {
             var result = await authService.RefreshTokensAsync(request);
-            if (result is null) return Unauthorized("Invalid refresh token.");
-            return Ok(result);
+            if (result is null)
+            {
+                return Unauthorized(new
+                {
+                    status = "error",
+                    message = "Invalid refresh token."
+                });
+            }
+
+            return Ok(new
+            {
+                status = "success",
+                accessToken = result.AccessToken,
+                refreshToken = result.RefreshToken
+            });
         }
 
         [Authorize]
         [HttpGet("/test-authenticated-only")]
         public IActionResult AuthenticatedOnlyEndpoint()
         {
-            return Ok("You are authenticated!");
+            return Ok(new
+            {
+                status = "success",
+                message = "You are authenticated!"
+            });
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("/test-admin-only")]
         public IActionResult AdminOnlyEndpoint()
         {
-            return Ok("You are an admin!");
+            return Ok(new
+            {
+                status = "success",
+                message = "You are an admin!"
+            });
         }
     }
 }
