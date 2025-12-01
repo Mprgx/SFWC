@@ -11,6 +11,7 @@ namespace MobyPark.Services
         Task<Session?> StopSessionByIdAsync(Guid userId, Guid sessionId);
         Task<Session?> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto);
         Task<object?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto);
+        Task<bool> DeleteSessionAsync(int parkingLotId, Guid sessionId);
         Task<List<Session>> GetAllForUserAsync(Guid userId, bool onlyActive);
     }
 }

@@ -44,5 +44,31 @@ namespace MobyPark.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("payments")]
+        public async Task<ActionResult> GetMyPayments()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var paymentList = await _paymentService.GetPaymentsForUserAsync(userId);
+
+            return Ok(paymentList);
+        }
+
+
+        [HttpGet("payments/{username}")]
+        [Authorize(Roles = "ADMIN")]
+        public async Task<ActionResult> GetPaymentsForUser(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return BadRequest("Username is required");
+
+            var paymentList = await _paymentService.GetPaymentsForAnyUserAsync(username);
+
+            return Ok(paymentList);
+        }
     }
 }
