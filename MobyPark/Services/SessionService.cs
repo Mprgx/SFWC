@@ -141,6 +141,29 @@ namespace MobyPark.Services
             return s;
         }
 
+        public async Task<bool> DeleteSessionAsync(int parkingLotId, Guid sessionId)
+        {
+            // Check of parking lot bestaat
+            var parkingLotExists = await db.ParkingLots
+                .AnyAsync(p => p.Id == parkingLotId);
+
+            if (!parkingLotExists)
+                return false;
+
+            // Zoek de session
+            var session = await db.Sessions
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.ParkingLotId == parkingLotId);
+
+            if (session is null)
+                return false;
+
+            db.Sessions.Remove(session);
+            await db.SaveChangesAsync();
+
+            return true;
+        }
+
+
         public async Task<object?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
         {
             var s = await db.Sessions.FindAsync(sessionId);

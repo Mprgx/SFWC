@@ -124,14 +124,41 @@ namespace MobyPark.Controllers
 
             return Ok(result);
         }
-
-        // GET /my-sessions?onlyActive=true|false
-        [HttpGet("/my-sessions")]
-        public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
+        
+       [Authorize(Roles = "Admin")]
+        [HttpPost("/refund-session/{id:guid}")]
+        public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
+            var result = await service.RequestRefundAsync(userId, id, dto);
+
+            if (result is null)
+                return BadRequest("Refund not applicable.");
+
+            return Ok(result);
+        }
+        
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("/parking-lots/{lid:guid}/sessions/{sid:guid}")]
+        public async Task<IActionResult> DeleteSession(int lid, Guid sid)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var deleted = await service.DeleteSessionAsync(lid, sid);
+
+            if (!deleted)
+                return NotFound("Parking lot or session not found.");
+
+            return Ok("Session deleted.");
+        }
+        
+        // GET /my-sessions?onlyActive=true|false
+        [HttpGet("/my-sessions")]
+        public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
+        {
             var sessions = await service.GetAllForUserAsync(userId, onlyActive);
             var dtos = sessions.Select(ToDto).ToList();
 

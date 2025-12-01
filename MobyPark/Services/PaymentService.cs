@@ -57,5 +57,52 @@ namespace MobyPark.Services
                 sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input))
             );
         }
+
+        public async Task<List<PaymentResponseDto?>> GetPaymentsForUserAsync(Guid userId)
+        {
+            // Haal de juiste user op
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+                return new List<PaymentResponseDto?>();
+
+            // Haal payments op van de gebruiker
+            var payments = await _context.Payments
+                .Where(p => p.Initiator == user.Id)
+                .ToListAsync();
+
+            // Map naar DTO
+            return payments.Select(p => (PaymentResponseDto?)new PaymentResponseDto
+            {
+                Transaction = p.Transaction,
+                Amount = p.Amount,
+                Initiator = p.Initiator,
+                Completed = p.Completed,
+                Hash = p.Hash
+            }).ToList();
+        }
+
+        public async Task<List<PaymentResponseDto?>> GetPaymentsForAnyUserAsync(string username)
+        {
+            // Zoek de gebruiker waar de admin informatie van wil
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+                return new List<PaymentResponseDto?>();
+
+            // Haal payments op
+            var payments = await _context.Payments
+                .Where(p => p.Initiator == user.Id)
+                .ToListAsync();
+
+            // Map naar DTO
+            return payments.Select(p => (PaymentResponseDto?)new PaymentResponseDto
+            {
+                Transaction = p.Transaction,
+                Amount = p.Amount,
+                Initiator = p.Initiator,
+                Completed = p.Completed,
+                Hash = p.Hash
+            }).ToList();
+        }
+
     }
 }
