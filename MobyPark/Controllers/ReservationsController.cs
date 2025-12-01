@@ -10,14 +10,8 @@ namespace MobyPark.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class ReservationsController : ControllerBase
+    public class ReservationsController(ReservationService _reservationService) : ControllerBase
     {
-        private readonly ReservationService _reservationService;
-
-        public ReservationsController(ReservationService reservationService)
-        {
-            _reservationService = reservationService;
-        }
 
         [HttpGet("/by-id/{reservationid}")]
         public ActionResult<Reservation> GetById(int reservationid)

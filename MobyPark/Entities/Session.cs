@@ -3,7 +3,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Entities
 {
-    [Index(nameof(UserId), nameof(Started))]
     public class Session
     {
         public Guid Id { get; set; }
@@ -31,12 +30,10 @@ namespace MobyPark.Entities
         [Required, MaxLength(20)]
         public string PaymentStatus { get; set; } = "unpaid";
 
-        public bool IsCancelled { get; set; } = false;
-
+        public bool IsCancelled { get; set; }
         public DateTimeOffset? CancelledAt { get; set; }
 
-        public bool IsRefunded { get; set; } = false;
-
+        public bool IsRefunded { get; set; }
         public DateTimeOffset? RefundDate { get; set; }
     }
 }

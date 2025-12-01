@@ -12,7 +12,7 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251128112642_Initial")]
+    [Migration("20251201130702_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -261,11 +261,11 @@ namespace MobyPark.Migrations
 
                     b.HasIndex("ParkingLotId");
 
+                    b.HasIndex("UserId");
+
                     b.HasIndex("VehicleId");
 
-                    b.HasIndex("UserId", "Started");
-
-                    b.ToTable("ParkingSessions");
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.User", b =>

@@ -16,7 +16,7 @@ namespace MobyPark.Services
 
         public async Task<PaymentResponseDto?> FulfillPaymentAsync(Guid userId, PaymentsDto request)
         {
-            var session = await _context.ParkingSessions
+            var session = await _context.Sessions
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
             if (session == null)

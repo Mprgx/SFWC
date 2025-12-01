@@ -24,7 +24,7 @@ namespace MobyPark.Services
             if (!lot)
                 return new List<Session>();
 
-            var query = db.ParkingSessions
+            var query = db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .Where(s => s.ParkingLotId == lid); //s.ParkingLotId == lid
@@ -38,7 +38,7 @@ namespace MobyPark.Services
         public async Task<Session?> GetSessionByIdAsync(
             int lid, string sid, string? username, bool isAdmin)
         {
-            var session = await db.ParkingSessions
+            var session = await db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .FirstOrDefaultAsync(s =>
@@ -60,7 +60,7 @@ namespace MobyPark.Services
 
             var lp = licensePlate.Trim().ToUpperInvariant();
 
-            var activeSessions = await db.ParkingSessions
+            var activeSessions = await db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
                 .Where(s => s.Stopped == null)
@@ -97,7 +97,7 @@ namespace MobyPark.Services
                 T_Data = null
             };
 
-            db.ParkingSessions.Update(session);
+            db.Sessions.Update(session);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 

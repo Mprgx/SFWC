@@ -125,48 +125,6 @@ namespace MobyPark.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ParkingSessions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ParkingLotId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VehicleId = table.Column<int>(type: "int", nullable: false),
-                    LicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Started = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    Stopped = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
-                    Cost = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: false),
-                    PaymentStatus = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    IsCancelled = table.Column<bool>(type: "bit", nullable: false),
-                    CancelledAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    IsRefunded = table.Column<bool>(type: "bit", nullable: false),
-                    RefundDate = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ParkingSessions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ParkingSessions_ParkingLots_ParkingLotId",
-                        column: x => x.ParkingLotId,
-                        principalTable: "ParkingLots",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ParkingSessions_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ParkingSessions_Vehicles_VehicleId",
-                        column: x => x.VehicleId,
-                        principalTable: "Vehicles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Reservations",
                 columns: table => new
                 {
@@ -205,6 +163,48 @@ namespace MobyPark.Migrations
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Reservations_Vehicles_VehicleId",
+                        column: x => x.VehicleId,
+                        principalTable: "Vehicles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Sessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParkingLotId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    VehicleId = table.Column<int>(type: "int", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Started = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Stopped = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    Cost = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: false),
+                    PaymentStatus = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IsCancelled = table.Column<bool>(type: "bit", nullable: false),
+                    CancelledAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    IsRefunded = table.Column<bool>(type: "bit", nullable: false),
+                    RefundDate = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Sessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Sessions_ParkingLots_ParkingLotId",
+                        column: x => x.ParkingLotId,
+                        principalTable: "ParkingLots",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Sessions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Sessions_Vehicles_VehicleId",
                         column: x => x.VehicleId,
                         principalTable: "Vehicles",
                         principalColumn: "Id",
@@ -260,9 +260,9 @@ namespace MobyPark.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Payments_ParkingSessions_SessionId",
+                        name: "FK_Payments_Sessions_SessionId",
                         column: x => x.SessionId,
-                        principalTable: "ParkingSessions",
+                        principalTable: "Sessions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -277,21 +277,6 @@ namespace MobyPark.Migrations
                 name: "IX_CompanyUsers_UserId",
                 table: "CompanyUsers",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ParkingSessions_ParkingLotId",
-                table: "ParkingSessions",
-                column: "ParkingLotId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ParkingSessions_UserId_Started",
-                table: "ParkingSessions",
-                columns: new[] { "UserId", "Started" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ParkingSessions_VehicleId",
-                table: "ParkingSessions",
-                column: "VehicleId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Payments_ParkingLotId",
@@ -329,6 +314,21 @@ namespace MobyPark.Migrations
                 column: "VehicleId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Sessions_ParkingLotId",
+                table: "Sessions",
+                column: "ParkingLotId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Sessions_UserId",
+                table: "Sessions",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Sessions_VehicleId",
+                table: "Sessions",
+                column: "VehicleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_CompanyId",
                 table: "Users",
                 column: "CompanyId");
@@ -361,7 +361,7 @@ namespace MobyPark.Migrations
                 name: "UserVehicles");
 
             migrationBuilder.DropTable(
-                name: "ParkingSessions");
+                name: "Sessions");
 
             migrationBuilder.DropTable(
                 name: "ParkingLots");

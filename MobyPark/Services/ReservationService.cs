@@ -4,15 +4,8 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ReservationService : IReservationService
+    public class ReservationService(UserDbContext _context) : IReservationService
     {
-        private readonly UserDbContext _context;
-
-        public ReservationService(UserDbContext context)
-        {
-            _context = context;
-        }
-
         public Reservation? GetById(int reservationId)
         {
             return _context.Reservations.FirstOrDefault(r => r.Id == reservationId);
