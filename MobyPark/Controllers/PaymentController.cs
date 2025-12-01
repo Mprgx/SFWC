@@ -24,25 +24,58 @@ namespace MobyPark.Controllers
             _paymentService = paymentService;
         }
 
-        [HttpPost("payments")]
-        public async Task<ActionResult> FulfillPayment(PaymentsDto paymentRequest)
+        // [HttpPost("payments")]
+        // public async Task<ActionResult> FulfillPayment(PaymentsDto paymentRequest)
+        // {
+        //     if (paymentRequest == null)
+        //         return BadRequest("Request body is required");
+
+        //     if (string.IsNullOrEmpty(paymentRequest.Transaction))
+        //         return BadRequest("Transaction number is required");
+
+        //     if (paymentRequest.Amount <= 0)
+        //         return BadRequest("Amount must be a positive number");
+
+        //     var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //     if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        //         return Unauthorized("Invalid or missing user ID.");
+
+        //     var result = await _paymentService.FulfillPaymentAsync(userId, paymentRequest);
+
+        //     return Ok(result);
+        // }
+
+        [HttpPut("payments/{transactionId}")]
+        public async Task<ActionResult<Payment>> CompletePayment(string transactionId, [FromBody] PaymentValidationDto request)
         {
-            if (paymentRequest == null)
-                return BadRequest("Request body is required");
+            if (request == null)
+                return BadRequest("Body is required");
 
-            if (string.IsNullOrEmpty(paymentRequest.Transaction))
-                return BadRequest("Transaction number is required");
+            if (string.IsNullOrWhiteSpace(request.Validation))
+                return BadRequest("validation field is missing");
 
-            if (paymentRequest.Amount <= 0)
-                return BadRequest("Amount must be a positive number");
+            if (string.IsNullOrWhiteSpace(request.T_Data.GetRawText()))
+                return BadRequest("t_data field is missing");
 
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing user ID.");
+                return Unauthorized("Invalid or missing user ID");
 
-            var result = await _paymentService.FulfillPaymentAsync(userId, paymentRequest);
+            try
+            {
+                var payment = await _paymentService
+                    .CompletePaymentAsync(userId, transactionId, request);
 
-            return Ok(result);
+                return Ok(payment);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
         }
 
         [HttpGet("payments")]
