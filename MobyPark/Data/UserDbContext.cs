@@ -11,111 +11,97 @@ namespace MobyPark.Data
         public DbSet<ParkingLot> ParkingLots => Set<ParkingLot>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Reservation> Reservations => Set<Reservation>();
+        public DbSet<UserVehicle> UserVehicles => Set<UserVehicle>();
+        public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // ---------------------
-            // User
-            // ---------------------
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.HasKey(u => u.Id);
-                // hier kun je eventueel nog property-config doen (MaxLength, Required, etc.)
-            });
+            // UserVehicles
+            modelBuilder.Entity<UserVehicle>()
+                .HasKey(uv => new { uv.UserId, uv.VehicleId });
 
-            // ---------------------
-            // Vehicle  (1 User -> N Vehicles)
-            // ---------------------
-            modelBuilder.Entity<Vehicle>(entity =>
-            {
-                entity.HasKey(v => v.Id);
+            modelBuilder.Entity<UserVehicle>()
+                .HasOne(uv => uv.User)
+                .WithMany(u => u.UserVehicles)
+                .HasForeignKey(uv => uv.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(v => v.User)
-                    .WithMany(u => u.Vehicles)
-                    .HasForeignKey(v => v.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<UserVehicle>()
+                .HasOne(uv => uv.Vehicle)
+                .WithMany(v => v.UserVehicles)
+                .HasForeignKey(uv => uv.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasIndex(v => new { v.UserId, v.LicensePlate })
-                    .IsUnique();
+            // CompanyUsers
+            modelBuilder.Entity<CompanyUser>()
+                .HasKey(cu => new { cu.CompanyId, cu.UserId });
 
-                // Optioneel: unieke combi User + LicensePlate
-                // entity.HasIndex(v => new { v.UserId, v.LicensePlate }).IsUnique();
-            });
+            modelBuilder.Entity<CompanyUser>()
+                .HasOne(cu => cu.Company)
+                .WithMany(c => c.CompanyUsers)
+                .HasForeignKey(cu => cu.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ---------------------
-            // ParkingLot
-            // ---------------------
-            modelBuilder.Entity<ParkingLot>(entity =>
-            {
-                entity.HasKey(p => p.Id);
-                // extra config (Required, MaxLength) kan hier
-            });
+            modelBuilder.Entity<CompanyUser>()
+                .HasOne(cu => cu.User)
+                .WithMany(u => u.CompanyUsers)
+                .HasForeignKey(cu => cu.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ---------------------
-            // Session  (User, Vehicle, ParkingLot)
-            // ---------------------
-            modelBuilder.Entity<Session>(entity =>
-            {
-                entity.HasKey(s => s.Id);
+            // Sessions
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.Vehicle)
+                .WithMany()
+                .HasForeignKey(s => s.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                // Session ↔ User  (1 User -> N Sessions)
-                entity.HasOne(s => s.User)
-                    .WithMany(u => u.Sessions)          // 👈 let op: Sessions in User
-                    .HasForeignKey(s => s.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.User)
+                .WithMany(u => u.ParkingSessions)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                // Session ↔ Vehicle (1 Vehicle -> N Sessions)
-                entity.HasOne(s => s.Vehicle)
-                    .WithMany(v => v.Sessions)         // 👈 Sessions in Vehicle
-                    .HasForeignKey(s => s.VehicleId)
-                    .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Session>()
+                .HasOne(s => s.ParkingLot)
+                .WithMany(p => p.ParkingSessions)
+                .HasForeignKey(s => s.ParkingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                // Session ↔ ParkingLot (1 ParkingLot -> N Sessions)
-                entity.HasOne(s => s.ParkingLot)
-                    .WithMany(p => p.Sessions)         // 👈 Sessions in ParkingLot
-                    .HasForeignKey(s => s.ParkingLotId)
-                    .OnDelete(DeleteBehavior.Cascade);
+            // Reservations
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.Reservations)
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                // Optioneel: extra config
-                // entity.Property(s => s.LicensePlate).HasMaxLength(20).IsRequired();
-                // entity.Property(s => s.PaymentStatus).HasMaxLength(20).IsRequired();
-                // entity.Property(s => s.Cost).HasPrecision(10, 2);
-            });
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Vehicle)
+                .WithMany()
+                .HasForeignKey(r => r.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // ---------------------
-            // Payment  (1 User -> N Payments)
-            // ---------------------
-            modelBuilder.Entity<Payment>(entity =>
-            {
-                entity.HasKey(p => p.Id);
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Company)
+                .WithMany(c => c.Reservations)
+                .HasForeignKey(r => r.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(p => p.User)
-                    .WithMany(u => u.Payments)
-                    .HasForeignKey(p => p.Initiator)
-                    .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.ParkingLot)
+                .WithMany(p => p.Reservations)
+                .HasForeignKey(r => r.ParkingLotId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                // entity.Property(p => p.Amount).HasColumnType("decimal(18,2)");
-            });
-
-            // ---------------------
-            // Reservation  (User + ParkingLot)
-            // ---------------------
-            modelBuilder.Entity<Reservation>(entity =>
-            {
-                entity.HasKey(r => r.ReservationId);
-
-                entity.HasOne(r => r.User)
-                    .WithMany(u => u.Reservations)
-                    .HasForeignKey(r => r.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(r => r.ParkingLot)
-                    .WithMany(p => p.Reservations)
-                    .HasForeignKey(r => r.ParkingLotId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
+            // Payments
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.Payments)
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
+
     }
 }

@@ -1,7 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Models
 {
+    public class LoginRequestDto
+    {
+        [Required]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
     public class RegisterRequestDto
     {
         [Required, MinLength(3), MaxLength(50)]
@@ -17,7 +26,7 @@ namespace MobyPark.Models
 
         [EmailAddress, MaxLength(256)]
         public string? Email { get; set; }
-        
+
         [Phone, MaxLength(30)]
         public string? PhoneNumber { get; set; }
 

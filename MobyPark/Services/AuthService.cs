@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using BCrypt.Net;
 
 namespace MobyPark.Services
 {
@@ -20,9 +21,9 @@ namespace MobyPark.Services
             var user = await context.Users.FirstOrDefaultAsync(u => u.Username == uname);
             if (user is null) return null;
 
-            var result = new PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            var result = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
-            if (result == PasswordVerificationResult.Failed) return null;
+            if (result == false) return null;
 
             return await CreateTokenResponse(user);
         }
@@ -78,22 +79,24 @@ namespace MobyPark.Services
                 PhoneNumber = string.IsNullOrEmpty(phonePlain) ? string.Empty : encryption.Encrypt(phonePlain)!,
                 BirthYear = birth,
                 CreatedAt = DateTimeOffset.UtcNow,
-                Role = UserRole.Customer
+                Role = UserRole.Customer,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
             };
-
-            user.PasswordHash = new PasswordHasher<User>().HashPassword(user, request.Password);
 
             context.Users.Add(user);
             await context.SaveChangesAsync();
-            return new UserReadDto(
-                user.Id,
-                user.Username,
-                user.Name,
-                emailPlain,
-                phonePlain,
-                user.BirthYear,
-                user.Role,
-                user.CreatedAt);
+
+            return new UserReadDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Name = user.Name,
+                Email = emailPlain,
+                PhoneNumber = phonePlain,
+                BirthYear = user.BirthYear,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
         }
 
         public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
@@ -130,7 +133,7 @@ namespace MobyPark.Services
                 RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
             };
         }
-       
+
         private string GenerateRefreshToken()
         {
             var bytes = new byte[32];
@@ -141,8 +144,8 @@ namespace MobyPark.Services
 
         private async Task<string> GenerateAndSaveRefreshTokenAsync(User user)
         {
-            var refreshToken = GenerateRefreshToken();                 
-            var protectedToken = encryption.Encrypt(refreshToken)!;   
+            var refreshToken = GenerateRefreshToken();
+            var protectedToken = encryption.Encrypt(refreshToken)!;
 
             user.RefreshToken = protectedToken;
             user.RefreshTokenExpiryTime = DateTimeOffset.UtcNow.AddDays(7);

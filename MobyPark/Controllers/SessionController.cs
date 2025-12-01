@@ -57,7 +57,7 @@ namespace MobyPark.Controllers
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await service.StopSessionByPlateAsync(userId, dto);
+            var result = await service.StopSessionByPlateAsync(User.Identity.Name, userId, dto);
 
             if (result is null)
                 return BadRequest("Could not stop session. Check licensePlate.");
