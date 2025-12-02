@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using MobyPark.Models;
-using MobyPark.Entities;
 
 namespace MobyPark.Models
 {
@@ -23,7 +21,23 @@ namespace MobyPark.Models
         public SessionReadDto? Session { get; set; }
 
         public int ParkingLotId { get; set; }
-        public ParkingLot? ParkingLot { get; set; } = null;
+        public ParkingLotSummaryDto? ParkingLot { get; set; }
+    }
+
+    // Small summary DTO for ParkingLot, only scalar fields
+    public class ParkingLotSummaryDto
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Address { get; set; } = "";
+
+        public int Capacity { get; set; }
+        public int ReservedSpots { get; set; }
+
+        public double Tariff { get; set; }
+        public double DayTariff { get; set; }
     }
 
     public class PaymentsDto
