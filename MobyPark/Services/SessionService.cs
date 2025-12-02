@@ -115,14 +115,34 @@ namespace MobyPark.Services
             if (s.Stopped is not null) return null;
             if (s.IsCancelled) return null;
 
+            // Stop the session
             s.Stopped = DateTimeOffset.UtcNow;
             s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
             s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
+
+            // Session is not paid yet
             s.PaymentStatus = "awaiting_payment";
+
+            // Create a billing snapshot
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = s.ParkingLotId,
+                LicensePlate = s.LicensePlate,
+                Started = s.Started,
+                Stopped = s.Stopped!.Value,
+                Username = s.User.Username,
+                DurationMinutes = s.DurationMinutes,
+                Cost = s.Cost,
+                PaymentStatus = "awaiting_payment"
+            };
+
+            db.Billings.Add(billing);
 
             await db.SaveChangesAsync();
             return s;
         }
+
 
         public async Task<Session?> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto)
         {
