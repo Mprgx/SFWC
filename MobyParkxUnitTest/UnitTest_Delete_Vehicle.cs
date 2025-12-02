@@ -4,7 +4,7 @@ using MobyPark.Entities;
 using MobyPark.Services;
 using Xunit;
 
-namespace MobyParkUnitTests
+namespace MobyParkxUnitTest
 {
     public class DeleteVehicleServiceTests
     {

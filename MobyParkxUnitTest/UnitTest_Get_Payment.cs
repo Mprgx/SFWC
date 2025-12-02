@@ -5,7 +5,7 @@
 //using MobyPark.Models;
 //using Xunit;
 
-//namespace MobyParkUnitTests
+//namespace MobyParkxUnitTest
 //{
 //    public class GetPaymentServiceTests
 //    {

@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251202125652_initialRecreatedDb")]
-    partial class initialRecreatedDb
+    [Migration("20251202183309_InitialRecreatedRebuild")]
+    partial class InitialRecreatedRebuild
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -285,8 +285,7 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -299,8 +298,7 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("nvarchar(max)");

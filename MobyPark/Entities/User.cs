@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace MobyPark.Entities
@@ -13,10 +14,10 @@ namespace MobyPark.Entities
                 [Required, MaxLength(70)]
                 public string Name { get; set; } = string.Empty;
 
-                [Required, EmailAddress, MaxLength(256)]
+                [Required, Column(TypeName = "nvarchar(max)")]
                 public string Email { get; set; } = string.Empty;
 
-                [Required, MaxLength(30)]
+                [Required, Column(TypeName = "nvarchar(max)")]
                 public string PhoneNumber { get; set; } = string.Empty;
 
                 public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
