@@ -22,7 +22,7 @@ namespace MobyPark.Controllers
             return Ok(await billing.GetReceiptsForUserAsync(Username));
         }
 
-        [Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {

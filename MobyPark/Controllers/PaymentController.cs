@@ -93,7 +93,7 @@ namespace MobyPark.Controllers
 
 
         [HttpGet("payments/{username}")]
-        [Authorize(Roles = "ADMIN")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> GetPaymentsForUser(string username)
         {
             if (string.IsNullOrWhiteSpace(username))

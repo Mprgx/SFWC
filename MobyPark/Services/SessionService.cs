@@ -66,7 +66,7 @@ namespace MobyPark.Services
             {
                 if (string.IsNullOrEmpty(s.LicensePlate)) return false;
 
-                var plain = encryption.Decrypt(s.LicensePlate);
+                var plain = s.LicensePlate; // encryption removed for now
                 if (string.IsNullOrWhiteSpace(plain)) return false;
 
                 return string.Equals(
@@ -79,6 +79,7 @@ namespace MobyPark.Services
             if (session is null) return null;
             if (session.UserId != userId) return null;
 
+            // Stop session
             session.Stopped = DateTimeOffset.UtcNow;
 
             session.DurationMinutes = (int)Math.Ceiling(
@@ -90,23 +91,43 @@ namespace MobyPark.Services
             session.Cost = hours * Rate;
             session.PaymentStatus = "unpaid";
 
+            // ----- CREATE BILLING SNAPSHOT -----
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = session.ParkingLotId,
+                LicensePlate = session.LicensePlate,
+                Started = session.Started,
+                Stopped = session.Stopped.Value,
+                Username = username,
+                DurationMinutes = session.DurationMinutes,
+                Cost = session.Cost,
+                PaymentStatus = "unpaid"
+            };
+
+            // ----- CREATE PAYMENT ENTRY -----
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
                 Initiator = username,
                 UserId = userId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
                 Completed = null,
                 Hash = GeneratePaymentHash(),
-                T_Data = null
+                T_Data = ""
             };
 
+            // Save everything
             db.Sessions.Update(session);
+            await db.Billings.AddAsync(billing);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
             return session;
         }
+
 
         public async Task<Session?> StopSessionByIdAsync(Guid userId, Guid sessionId)
         {
