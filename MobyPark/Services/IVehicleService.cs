@@ -5,9 +5,10 @@ namespace MobyPark.Services
 {
     public interface IVehicleService
     {
-        Task<VehicleReadDto?> CreateVehicleAsync(Guid userId, VehicleReadDto request);
+        Task<VehicleReadDto?> CreateVehicleAsync(Guid userId, VehicleCreateDto request);
         Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId);
-        Task<List<Vehicle>> GetVehiclesByUsernameAsync(string username);
+        Task<List<VehicleReadDto>> GetVehiclesByUsernameAsync(string username);
     }
+
 
 }

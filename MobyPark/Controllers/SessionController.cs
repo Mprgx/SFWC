@@ -15,16 +15,14 @@ namespace MobyPark.Controllers
 
         private SessionReadDto ToDto(Session s)
         {
-            var platePlain = string.IsNullOrEmpty(s.LicensePlate)
-                ? string.Empty
-                : encryption.Decrypt(s.LicensePlate) ?? string.Empty;
+            // var platePlain = string.IsNullOrEmpty(s.LicensePlate); // HERE FOR THE ENCRYPTION
 
             return new SessionReadDto(
                 s.Id,
                 s.UserId,
                 s.VehicleId,
                 s.ParkingLotId,
-                platePlain,
+                s.LicensePlate,
                 s.Started,
                 s.Stopped,
                 s.DurationMinutes,

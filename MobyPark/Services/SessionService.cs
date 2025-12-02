@@ -66,7 +66,7 @@ namespace MobyPark.Services
             {
                 if (string.IsNullOrEmpty(s.LicensePlate)) return false;
 
-                var plain = encryption.Decrypt(s.LicensePlate);
+                var plain = s.LicensePlate; // encryption removed for now
                 if (string.IsNullOrWhiteSpace(plain)) return false;
 
                 return string.Equals(
@@ -79,6 +79,7 @@ namespace MobyPark.Services
             if (session is null) return null;
             if (session.UserId != userId) return null;
 
+            // Stop session
             session.Stopped = DateTimeOffset.UtcNow;
 
             session.DurationMinutes = (int)Math.Ceiling(
@@ -90,23 +91,43 @@ namespace MobyPark.Services
             session.Cost = hours * Rate;
             session.PaymentStatus = "unpaid";
 
+            // ----- CREATE BILLING SNAPSHOT -----
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = session.ParkingLotId,
+                LicensePlate = session.LicensePlate,
+                Started = session.Started,
+                Stopped = session.Stopped.Value,
+                Username = username,
+                DurationMinutes = session.DurationMinutes,
+                Cost = session.Cost,
+                PaymentStatus = "unpaid"
+            };
+
+            // ----- CREATE PAYMENT ENTRY -----
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
                 Initiator = username,
                 UserId = userId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
                 Completed = null,
                 Hash = GeneratePaymentHash(),
-                T_Data = null
+                T_Data = ""
             };
 
+            // Save everything
             db.Sessions.Update(session);
+            await db.Billings.AddAsync(billing);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
             return session;
         }
+
 
         public async Task<Session?> StopSessionByIdAsync(Guid userId, Guid sessionId)
         {
@@ -115,14 +136,34 @@ namespace MobyPark.Services
             if (s.Stopped is not null) return null;
             if (s.IsCancelled) return null;
 
+            // Stop the session
             s.Stopped = DateTimeOffset.UtcNow;
             s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
             s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
+
+            // Session is not paid yet
             s.PaymentStatus = "awaiting_payment";
+
+            // Create a billing snapshot
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = s.ParkingLotId,
+                LicensePlate = s.LicensePlate,
+                Started = s.Started,
+                Stopped = s.Stopped!.Value,
+                Username = s.User.Username,
+                DurationMinutes = s.DurationMinutes,
+                Cost = s.Cost,
+                PaymentStatus = "awaiting_payment"
+            };
+
+            db.Billings.Add(billing);
 
             await db.SaveChangesAsync();
             return s;
         }
+
 
         public async Task<Session?> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto)
         {
