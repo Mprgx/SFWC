@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace MobyPark.Entities
 {
@@ -16,8 +17,8 @@ namespace MobyPark.Entities
                 public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
                 public required string Coordinates { get; set; } = "{}";
 
-                public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
-                public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+                [JsonIgnore] public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
+                [JsonIgnore] public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 
         }
 }

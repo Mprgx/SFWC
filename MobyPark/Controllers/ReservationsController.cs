@@ -69,7 +69,7 @@ namespace MobyPark.Controllers
 
             _reservationService.DeleteReservation(reservation);
 
-            return NoContent(); // retturns 204 if deletion successful
+            return NoContent(); 
         }
 
         [HttpPut("{reservationid}")]

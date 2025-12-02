@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace MobyPark.Entities
 {
@@ -11,8 +12,8 @@ namespace MobyPark.Entities
         public DateTimeOffset CreatedAt { get; set; }
         public bool IsActive { get; set; } = true;
 
-        public ICollection<CompanyUser> CompanyUsers { get; set; } = new List<CompanyUser>();
-        public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+        [JsonIgnore] public ICollection<CompanyUser> CompanyUsers { get; set; } = new List<CompanyUser>();
+        [JsonIgnore] public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 
 
     }
