@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -25,11 +24,44 @@ public class ParkingLotServiceTests
         return new ParkingLotService(db);
     }
 
+    // Helper to create a fully initialized User
+    private User CreateTestUser(string username)
+    {
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Name = $"{username} Name",
+            Email = $"{username}@example.com",
+            PhoneNumber = "1234567890",
+            BirthYear = 1990,
+            Role = UserRole.Customer,
+            PasswordHash = "fakehash",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+    }
+
+    // Helper to create a fully initialized ParkingLot
+    private ParkingLot CreateTestParkingLot(int id = 1)
+    {
+        return new ParkingLot
+        {
+            Id = id,
+            Name = $"Lot{id}",
+            Location = $"Location{id}",
+            Address = $"Address{id}",
+            Capacity = 100,
+            Tariff = 2.0,
+            DayTariff = 10.0,
+            Coordinates = "1.0.0.-0"
+        };
+    }
+
     [Fact]
     public async Task GetByIdAsync_Returns_Lot_IfExists()
     {
         var db = CreateDbContext();
-        var lot = new ParkingLot { Name = "Main" };
+        var lot = CreateTestParkingLot(1);
         db.ParkingLots.Add(lot);
         await db.SaveChangesAsync();
 
@@ -37,16 +69,14 @@ public class ParkingLotServiceTests
         var result = await service.GetByIdAsync(lot.Id);
 
         Assert.NotNull(result);
-        Assert.Equal("Main", result!.Name);
+        Assert.Equal(lot.Name, result!.Name);
     }
 
     [Fact]
     public async Task GetByIdAsync_Returns_Null_IfNotExists()
     {
         var service = CreateService(CreateDbContext());
-
         var result = await service.GetByIdAsync(999);
-
         Assert.Null(result);
     }
 
@@ -54,9 +84,7 @@ public class ParkingLotServiceTests
     public async Task GetSessionsAsync_Returns_Empty_If_ParkingLot_NotFound()
     {
         var service = CreateService(CreateDbContext());
-
         var result = await service.GetSessionsAsync(777, "bob", false);
-
         Assert.Empty(result);
     }
 
@@ -64,14 +92,16 @@ public class ParkingLotServiceTests
     public async Task GetSessionByIdAsync_Returns_Session_For_Admin()
     {
         var db = CreateDbContext();
+        var user = CreateTestUser("bob");
         var session = new Session
         {
             ParkingLotId = 1,
             Id = Guid.NewGuid(),
-            User = new User { Username = "bob" }
+            User = user,
+            UserId = user.Id
         };
 
-        db.ParkingLots.Add(new ParkingLot { Id = 1 });
+        db.ParkingLots.Add(CreateTestParkingLot(1));
         db.Sessions.Add(session);
         await db.SaveChangesAsync();
 
@@ -85,14 +115,16 @@ public class ParkingLotServiceTests
     public async Task GetSessionByIdAsync_Returns_Null_When_NotOwner()
     {
         var db = CreateDbContext();
+        var sessionUser = CreateTestUser("alice");
         var session = new Session
         {
             ParkingLotId = 1,
             Id = Guid.NewGuid(),
-            User = new User { Username = "alice" }
+            User = sessionUser,
+            UserId = sessionUser.Id
         };
 
-        db.ParkingLots.Add(new ParkingLot { Id = 1 });
+        db.ParkingLots.Add(CreateTestParkingLot(1));
         db.Sessions.Add(session);
         await db.SaveChangesAsync();
 
@@ -106,10 +138,10 @@ public class ParkingLotServiceTests
     public async Task StopSessionAsync_Stops_Session_And_Creates_Payment()
     {
         var db = CreateDbContext();
-        var user = new User { Id = Guid.NewGuid(), Username = "bob" };
+        var user = CreateTestUser("bob");
 
         db.Users.Add(user);
-        db.ParkingLots.Add(new ParkingLot { Id = 1 });
+        db.ParkingLots.Add(CreateTestParkingLot(1));
 
         var encryption = new Mock<IEncryptionService>();
         encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("ABC123");
@@ -126,18 +158,21 @@ public class ParkingLotServiceTests
         await db.SaveChangesAsync();
 
         var service = CreateService(db);
-        var payment = await service.StopSessionAsync("ABC123", user.Id, encryption.Object);
+        var payment = await service.StopSessionAsync("ABC123", user.Username, user.Id, encryption.Object);
 
         Assert.NotNull(payment);
         Assert.True(payment!.Amount > 0);
+        Assert.Equal("bob", payment.Initiator);
+        Assert.NotNull(payment.Session);
+        Assert.NotNull(payment.User);
     }
 
     [Fact]
     public async Task StopSessionAsync_ReturnsNull_When_User_Is_Not_Owner()
     {
         var db = CreateDbContext();
-        var user1 = new User { Id = Guid.NewGuid() };
-        var user2 = new User { Id = Guid.NewGuid() };
+        var user1 = CreateTestUser("alice");
+        var user2 = CreateTestUser("bob");
 
         var encryption = new Mock<IEncryptionService>();
         encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("PLATE");
@@ -145,6 +180,7 @@ public class ParkingLotServiceTests
         db.Sessions.Add(new Session
         {
             UserId = user1.Id,
+            User = user1,
             LicensePlate = "encrypted",
             Started = DateTimeOffset.UtcNow
         });
@@ -152,7 +188,7 @@ public class ParkingLotServiceTests
         await db.SaveChangesAsync();
 
         var service = CreateService(db);
-        var result = await service.StopSessionAsync("PLATE", user2.Id, encryption.Object);
+        var result = await service.StopSessionAsync("PLATE", user2.Username, user2.Id, encryption.Object);
 
         Assert.Null(result);
     }
@@ -166,7 +202,7 @@ public class ParkingLotServiceTests
         encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("OTHER");
 
         var service = CreateService(db);
-        var result = await service.StopSessionAsync("TARGET", Guid.NewGuid(), encryption.Object);
+        var result = await service.StopSessionAsync("TARGET", "anyone", Guid.NewGuid(), encryption.Object);
 
         Assert.Null(result);
     }

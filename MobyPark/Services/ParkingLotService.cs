@@ -85,19 +85,23 @@ namespace MobyPark.Services
             var hours = Math.Ceiling(session.DurationMinutes / 60.0m);
             session.Cost = hours * RATE_PER_HOUR;
             session.PaymentStatus = "unpaid";
-            string username = session.User.Username;
+            string username1 = session.User.Username;
 
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
-                Initiator = session.UserId,
+                Initiator = username1,
+                UserId = session.UserId,
+                User = session.User,
                 Created_At = DateTimeOffset.UtcNow,
                 Completed = null,
                 Hash = Guid.NewGuid().ToString(),
-                T_Data = null,
-                Session_Id = session.Id.ToString(),
-                Parking_Lot_Id = session.ParkingLotId.ToString()
+                T_Data = "",
+                SessionId = session.Id,
+                Session = session,
+                ParkingLotId = session.ParkingLotId,
+                ParkingLot = session.ParkingLot
             };
 
 
