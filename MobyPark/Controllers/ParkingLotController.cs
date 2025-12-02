@@ -13,9 +13,27 @@ namespace MobyPark.Controllers
     [Authorize]
     public class ParkingLotController(UserDbContext db) : ControllerBase
     {
+        private static SessionReadDto ToSessionDto(Session s) => new(
+            s.Id,
+            s.UserId,
+            s.VehicleId,
+            s.ParkingLotId,
+            s.LicensePlate, 
+            s.Started,
+            s.Stopped,
+            s.DurationMinutes,
+            s.Cost,
+            s.PaymentStatus,
+            s.IsCancelled,
+            s.CancelledAt,
+            s.IsRefunded,
+            s.RefundDate
+        );
+
         [HttpGet("/parking-lots")]
         public async Task<ActionResult<List<ParkingLotRequestDto>>> GetAll()
         {
+
             var lots = await db.ParkingLots.ToListAsync();
 
             var dtos = lots.Select(l => new ParkingLotRequestDto(
@@ -50,33 +68,30 @@ namespace MobyPark.Controllers
 
         [HttpGet("/parking-lots/{lid:int}/sessions")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> GetSessions(int lid)
+        public async Task<ActionResult<List<SessionReadDto>>> GetSessions(int lid)
         {
             var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
             if (!exists) return NotFound("Parking lot not found.");
 
             var sessions = await db.Sessions
-                .Include(s => s.User)
-                .Include(s => s.Vehicle)
                 .Where(s => s.ParkingLotId == lid)
                 .ToListAsync();
 
-            return Ok(sessions);
+            var dtoList = sessions.Select(ToSessionDto).ToList();
+            return Ok(dtoList);
         }
 
         [HttpGet("/parking-lots/{lid:int}/sessions/{sid:guid}")]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult> GetSessionById(int lid, Guid sid)
+        public async Task<ActionResult<SessionReadDto>> GetSessionById(int lid, Guid sid)
         {
             var session = await db.Sessions
-                .Include(s => s.User)
-                .Include(s => s.Vehicle)
                 .FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
 
             if (session is null)
                 return NotFound("Session not found.");
 
-            return Ok(session);
+            return Ok(ToSessionDto(session));
         }
     }
 }
