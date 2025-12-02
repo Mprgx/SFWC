@@ -258,11 +258,11 @@ namespace MobyPark.Migrations
 
                     b.HasIndex("ParkingLotId");
 
+                    b.HasIndex("UserId");
+
                     b.HasIndex("VehicleId");
 
-                    b.HasIndex("UserId", "Started");
-
-                    b.ToTable("ParkingSessions");
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.User", b =>
@@ -282,8 +282,7 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -296,8 +295,7 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RefreshToken")
                         .HasColumnType("nvarchar(max)");
