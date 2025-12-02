@@ -141,13 +141,13 @@ namespace MobyPark.Controllers
         }
 
         // GET /my-sessions?onlyActive=true|false
-        [HttpGet("/my-sessions")]
-        public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
-        {
-            var sessions = await service.GetAllForUserAsync(userId, onlyActive);
-            var dtos = sessions.Select(ToDto).ToList();
+        //[HttpGet("/my-sessions")]
+        //public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
+        //{
+        //    var sessions = await service.GetAllForUserAsync(userId, onlyActive);
+        //    var dtos = sessions.Select(ToDto).ToList();
 
-            return Ok(dtos);
-        }
+        //    return Ok(dtos);
+        //}
     }
 }

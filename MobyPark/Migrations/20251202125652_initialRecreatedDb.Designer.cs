@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251201130702_Initial")]
-    partial class Initial
+    [Migration("20251202125652_initialRecreatedDb")]
+    partial class initialRecreatedDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
