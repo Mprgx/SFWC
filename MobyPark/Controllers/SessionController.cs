@@ -140,7 +140,7 @@ namespace MobyPark.Controllers
             return Ok("Session deleted.");
         }
 
-        // GET /my-sessions?onlyActive=true|false
+        //// GET /my-sessions?onlyActive=true|false
         //[HttpGet("/my-sessions")]
         //public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
         //{

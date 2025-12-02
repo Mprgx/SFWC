@@ -70,7 +70,9 @@ namespace MobyPark.Controllers
                     message = $"Reservation with id {reservationid} not found"
                 });
 
-            return NoContent();
+            _reservationService.DeleteReservation(reservation);
+
+            return NoContent(); 
         }
 
         [HttpPut("{reservationid}")]

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace MobyPark.Entities
 {
@@ -28,7 +29,7 @@ namespace MobyPark.Entities
                 public int Year { get; set; }
                 public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
 
-                public ICollection<UserVehicle> UserVehicles { get; set; } = new List<UserVehicle>();
+                [JsonIgnore] public ICollection<UserVehicle> UserVehicles { get; set; } = new List<UserVehicle>();
 
         }
 }

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace MobyPark.Entities
 {
@@ -29,11 +30,11 @@ namespace MobyPark.Entities
                 public string? RefreshToken { get; set; }
                 public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
 
-                public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
-                public ICollection<UserVehicle> UserVehicles { get; set; } = new List<UserVehicle>();
-                public ICollection<CompanyUser> CompanyUsers { get; set; } = new List<CompanyUser>();
-                public ICollection<Payment> Payments { get; set; } = new List<Payment>();
-                public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+                [JsonIgnore] public ICollection<Session> ParkingSessions { get; set; } = new List<Session>();
+                [JsonIgnore] public ICollection<UserVehicle> UserVehicles { get; set; } = new List<UserVehicle>();
+                [JsonIgnore] public ICollection<CompanyUser> CompanyUsers { get; set; } = new List<CompanyUser>();
+                [JsonIgnore] public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+                [JsonIgnore] public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 
         }
 }
