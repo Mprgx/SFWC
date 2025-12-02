@@ -6,33 +6,30 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class PaymentService : IPaymentService
+    public class PaymentService(UserDbContext context) : IPaymentService
     {
-        private readonly UserDbContext _context;
-
-        public PaymentService(UserDbContext context)
-        {
-            _context = context;
-        }
-
-        public async Task<PaymentResponseDto> CompletePaymentAsync(
+        public async Task<PaymentResponseDto?> CompletePaymentAsync(
             Guid userId,
             string transactionId,
             PaymentValidationDto request)
         {
-            if (request == null)
+            if (request is null)
                 throw new ArgumentNullException(nameof(request));
 
-            // basic request validation
-            if (request.T_Data.ValueKind == JsonValueKind.Undefined || string.IsNullOrWhiteSpace(request.Validation))
+            // Basic request validation
+            if (request.T_Data.ValueKind == JsonValueKind.Undefined ||
+                string.IsNullOrWhiteSpace(request.Validation))
+            {
                 throw new UnauthorizedAccessException("Required field missing");
+            }
 
-            var payment = await _context.Payments
+            var payment = await context.Payments
                 .Include(p => p.User)
                 .Include(p => p.Session)
+                .Include(p => p.ParkingLot)
                 .FirstOrDefaultAsync(p => p.Transaction == transactionId);
 
-            if (payment == null)
+            if (payment is null)
                 throw new KeyNotFoundException("Payment not found");
 
             if (payment.UserId != userId)
@@ -46,44 +43,29 @@ namespace MobyPark.Services
             payment.Hash = expectedHash;
             payment.T_Data = request.T_Data.GetRawText();
 
+            // Update session payment status if there is a linked session
+            if (payment.SessionId != Guid.Empty)
+            {
+                var session = payment.Session
+                              ?? await context.Sessions.FirstOrDefaultAsync(s => s.Id == payment.SessionId);
 
-            if (payment.Session != null)
-            {
-                payment.Session.PaymentStatus = "paid";
-                _context.Sessions.Update(payment.Session);
-            }
-            else
-            {
-                var session = await _context.Sessions.FirstOrDefaultAsync(s => s.Id == payment.Session.Id);
-                if (session != null)
+                if (session is not null)
                 {
                     session.PaymentStatus = "paid";
-                    _context.Sessions.Update(session);
+                    // EF is tracking, no need for Update()
                 }
             }
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            return new PaymentResponseDto
-            {
-                Transaction = payment.Transaction,
-                Amount = payment.Amount,
-                Initiator = payment.Initiator,
-                User = payment.User != null ? new UserReadDto
-                {
-                    Id = payment.User.Id,
-                    Username = payment.User.Username,
-                    Name = payment.User.Name,
-                    Email = payment.User.Email,
-                    PhoneNumber = payment.User.PhoneNumber,
-                    BirthYear = payment.User.BirthYear,
-                    Role = payment.User.Role,
-                    CreatedAt = payment.User.CreatedAt
-                } : null,
-                Completed = payment.Completed.Value,
-                Hash = payment.Hash
-            };
+            // Ensure nav properties are loaded
+            await context.Entry(payment).Reference(p => p.User).LoadAsync();
+            await context.Entry(payment).Reference(p => p.Session).LoadAsync();
+            await context.Entry(payment).Reference(p => p.ParkingLot).LoadAsync();
+
+            return ToPaymentResponseDto(payment);
         }
+
         private static string GeneratePaymentHash(string transaction, decimal amount)
         {
             using var sha = System.Security.Cryptography.SHA256.Create();
@@ -93,106 +75,68 @@ namespace MobyPark.Services
             return Convert.ToBase64String(hash);
         }
 
-
-        public async Task<List<PaymentResponseDto>> GetPaymentsForAnyUserAsync(string username)
+        public async Task<List<PaymentResponseDto?>> GetPaymentsForAnyUserAsync(string username)
         {
-            var user = await _context.Users
+            var user = await context.Users
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            if (user == null)
-                return new List<PaymentResponseDto>();
+            if (user is null)
+                return new List<PaymentResponseDto?>();
 
-            var payments = await _context.Payments
+            var payments = await context.Payments
                 .Include(p => p.User)
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
                 .Where(p => p.Initiator == user.Username)
                 .ToListAsync();
 
-            return payments.Select(p => new PaymentResponseDto
-            {
-                Transaction = p.Transaction,
-                Amount = p.Amount,
-                Initiator = p.Initiator,
-
-                UserId = p.UserId,
-                User = p.User == null ? null : new UserReadDto
-                {
-                    Id = p.User.Id,
-                    Username = p.User.Username,
-                    Name = p.User.Name,
-                    Email = p.User.Email,
-                    PhoneNumber = p.User.PhoneNumber,
-                    BirthYear = p.User.BirthYear,
-                    Role = p.User.Role,
-                    CreatedAt = p.User.CreatedAt
-                },
-
-                CreatedAt = p.Created_At,
-                Completed = p.Completed,
-
-                Hash = p.Hash,
-                T_Data = p.T_Data,
-
-                SessionId = p.SessionId,
-                Session = p.Session == null ? null : new SessionReadDto(
-                    p.Session.Id,
-                    p.Session.UserId,
-                    p.Session.VehicleId,
-                    p.Session.ParkingLotId,
-                    p.Session.LicensePlate,
-                    p.Session.Started,
-                    p.Session.Stopped,
-                    p.Session.DurationMinutes,
-                    p.Session.Cost,
-                    p.Session.PaymentStatus,
-                    p.Session.IsCancelled,
-                    p.Session.CancelledAt,
-                    p.Session.IsRefunded,
-                    p.Session.RefundDate
-                ),
-
-                ParkingLotId = p.ParkingLotId,
-                ParkingLot = p.ParkingLot
-            })
-            .ToList();
-
+            return payments
+                .Select(p => (PaymentResponseDto?)ToPaymentResponseDto(p))
+                .ToList();
         }
 
-
-        public async Task<List<PaymentResponseDto>> GetPaymentsForUserAsync(Guid userId)
+        public async Task<List<PaymentResponseDto?>> GetPaymentsForUserAsync(Guid userId)
         {
-            var user = await _context.Users
+            var user = await context.Users
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
-            if (user == null)
-                return new List<PaymentResponseDto>();
+            if (user is null)
+                return new List<PaymentResponseDto?>();
 
-            var payments = await _context.Payments
+            var payments = await context.Payments
                 .Include(p => p.User)
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
                 .Where(p => p.UserId == userId)
                 .ToListAsync();
 
-            return payments.Select(p => new PaymentResponseDto
+            return payments
+                .Select(p => (PaymentResponseDto?)ToPaymentResponseDto(p))
+                .ToList();
+        }
+
+        private static PaymentResponseDto ToPaymentResponseDto(Payment p)
+        {
+            return new PaymentResponseDto
             {
                 Transaction = p.Transaction,
                 Amount = p.Amount,
                 Initiator = p.Initiator,
 
                 UserId = p.UserId,
-                User = p.User == null ? null : new UserReadDto
-                {
-                    Id = p.User.Id,
-                    Username = p.User.Username,
-                    Name = p.User.Name,
-                    Email = p.User.Email,
-                    PhoneNumber = p.User.PhoneNumber,
-                    BirthYear = p.User.BirthYear,
-                    Role = p.User.Role,
-                    CreatedAt = p.User.CreatedAt
-                },
+                User = p.User == null
+                    ? null
+                    : new UserReadDto
+                    {
+                        Id = p.User.Id,
+                        Username = p.User.Username,
+                        Name = p.User.Name,
+                        Email = p.User.Email,
+                        PhoneNumber = p.User.PhoneNumber,
+                        BirthYear = p.User.BirthYear,
+                        Role = p.User.Role,
+                        CreatedAt = p.User.CreatedAt
+                    },
 
                 CreatedAt = p.Created_At,
                 Completed = p.Completed,
@@ -201,27 +145,40 @@ namespace MobyPark.Services
                 T_Data = p.T_Data,
 
                 SessionId = p.SessionId,
-                Session = p.Session == null ? null : new SessionReadDto(
-                    p.Session.Id,
-                    p.Session.UserId,
-                    p.Session.VehicleId,
-                    p.Session.ParkingLotId,
-                    p.Session.LicensePlate,
-                    p.Session.Started,
-                    p.Session.Stopped,
-                    p.Session.DurationMinutes,
-                    p.Session.Cost,
-                    p.Session.PaymentStatus,
-                    p.Session.IsCancelled,
-                    p.Session.CancelledAt,
-                    p.Session.IsRefunded,
-                    p.Session.RefundDate
-                ),
+                Session = p.Session == null
+                    ? null
+                    : new SessionReadDto(
+                        p.Session.Id,
+                        p.Session.UserId,
+                        p.Session.VehicleId,
+                        p.Session.ParkingLotId,
+                        p.Session.LicensePlate,
+                        p.Session.Started,
+                        p.Session.Stopped,
+                        p.Session.DurationMinutes,
+                        p.Session.Cost,
+                        p.Session.PaymentStatus,
+                        p.Session.IsCancelled,
+                        p.Session.CancelledAt,
+                        p.Session.IsRefunded,
+                        p.Session.RefundDate
+                    ),
 
                 ParkingLotId = p.ParkingLotId,
-                ParkingLot = p.ParkingLot
-            })
-            .ToList();
+                ParkingLot = p.ParkingLot == null
+                    ? null
+                    : new ParkingLotSummaryDto
+                    {
+                        Id = p.ParkingLot.Id,
+                        Name = p.ParkingLot.Name,
+                        Location = p.ParkingLot.Location,
+                        Address = p.ParkingLot.Address,
+                        Capacity = p.ParkingLot.Capacity,
+                        ReservedSpots = p.ParkingLot.ReservedSpots,
+                        Tariff = p.ParkingLot.Tariff,
+                        DayTariff = p.ParkingLot.DayTariff
+                    }
+            };
         }
     }
 }

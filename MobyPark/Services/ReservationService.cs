@@ -1,19 +1,95 @@
-using MobyPark.Entities;
+using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
+using MobyPark.Entities;
 using MobyPark.Models;
 
 namespace MobyPark.Services
 {
     public class ReservationService(UserDbContext _context) : IReservationService
     {
-        public Reservation? GetById(int reservationId)
+        private static GetReservationDto ToDto(Reservation reservation)
         {
-            return _context.Reservations.FirstOrDefault(r => r.Id == reservationId);
+            var creator = reservation.User;
+            var vehicle = reservation.Vehicle;
+            var vehicleOwner = vehicle?.User;
+
+            var creatorDto = creator is null
+                ? null
+                : new UserReadDto
+                {
+                    Id = creator.Id,
+                    Username = creator.Username,
+                    Name = creator.Name,
+                    Email = creator.Email,
+                    PhoneNumber = creator.PhoneNumber,
+                    BirthYear = creator.BirthYear,
+                    Role = creator.Role,
+                    CreatedAt = creator.CreatedAt
+                };
+
+            var vehicleOwnerDto = vehicleOwner is null
+                ? null
+                : new UserReadDto
+                {
+                    Id = vehicleOwner.Id,
+                    Username = vehicleOwner.Username,
+                    Name = vehicleOwner.Name,
+                    Email = vehicleOwner.Email,
+                    PhoneNumber = vehicleOwner.PhoneNumber,
+                    BirthYear = vehicleOwner.BirthYear,
+                    Role = vehicleOwner.Role,
+                    CreatedAt = vehicleOwner.CreatedAt
+                };
+
+            var vehicleDto = vehicle is null
+                ? null
+                : new VehicleReadDto
+                {
+                    Id = vehicle.Id,
+                    UserId = vehicle.UserId,
+                    OwnerInformation = vehicleOwnerDto,
+                    LicensePlate = vehicle.LicensePlate,
+                    Make = vehicle.Make,
+                    Model = vehicle.Model,
+                    Color = vehicle.Color,
+                    Year = vehicle.Year,
+                    CreatedAt = vehicle.CreatedAt
+                };
+
+            return new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                ReservationCreator = creatorDto,
+                LicensePlate = reservation.LicensePlate,
+                Vehicle = vehicleDto,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
-        public Reservation? GetByVehicleId(int vehicleid)
+        public GetReservationDto? GetById(int reservationId)
         {
-            return _context.Reservations.FirstOrDefault(r => r.Vehicle.Id == vehicleid);
+            var reservation = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefault(r => r.Id == reservationId);
+
+            return reservation is null ? null : ToDto(reservation);
+        }
+
+        public GetReservationDto? GetByVehicleId(int vehicleId)
+        {
+            var reservation = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefault(r => r.Vehicle.Id == vehicleId);
+
+            return reservation is null ? null : ToDto(reservation);
         }
 
         public GetReservationDto CreateReservation(PostReservationDto dto)
@@ -30,67 +106,46 @@ namespace MobyPark.Services
             _context.Reservations.Add(reservation);
             _context.SaveChanges();
 
-            var reservationDto = new GetReservationDto
-            {
-                Id = reservation.Id,
-                ParkingLotId = reservation.ParkingLotId,
-                UserId = reservation.UserId,
-                ReservationCreator = new UserReadDto
-                {
-                    Id = reservation.User.Id,
-                    Username = reservation.User.Username,
-                    Name = reservation.User.Name,
-                    Email = reservation.User.Email,
-                    PhoneNumber = reservation.User.PhoneNumber,
-                    BirthYear = reservation.User.BirthYear,
-                    Role = reservation.User.Role,
-                    CreatedAt = reservation.User.CreatedAt
-                },
-                LicensePlate = reservation.LicensePlate,
-                Vehicle = new VehicleReadDto
-                {
-                    Id = reservation.Vehicle.Id,
-                    UserId = reservation.Vehicle.UserId,
-                    OwnerInformation = new UserReadDto
-                    {
-                        Id = reservation.Vehicle.UserId,
-                        Username = reservation.Vehicle.User.Username,
-                        Name = reservation.Vehicle.User.Name,
-                        Email = reservation.Vehicle.User.Email,
-                        PhoneNumber = reservation.Vehicle.User.PhoneNumber,
-                        BirthYear = reservation.Vehicle.User.BirthYear,
-                        Role = reservation.Vehicle.User.Role,
-                        CreatedAt = reservation.Vehicle.User.CreatedAt
-                    },
-                    LicensePlate = reservation.Vehicle.LicensePlate,
-                    Make = reservation.Vehicle.Make,
-                    Model = reservation.Vehicle.Model,
-                    Color = reservation.Vehicle.Color,
-                    Year = reservation.Vehicle.Year,
-                    CreatedAt = reservation.Vehicle.CreatedAt
-                },
-                StartTime = reservation.StartTime,
-                EndTime = reservation.EndTime,
-                IsActive = reservation.IsActive
-            };
+            var loaded = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .First(r => r.Id == reservation.Id);
 
-            return reservationDto;
+            return ToDto(loaded);
         }
 
-        public void DeleteReservation(Reservation reservation)
+        public bool DeleteReservation(int reservationId)
         {
+            var reservation = _context.Reservations.Find(reservationId);
+            if (reservation is null)
+                return false;
+
             _context.Reservations.Remove(reservation);
             _context.SaveChanges();
+            return true;
         }
 
-        public void UpdateReservation(Reservation reservation, PostReservationDto dto)
+        public GetReservationDto? UpdateReservation(int reservationId, PostReservationDto dto)
         {
+            var reservation = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefault(r => r.Id == reservationId);
+
+            if (reservation is null)
+                return null;
+
             reservation.ParkingLotId = dto.ParkingLotId;
             reservation.StartTime = dto.StartTime;
             reservation.EndTime = dto.EndTime;
             reservation.UserId = dto.UserId;
+            reservation.LicensePlate = dto.LicensePlate;
 
             _context.SaveChanges();
+
+            return ToDto(reservation);
         }
     }
 }
