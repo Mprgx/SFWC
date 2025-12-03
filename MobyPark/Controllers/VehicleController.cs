@@ -12,7 +12,7 @@ namespace MobyPark.Controllers
     public class VehicleController(IVehicleService vehicleService) : ControllerBase
     {
         [HttpPost("vehicle")]
-        public async Task<ActionResult<VehicleReadDto>> CreateVehicle([FromBody] VehiclePostDto request)
+        public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleCreateDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -20,7 +20,7 @@ namespace MobyPark.Controllers
 
             var vehicle = await vehicleService.CreateVehicleAsync(userId, request);
             if (vehicle is null)
-                return Conflict("License plate may already exist for this user.");
+                return Conflict("License plate may already exist.");
 
             return Ok(vehicle);
         }
@@ -51,16 +51,13 @@ namespace MobyPark.Controllers
             return Ok(vehicles);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("vehicle/{username}")]
         public async Task<ActionResult<List<VehicleReadDto>>> GetVehicleByUser(string username)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out _))
                 return Unauthorized("Invalid or missing user ID.");
-
-            var role = User.FindFirstValue(ClaimTypes.Role);
-            if (role != "Admin")
-                return Forbid("You are not permitted to use this function.");
 
             var vehicles = await vehicleService.GetVehiclesByUsernameAsync(username);
 
