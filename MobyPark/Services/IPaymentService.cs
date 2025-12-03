@@ -9,5 +9,6 @@ namespace MobyPark.Services
         Task<List<PaymentResponseDto?>> GetPaymentsForUserAsync(Guid userId);
         Task<List<PaymentResponseDto?>> GetPaymentsForAnyUserAsync(string username);
         Task<bool> DeletePaymentByTransactionId(string transactionId);
+        Task<PaymentResponseDto> FulfillPaymentAsync(string userId, PaymentsDto paymentRequest);
     }
 }
