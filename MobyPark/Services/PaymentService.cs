@@ -115,6 +115,17 @@ namespace MobyPark.Services
                 .ToList();
         }
 
+        public async Task<bool> DeletePaymentByTransactionId(string transactionId)
+        {
+            var payment = await context.Payments.FindAsync(transactionId);
+            if (payment is null)
+                return false;
+
+            context.Payments.Remove(payment);
+            context.SaveChangesAsync();
+            return true;
+        }
+
         private static PaymentResponseDto ToPaymentResponseDto(Payment p)
         {
             return new PaymentResponseDto

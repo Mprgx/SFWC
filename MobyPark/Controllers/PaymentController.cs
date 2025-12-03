@@ -103,5 +103,23 @@ namespace MobyPark.Controllers
 
             return Ok(paymentList);
         }
+
+        [HttpDelete("Payments/{transactionId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> DeletePaymentBytransactionId(string transactionId)
+        {
+            if (string.IsNullOrWhiteSpace(transactionId))
+                return BadRequest("transactionId is required");
+
+            var deleted = _paymentService.DeletePaymentByTransactionId(transactionId);
+            if (!deleted)
+                return NotFound(new
+                {
+                    statuscode = 404,
+                    message = $"Payment with id {transactionId} not found"
+                });
+
+            return Ok($"Transaction with transactionId:{transactionId} is succesfully deleted.");
+        }
     }
 }
