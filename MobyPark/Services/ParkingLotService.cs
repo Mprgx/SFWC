@@ -6,17 +6,20 @@ namespace MobyPark.Services
 {
     public class ParkingLotService(UserDbContext db) : IParkingLotService
     {
+        //GET
         public async Task<List<ParkingLot>> GetAllAsync()
         {
             return await db.Set<ParkingLot>().ToListAsync();
         }
 
+        //GET
         public async Task<ParkingLot?> GetByIdAsync(int lid)
         {
             return await db.Set<ParkingLot>()
                 .FirstOrDefaultAsync(p => p.Id == lid);
         }
 
+        //GET
         public async Task<List<Session>> GetSessionsAsync(
             int lid, string? username, bool isAdmin)
         {
@@ -27,7 +30,7 @@ namespace MobyPark.Services
             var query = db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
-                .Where(s => s.ParkingLotId == lid); //s.ParkingLotId == lid
+                .Where(s => s.ParkingLotId == lid);
 
             if (!isAdmin && username is not null)
                 query = query.Where(s => s.User.Username == username);
@@ -35,6 +38,7 @@ namespace MobyPark.Services
             return await query.ToListAsync();
         }
 
+        //GET
         public async Task<Session?> GetSessionByIdAsync(
             int lid, string sid, string? username, bool isAdmin)
         {

@@ -2,28 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MobyPark.Models
 {
-    public class GetReservationDto
-    {
-        [Required]
-        public int Id { get; set; }
-        [Required]
-        public int ParkingLotId { get; set; }
-        [Required]
-        public Guid UserId { get; set; }
-        [Required]
-        public required UserReadDto ReservationCreator { get; set; }
-        [Required]
-        public required string LicensePlate { get; set; }
-        [Required]
-        public required VehicleReadDto Vehicle { get; set; }
-        [Required]
-        public DateTimeOffset StartTime { get; set; }
-        [Required]
-        public DateTimeOffset EndTime { get; set; }
-        [Required]
-        public bool IsActive { get; set; }
-    }
-
     public class PostReservationDto : IValidatableObject
     {
         [Required]
@@ -59,5 +37,27 @@ namespace MobyPark.Models
                     "StartTime can not be in the past.",
                     new[] { nameof(StartTime) });
         }
+    }
+
+    public class GetReservationDto
+    {
+        [Required]
+        public int Id { get; set; }
+        [Required]
+        public int ParkingLotId { get; set; }
+        [Required]
+        public Guid UserId { get; set; }
+        [Required]
+        public required UserReadDto ReservationCreator { get; set; }
+        [Required]
+        public required string LicensePlate { get; set; }
+        [Required]
+        public required VehicleReadDto Vehicle { get; set; }
+        [Required]
+        public DateTimeOffset StartTime { get; set; }
+        [Required]
+        public DateTimeOffset EndTime { get; set; }
+        [Required]
+        public bool IsActive { get; set; }
     }
 }

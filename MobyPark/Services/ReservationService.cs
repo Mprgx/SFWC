@@ -70,28 +70,7 @@ namespace MobyPark.Services
             };
         }
 
-        public GetReservationDto? GetById(int reservationId)
-        {
-            var reservation = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Id == reservationId);
-
-            return reservation is null ? null : ToDto(reservation);
-        }
-
-        public GetReservationDto? GetByVehicleId(int vehicleId)
-        {
-            var reservation = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Vehicle.Id == vehicleId);
-
-            return reservation is null ? null : ToDto(reservation);
-        }
-
+        //POST
         public GetReservationDto CreateReservation(PostReservationDto dto)
         {
             var reservation = new Reservation
@@ -115,17 +94,31 @@ namespace MobyPark.Services
             return ToDto(loaded);
         }
 
-        public bool DeleteReservation(int reservationId)
+        //GET
+        public GetReservationDto? GetById(int reservationId)
         {
-            var reservation = _context.Reservations.Find(reservationId);
-            if (reservation is null)
-                return false;
+            var reservation = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefault(r => r.Id == reservationId);
 
-            _context.Reservations.Remove(reservation);
-            _context.SaveChanges();
-            return true;
+            return reservation is null ? null : ToDto(reservation);
         }
 
+        //GET
+        public GetReservationDto? GetByVehicleId(int vehicleId)
+        {
+            var reservation = _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefault(r => r.Vehicle.Id == vehicleId);
+
+            return reservation is null ? null : ToDto(reservation);
+        }
+
+        //PUT
         public GetReservationDto? UpdateReservation(int reservationId, PostReservationDto dto)
         {
             var reservation = _context.Reservations
@@ -146,6 +139,18 @@ namespace MobyPark.Services
             _context.SaveChanges();
 
             return ToDto(reservation);
+        }
+
+        //DELETE
+        public bool DeleteReservation(int reservationId)
+        {
+            var reservation = _context.Reservations.Find(reservationId);
+            if (reservation is null)
+                return false;
+
+            _context.Reservations.Remove(reservation);
+            _context.SaveChanges();
+            return true;
         }
     }
 }
