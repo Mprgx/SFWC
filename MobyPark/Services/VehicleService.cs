@@ -26,8 +26,8 @@ namespace MobyPark.Services
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
-            context.Vehicles.Add(vehicle);
-            await context.SaveChangesAsync();
+            _context.Vehicles.Add(vehicle);
+            await _context.SaveChangesAsync();
 
             var user = await context.Users.FindAsync(userId);
             if (user is null)
@@ -40,15 +40,14 @@ namespace MobyPark.Services
 
         public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
         {
-            var vehicle = await context.Vehicles
+            var vehicle = await _context.Vehicles
                 .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
 
             if (vehicle is null)
                 return false;
 
-            context.Vehicles.Remove(vehicle);
-            await context.SaveChangesAsync();
-
+            _context.Vehicles.Remove(vehicle);
+            await _context.SaveChangesAsync();
             return true;
         }
 

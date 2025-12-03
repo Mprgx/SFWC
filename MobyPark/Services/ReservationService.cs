@@ -47,7 +47,6 @@ namespace MobyPark.Services
                 {
                     Id = vehicle.Id,
                     UserId = vehicle.UserId,
-                    OwnerInformation = vehicleOwnerDto,
                     LicensePlate = vehicle.LicensePlate,
                     Make = vehicle.Make,
                     Model = vehicle.Model,
@@ -55,6 +54,7 @@ namespace MobyPark.Services
                     Year = vehicle.Year,
                     CreatedAt = vehicle.CreatedAt
                 };
+
 
             return new GetReservationDto
             {
