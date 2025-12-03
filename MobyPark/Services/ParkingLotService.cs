@@ -6,6 +6,15 @@ namespace MobyPark.Services
 {
     public class ParkingLotService(UserDbContext db) : IParkingLotService
     {
+
+        //POST
+        public async Task<ParkingLot> CreateParkingLotAsync(ParkingLot parkingLot)
+        {
+            db.ParkingLots.Add(parkingLot);
+            await db.SaveChangesAsync();
+            return parkingLot;
+        }
+
         //GET
         public async Task<List<ParkingLot>> GetAllAsync()
         {
@@ -55,6 +64,36 @@ namespace MobyPark.Services
                 return null;
 
             return session;
+        }
+
+        //DELETE
+        public async Task<bool> DeleteParkingLotAsync(int id)
+        {
+            var lot = await db.ParkingLots.FindAsync(id);
+
+            if (lot == null)
+                return false;
+
+            db.ParkingLots.Remove(lot);
+            await db.SaveChangesAsync();
+
+            return true;
+        }
+
+        //DELETE
+        public async Task<bool> DeleteParkingLotSessionAsync(int parkingLotId, Guid sessionId)
+        {
+            var session = await db.Sessions
+                .Where(s => s.ParkingLotId == parkingLotId && s.Id == sessionId)
+                .FirstOrDefaultAsync();
+
+            if (session == null)
+                return false;
+
+            db.Sessions.Remove(session);
+            await db.SaveChangesAsync();
+
+            return true;
         }
 
         public async Task<Payment?> StopSessionAsync(string licensePlate, string username, Guid userid, IEncryptionService encryption)
