@@ -7,9 +7,8 @@ namespace MobyPark.Services
 {
     public class VehicleService(UserDbContext context) : IVehicleService
     {
-        public async Task<VehicleReadDto?> CreateVehicleAsync(Guid userId, VehicleReadDto request)
+        public async Task<VehicleReadDto?> CreateVehicleAsync(Guid userId, VehiclePostDto request)
         {
-            // Check for duplicate license plate for the same user
             bool exists = await context.Vehicles
                 .AnyAsync(v => v.LicensePlate == request.LicensePlate && v.UserId == userId);
 
@@ -30,30 +29,13 @@ namespace MobyPark.Services
             context.Vehicles.Add(vehicle);
             await context.SaveChangesAsync();
 
-            var vehicleDto = new VehicleReadDto
-            {
-                Id = vehicle.Id,
-                UserId = vehicle.UserId,
-                OwnerInformation = new UserReadDto
-                {
-                    Id = vehicle.User.Id,
-                    Username = vehicle.User.Username,
-                    Name = vehicle.User.Name,
-                    Email = vehicle.User.Email,
-                    PhoneNumber = vehicle.User.PhoneNumber,
-                    BirthYear = vehicle.User.BirthYear,
-                    Role = vehicle.User.Role,
-                    CreatedAt = vehicle.User.CreatedAt
-                },
-                LicensePlate = vehicle.LicensePlate,
-                Make = vehicle.Make,
-                Model = vehicle.Model,
-                Color = vehicle.Color,
-                Year = vehicle.Year,
-                CreatedAt = vehicle.CreatedAt
-            };
+            var user = await context.Users.FindAsync(userId);
+            if (user is null)
+                throw new InvalidOperationException("User not found for this vehicle.");
 
-            return vehicleDto;
+            vehicle.User = user;
+
+            return ToVehicleReadDto(vehicle);
         }
 
         public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
@@ -69,19 +51,58 @@ namespace MobyPark.Services
 
             return true;
         }
-        
-        public async Task<List<Vehicle>> GetVehiclesByUsernameAsync(string username)
+
+        public async Task<List<Vehicle>> GetVehiclesForUserAsync(Guid userId)
         {
-            var user = await context.Users
-                .FirstOrDefaultAsync(u => u.Username == username);
-
-            if (user is null)
-                return new List<Vehicle>();
-
             return await context.Vehicles
-                .Where(v => v.UserId == user.Id)
+                .Where(v => v.UserId == userId)
+                .OrderBy(v => v.CreatedAt)
                 .ToListAsync();
         }
 
+        public async Task<List<VehicleReadDto>> GetVehiclesByUsernameAsync(string username)
+        {
+            var vehicles = await context.Vehicles
+                .Include(v => v.User)
+                .Where(v => v.User.Username == username)
+                .OrderBy(v => v.CreatedAt)
+                .ToListAsync();
+
+            if (vehicles.Count == 0)
+                return new List<VehicleReadDto>();
+
+            return vehicles
+                .Select(ToVehicleReadDto)
+                .ToList();
+        }
+
+        private static VehicleReadDto ToVehicleReadDto(Vehicle v)
+        {
+            if (v.User is null)
+                throw new InvalidOperationException("Vehicle.User must be loaded to map to VehicleReadDto.");
+
+            return new VehicleReadDto
+            {
+                Id = v.Id,
+                UserId = v.UserId,
+                OwnerInformation = new UserReadDto
+                {
+                    Id = v.User.Id,
+                    Username = v.User.Username,
+                    Name = v.User.Name,
+                    Email = v.User.Email,
+                    PhoneNumber = v.User.PhoneNumber,
+                    BirthYear = v.User.BirthYear,
+                    Role = v.User.Role,
+                    CreatedAt = v.User.CreatedAt
+                },
+                LicensePlate = v.LicensePlate,
+                Make = v.Make,
+                Model = v.Model,
+                Color = v.Color,
+                Year = v.Year,
+                CreatedAt = v.CreatedAt
+            };
+        }
     }
 }
