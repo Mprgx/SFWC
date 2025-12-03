@@ -1,18 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
-    [Route("api/")]
     [ApiController]
     [Authorize]
     public class VehicleController(IVehicleService vehicleService) : ControllerBase
     {
         [HttpPost("vehicle")]
-        public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleCreateDto request)
+        public async Task<ActionResult<VehicleReadDto>> CreateVehicle([FromBody] VehiclePostDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
@@ -20,7 +20,7 @@ namespace MobyPark.Controllers
 
             var vehicle = await vehicleService.CreateVehicleAsync(userId, request);
             if (vehicle is null)
-                return Conflict("License plate may already exist.");
+                return Conflict("License plate may already exist for this user.");
 
             return Ok(vehicle);
         }
@@ -40,6 +40,17 @@ namespace MobyPark.Controllers
             return Ok(new { status = "Deleted" });
         }
 
+        [HttpGet("vehicles")]
+        public async Task<ActionResult<List<Vehicle>>> GetMyVehicles()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var vehicles = await vehicleService.GetVehiclesForUserAsync(userId);
+            return Ok(vehicles);
+        }
+
         [HttpGet("vehicle/{username}")]
         public async Task<ActionResult<List<VehicleReadDto>>> GetVehicleByUser(string username)
         {
@@ -49,7 +60,7 @@ namespace MobyPark.Controllers
 
             var role = User.FindFirstValue(ClaimTypes.Role);
             if (role != "Admin")
-                return Forbid("You are not permitted to use this function");
+                return Forbid("You are not permitted to use this function.");
 
             var vehicles = await vehicleService.GetVehiclesByUsernameAsync(username);
 
