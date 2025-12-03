@@ -10,5 +10,8 @@ namespace MobyPark.Services
         Task<Session?> GetSessionByIdAsync(int lid, string sid, string? username, bool isAdmin);
 
         Task<Payment?> StopSessionAsync(string licensePlate, string username, Guid userId, IEncryptionService encryption);
+        Task<ParkingLot> CreateParkingLotAsync(ParkingLot parkingLot);
+        Task<bool> DeleteParkingLotAsync(int id);
+        Task<bool> DeleteParkingLotSessionAsync(int parkingLotId, Guid sessionId);
     }
 }
