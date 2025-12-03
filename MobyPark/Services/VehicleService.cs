@@ -7,6 +7,7 @@ namespace MobyPark.Services
 {
     public class VehicleService(UserDbContext context) : IVehicleService
     {
+        //POST /vehicles
         public async Task<VehicleReadDto?> CreateVehicleAsync(Guid userId, VehicleCreateDto request)
         {
             bool exists = await context.Vehicles
@@ -42,19 +43,7 @@ namespace MobyPark.Services
             };
         }
 
-        public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
-        {
-            var vehicle = await context.Vehicles
-                .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
-
-            if (vehicle is null)
-                return false;
-
-            context.Vehicles.Remove(vehicle);
-            await context.SaveChangesAsync();
-            return true;
-        }
-
+        //GET /vehicles
         public async Task<List<Vehicle>> GetVehiclesForUserAsync(Guid userId)
         {
             return await context.Vehicles
@@ -63,6 +52,7 @@ namespace MobyPark.Services
                 .ToListAsync();
         }
 
+        //GET /vehicles
         public async Task<List<VehicleReadDto>> GetVehiclesByUsernameAsync(string username)
         {
             var user = await context.Users.FirstOrDefaultAsync(u => u.Username == username);
@@ -83,6 +73,22 @@ namespace MobyPark.Services
                     CreatedAt = v.CreatedAt
                 })
                 .ToListAsync();
+        }
+
+        //PUT /vehicles
+
+        //DELETE /vehicles
+        public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
+        {
+            var vehicle = await context.Vehicles
+                .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
+
+            if (vehicle is null)
+                return false;
+
+            context.Vehicles.Remove(vehicle);
+            await context.SaveChangesAsync();
+            return true;
         }
     }
 }

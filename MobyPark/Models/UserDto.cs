@@ -14,7 +14,7 @@ namespace MobyPark.Models
         public required int BirthYear { get; set; }
     }
 
-    public class UserReadDto
+    public class UserGetDto
     {
         public required Guid Id { get; set; }
         public required string Username { get; set; }
