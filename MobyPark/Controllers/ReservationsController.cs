@@ -48,7 +48,24 @@ namespace MobyPark.Controllers
                     message = ModelState
                 });
 
-            var reservation = await reservationService.CreateReservation(dto);
+            GetReservationDto reservation;
+
+            try
+            {
+                reservation = await reservationService.CreateReservation(dto);
+            }
+            catch (ParkingLotFullException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
 
             return CreatedAtAction(
                 nameof(GetById),
@@ -88,6 +105,13 @@ namespace MobyPark.Controllers
             catch (ValidationException ex)
             {
                 return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new
                 {
                     message = ex.Message
                 });

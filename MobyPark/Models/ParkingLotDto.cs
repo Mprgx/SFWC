@@ -2,13 +2,12 @@ namespace MobyPark.Models
 {
     public class ParkingLotRequestDto
     {
-        public ParkingLotRequestDto(string name, string location, string address, int capacity, int reserved, double tariff, double dayTariff, Dictionary<string, double> coordinates)
+        public ParkingLotRequestDto(string name, string location, string address, int capacity, double tariff, double dayTariff, Dictionary<string, double> coordinates)
         {
             Name = name;
             Location = location;
             Address = address;
             Capacity = capacity;
-            Reserved = reserved;
             Tariff = tariff;
             DayTariff = dayTariff;
             Coordinates = coordinates;
@@ -18,7 +17,6 @@ namespace MobyPark.Models
         public string Location { get; set; } = default!;
         public string Address { get; set; } = default!;
         public int Capacity { get; set; }
-        public int Reserved { get; set; }
         public double Tariff { get; set; }
         public double DayTariff { get; set; }
         public Dictionary<string, double> Coordinates { get; set; }

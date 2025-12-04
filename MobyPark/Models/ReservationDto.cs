@@ -12,7 +12,7 @@ namespace MobyPark.Models
 
         [Required, MaxLength(10)]
         [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
-        public required string LicensePlate { get; set; }
+        public string LicensePlate { get; set; }
 
         [Required]
         public DateTimeOffset StartTime { get; set; }
@@ -78,7 +78,7 @@ namespace MobyPark.Models
         [Required]
         public Guid UserId { get; set; }
         [Required]
-        public required string LicensePlate { get; set; }
+        public string LicensePlate { get; set; }
         [Required]
         public DateTimeOffset StartTime { get; set; }
         [Required]
