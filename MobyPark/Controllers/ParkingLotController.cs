@@ -6,19 +6,20 @@ using MobyPark.Entities;
 using MobyPark.Models;
 using System.Security.Claims;
 using System.Text.Json;
+using MobyPark.Services;
 
 namespace MobyPark.Controllers
 {
     [ApiController]
     [Authorize]
-    public class ParkingLotController(UserDbContext db) : ControllerBase
+    public class ParkingLotController(UserDbContext db, IParkingLotService service) : ControllerBase
     {
         private static SessionReadDto ToSessionDto(Session s) => new(
             s.Id,
             s.UserId,
             s.VehicleId,
             s.ParkingLotId,
-            s.LicensePlate, 
+            s.LicensePlate,
             s.Started,
             s.Stopped,
             s.DurationMinutes,
@@ -93,5 +94,18 @@ namespace MobyPark.Controllers
 
             return Ok(ToSessionDto(session));
         }
+
+        [HttpPut("/parking-lots/{lid:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Update(int lid, [FromBody] ParkingLotRequestDto dto)
+        {
+            var updated = await service.UpdateAsync(lid, dto);
+
+            if (updated is null)
+                return NotFound("Parking lot not found.");
+
+            return Ok("Parking lot updated successfully.");
+        }
+
     }
 }
