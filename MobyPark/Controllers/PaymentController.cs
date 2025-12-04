@@ -112,14 +112,18 @@ namespace MobyPark.Controllers
                 return BadRequest("transactionId is required");
 
             var deleted = await _paymentService.DeletePaymentByTransactionId(transactionId);
+
             if (!deleted)
                 return NotFound(new
                 {
-                    statuscode = 404,
                     message = $"Payment with id {transactionId} not found"
                 });
 
-            return Ok($"Transaction with transactionId:{transactionId} is succesfully deleted.");
+            return Ok(new
+            {
+                status = "Success",
+                message = $"Transaction with transactionId:{transactionId} is succesfully deleted."
+            });
         }
     }
 }

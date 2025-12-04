@@ -122,7 +122,7 @@ namespace MobyPark.Services
                 return false;
 
             context.Payments.Remove(payment);
-            context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
