@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
@@ -7,71 +10,9 @@ namespace MobyPark.Services
 {
     public class ReservationService(UserDbContext _context) : IReservationService
     {
-        private static GetReservationDto ToDto(Reservation reservation)
-        {
-            var creator = reservation.User;
-            var vehicle = reservation.Vehicle;
-            var vehicleOwner = vehicle?.User;
-
-            var creatorDto = creator is null
-                ? null
-                : new UserReadDto
-                {
-                    Id = creator.Id,
-                    Username = creator.Username,
-                    Name = creator.Name,
-                    Email = creator.Email,
-                    PhoneNumber = creator.PhoneNumber,
-                    BirthYear = creator.BirthYear,
-                    Role = creator.Role,
-                    CreatedAt = creator.CreatedAt
-                };
-
-            var vehicleOwnerDto = vehicleOwner is null
-                ? null
-                : new UserReadDto
-                {
-                    Id = vehicleOwner.Id,
-                    Username = vehicleOwner.Username,
-                    Name = vehicleOwner.Name,
-                    Email = vehicleOwner.Email,
-                    PhoneNumber = vehicleOwner.PhoneNumber,
-                    BirthYear = vehicleOwner.BirthYear,
-                    Role = vehicleOwner.Role,
-                    CreatedAt = vehicleOwner.CreatedAt
-                };
-
-            var vehicleDto = vehicle is null
-                ? null
-                : new VehicleReadDto
-                {
-                    Id = vehicle.Id,
-                    UserId = vehicle.UserId,
-                    LicensePlate = vehicle.LicensePlate,
-                    Make = vehicle.Make,
-                    Model = vehicle.Model,
-                    Color = vehicle.Color,
-                    Year = vehicle.Year,
-                    CreatedAt = vehicle.CreatedAt
-                };
-
-
-            return new GetReservationDto
-            {
-                Id = reservation.Id,
-                ParkingLotId = reservation.ParkingLotId,
-                UserId = reservation.UserId,
-                ReservationCreator = creatorDto,
-                LicensePlate = reservation.LicensePlate,
-                Vehicle = vehicleDto,
-                StartTime = reservation.StartTime,
-                EndTime = reservation.EndTime,
-                IsActive = reservation.IsActive
-            };
-        }
 
         //POST
-        public GetReservationDto CreateReservation(PostReservationDto dto)
+        public async Task<GetReservationDto> CreateReservation(PostReservationDto dto)
         {
             var reservation = new Reservation
             {
@@ -82,69 +23,131 @@ namespace MobyPark.Services
                 EndTime = dto.EndTime,
             };
 
-            _context.Reservations.Add(reservation);
-            _context.SaveChanges();
+            await _context.Reservations.AddAsync(reservation);
+            await _context.SaveChangesAsync();
 
-            var loaded = _context.Reservations
+            var loaded = await _context.Reservations
                 .Include(r => r.User)
                 .Include(r => r.Vehicle)
                     .ThenInclude(v => v.User)
-                .First(r => r.Id == reservation.Id);
+                .FirstAsync(r => r.Id == reservation.Id);
 
-            return ToDto(loaded);
+            return new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
         //GET
-        public GetReservationDto? GetById(int reservationId)
+        public async Task<GetReservationDto?> GetById(int reservationId)
         {
-            var reservation = _context.Reservations
+            var reservation = await _context.Reservations
                 .Include(r => r.User)
                 .Include(r => r.Vehicle)
                     .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Id == reservationId);
+                .FirstOrDefaultAsync(r => r.Id == reservationId);
 
-            return reservation is null ? null : ToDto(reservation);
+            return reservation is null ? null : new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
         //GET
-        public GetReservationDto? GetByVehicleId(int vehicleId)
+        public async Task<GetReservationDto?> GetByVehicleId(int vehicleId)
         {
-            var reservation = _context.Reservations
+            var reservation = await _context.Reservations
                 .Include(r => r.User)
                 .Include(r => r.Vehicle)
                     .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Vehicle.Id == vehicleId);
+                .FirstOrDefaultAsync(r => r.Vehicle.Id == vehicleId);
 
-            return reservation is null ? null : ToDto(reservation);
+            return reservation is null ? null : new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
         //PUT
-        public GetReservationDto? UpdateReservation(int reservationId, PostReservationDto dto)
+        public async Task<GetReservationDto?> UpdateReservation(int reservationId, PutReservationDto dto)
         {
-            var reservation = _context.Reservations
+            var reservation = await _context.Reservations
                 .Include(r => r.User)
                 .Include(r => r.Vehicle)
                     .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Id == reservationId);
+                .FirstOrDefaultAsync(r => r.Id == reservationId);
 
-            if (reservation is null)
+            if (reservation == null)
                 return null;
 
-            reservation.ParkingLotId = dto.ParkingLotId;
-            reservation.StartTime = dto.StartTime;
-            reservation.EndTime = dto.EndTime;
-            reservation.UserId = dto.UserId;
-            reservation.LicensePlate = dto.LicensePlate;
+            if (dto.StartTime.HasValue)
+            {
+                if (dto.StartTime.Value < DateTimeOffset.UtcNow)
+                    throw new ValidationException("StartTime cannot be in the past.");
 
-            _context.SaveChanges();
+                if (!dto.EndTime.HasValue && reservation.EndTime <= dto.StartTime.Value)
+                    throw new ValidationException("StartTime must be before the existing EndTime.");
+            }
 
-            return ToDto(reservation);
+            if (dto.EndTime.HasValue)
+            {
+                if (!dto.StartTime.HasValue && dto.EndTime.Value <= reservation.StartTime)
+                    throw new ValidationException("EndTime must be after the existing StartTime.");
+            }
+
+            if (dto.StartTime.HasValue && dto.EndTime.HasValue)
+            {
+                if (dto.EndTime.Value <= dto.StartTime.Value)
+                    throw new ValidationException("EndTime must be after StartTime.");
+            }
+
+            if (dto.ParkingLotId.HasValue)
+                reservation.ParkingLotId = dto.ParkingLotId.Value;
+            if (dto.StartTime.HasValue)
+                reservation.StartTime = dto.StartTime.Value;
+            if (dto.EndTime.HasValue)
+                reservation.EndTime = dto.EndTime.Value;
+            if (dto.UserId.HasValue)
+                reservation.UserId = dto.UserId.Value;
+            if (!string.IsNullOrEmpty(dto.LicensePlate))
+                reservation.LicensePlate = dto.LicensePlate;
+
+            await _context.SaveChangesAsync();
+
+            return new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
         //DELETE
-        public bool DeleteReservation(int reservationId)
+        public async Task<bool> DeleteReservation(int reservationId)
         {
-            var reservation = _context.Reservations.Find(reservationId);
+            var reservation = await _context.Reservations.FindAsync(reservationId);
             if (reservation is null)
                 return false;
 
