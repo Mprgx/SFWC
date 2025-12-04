@@ -8,6 +8,7 @@ namespace MobyPark.Services
 {
     public class ProfileService(UserDbContext context, IEncryptionService encryption) : IProfileService
     {
+        //GET
         public async Task<UserReadDto?> GetProfileAsync(Guid userId)
         {
             var user = await context.Users.AsNoTracking()
@@ -36,6 +37,7 @@ namespace MobyPark.Services
             };
         }
 
+        //PUT
         public async Task<(UserReadDto? dto, string? error, int? status)> UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
         {
             var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -140,6 +142,7 @@ namespace MobyPark.Services
             return (result, null, null);
         }
 
+        //PUT
         public async Task<(bool changed, string? error, int? status)> ChangePasswordAsync(Guid userId, string? currentPassword, string? newPassword)
         {
             if (string.IsNullOrWhiteSpace(newPassword)) return (false, null, 204);

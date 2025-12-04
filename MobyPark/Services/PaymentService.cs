@@ -115,6 +115,95 @@ namespace MobyPark.Services
                 .ToList();
         }
 
+        public async Task<bool> DeletePaymentByTransactionId(string transactionId)
+        {
+            var payment = await context.Payments.FindAsync(transactionId);
+            if (payment is null)
+                return false;
+
+            context.Payments.Remove(payment);
+            await context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<PaymentResponseDto> FulfillPaymentAsync(string userId, PaymentsDto paymentRequest)
+        {
+            var payment = await context.Payments
+            .FirstOrDefaultAsync(p => p.Transaction == paymentRequest.Transaction
+                                && p.Completed == null);
+            if (payment is null)
+                return null;
+
+            payment.Completed = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+            return new PaymentResponseDto
+            {
+                Transaction = payment.Transaction,
+                Amount = payment.Amount,
+                Initiator = payment.Initiator,
+
+                UserId = payment.UserId,
+                User = payment.User == null
+                    ? null
+                    : new UserReadDto
+                    {
+                        Id = payment.User.Id,
+                        Username = payment.User.Username,
+                        Name = payment.User.Name,
+                        Email = payment.User.Email,
+                        PhoneNumber = payment.User.PhoneNumber,
+                        BirthYear = payment.User.BirthYear,
+                        Role = payment.User.Role,
+                        CreatedAt = payment.User.CreatedAt
+                    },
+
+                CreatedAt = payment.Created_At,
+                Completed = payment.Completed,
+
+                Hash = payment.Hash,
+                T_Data = payment.T_Data,
+
+                SessionId = payment.SessionId,
+                Session = payment.Session == null
+                    ? null
+                    : new SessionReadDto(
+                        payment.Session.Id,
+                        payment.Session.UserId,
+                        payment.Session.VehicleId,
+                        payment.Session.ParkingLotId,
+                        payment.Session.LicensePlate,
+                        payment.Session.Started,
+                        payment.Session.Stopped,
+                        payment.Session.DurationMinutes,
+                        payment.Session.Cost,
+                        payment.Session.PaymentStatus,
+                        payment.Session.IsCancelled,
+                        payment.Session.CancelledAt,
+                        payment.Session.IsRefunded,
+                        payment.Session.RefundDate
+                    ),
+
+                ParkingLotId = payment.ParkingLotId,
+                ParkingLot = payment.ParkingLot == null
+                    ? null
+                    : new ParkingLotSummaryDto
+                    {
+                        Id = payment.ParkingLot.Id,
+                        Name = payment.ParkingLot.Name,
+                        Location = payment.ParkingLot.Location,
+                        Address = payment.ParkingLot.Address,
+                        Capacity = payment.ParkingLot.Capacity,
+                        ReservedSpots = payment.ParkingLot.ReservedSpots,
+                        Tariff = payment.ParkingLot.Tariff,
+                        DayTariff = payment.ParkingLot.DayTariff
+                    }
+            };
+
+
+
+
+        }
+
         private static PaymentResponseDto ToPaymentResponseDto(Payment p)
         {
             return new PaymentResponseDto

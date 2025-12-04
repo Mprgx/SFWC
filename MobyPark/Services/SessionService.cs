@@ -183,6 +183,7 @@ namespace MobyPark.Services
             return s;
         }
 
+        //DELETE /sessions
         public async Task<bool> DeleteSessionAsync(int parkingLotId, Guid sessionId)
         {
             // Check of parking lot bestaat

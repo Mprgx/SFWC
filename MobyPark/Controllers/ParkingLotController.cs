@@ -31,6 +31,32 @@ namespace MobyPark.Controllers
             s.RefundDate
         );
 
+        //POST
+        [HttpPost("/parking-lots")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> Create([FromBody] ParkingLotRequestDto body)
+        {
+            var coords = JsonSerializer.Serialize(body.Coordinates);
+
+            var lot = new ParkingLot
+            {
+                Id = 0,
+                Name = body.Name,
+                Location = body.Location,
+                Address = body.Address,
+                Capacity = body.Capacity,
+                Tariff = body.Tariff,
+                DayTariff = body.DayTariff,
+                Coordinates = coords
+            };
+
+            db.ParkingLots.Add(lot);
+            await db.SaveChangesAsync();
+
+            return Ok(lot);
+        }
+
+        //GET
         [HttpGet("/parking-lots")]
         public async Task<ActionResult<List<ParkingLotRequestDto>>> GetAll()
         {
@@ -51,6 +77,7 @@ namespace MobyPark.Controllers
             return Ok(dtos);
         }
 
+        //GET
         [HttpGet("/parking-lots/{lid:int}")]
         public async Task<ActionResult<ParkingLotRequestDto>> GetById(int lid)
         {
@@ -67,6 +94,7 @@ namespace MobyPark.Controllers
             return Ok(dto);
         }
 
+        //GET
         [HttpGet("/parking-lots/{lid:int}/sessions")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<SessionReadDto>>> GetSessions(int lid)
@@ -82,6 +110,7 @@ namespace MobyPark.Controllers
             return Ok(dtoList);
         }
 
+        //GET
         [HttpGet("/parking-lots/{lid:int}/sessions/{sid:guid}")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<SessionReadDto>> GetSessionById(int lid, Guid sid)
@@ -95,17 +124,48 @@ namespace MobyPark.Controllers
             return Ok(ToSessionDto(session));
         }
 
+        //DELETE
+        [HttpDelete("/parking-lots/{lid:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> DeleteParkingLot(int lid)
+        {
+            var lot = await db.ParkingLots.FindAsync(lid);
+            if (lot is null)
+                return NotFound("Parking lot not found");
+
+            db.ParkingLots.Remove(lot);
+            await db.SaveChangesAsync();
+
+            return Ok("Parking lot deleted");
+        }
+
+        //DELETE
+        [HttpDelete("/parking-lots/{lid:int}/sessions/{sid:int}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult> DeleteSession(int lid, Guid sid)
+        {
+            var session = await db.Sessions
+                .FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
+
+            if (session is null)
+                return NotFound("Session not found");
+
+            db.Sessions.Remove(session);
+            await db.SaveChangesAsync();
+
+            return Ok("Session deleted");
+        }
+
         [HttpPut("/parking-lots/{lid:int}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Update(int lid, [FromBody] ParkingLotRequestDto dto)
+        public async Task<IActionResult> Update(int lid, [FromBody] ParkingLotUpdateDto dto)
         {
-            var updated = await service.UpdateAsync(lid, dto);
+            var updated = await service.UpdateParkingLotAsync(lid, dto);
 
             if (updated is null)
                 return NotFound("Parking lot not found.");
 
             return Ok("Parking lot updated successfully.");
         }
-
     }
 }

@@ -3,7 +3,7 @@ using MobyPark.Entities;
 
 namespace MobyPark.Models
 {
-    public class UserPostDto
+    public class UserRequestDto
     {
         public required string Username { get; set; }
         public required string Name { get; set; }

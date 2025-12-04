@@ -8,17 +8,29 @@ namespace MobyPark.Services
 {
     public class ParkingLotService(UserDbContext db) : IParkingLotService
     {
+
+        //POST
+        public async Task<ParkingLot> CreateParkingLotAsync(ParkingLot parkingLot)
+        {
+            db.ParkingLots.Add(parkingLot);
+            await db.SaveChangesAsync();
+            return parkingLot;
+        }
+
+        //GET
         public async Task<List<ParkingLot>> GetAllAsync()
         {
             return await db.Set<ParkingLot>().ToListAsync();
         }
 
+        //GET
         public async Task<ParkingLot?> GetByIdAsync(int lid)
         {
             return await db.Set<ParkingLot>()
                 .FirstOrDefaultAsync(p => p.Id == lid);
         }
 
+        //GET
         public async Task<List<Session>> GetSessionsAsync(
             int lid, string? username, bool isAdmin)
         {
@@ -29,7 +41,7 @@ namespace MobyPark.Services
             var query = db.Sessions
                 .Include(s => s.User)
                 .Include(s => s.Vehicle)
-                .Where(s => s.ParkingLotId == lid); //s.ParkingLotId == lid
+                .Where(s => s.ParkingLotId == lid);
 
             if (!isAdmin && username is not null)
                 query = query.Where(s => s.User.Username == username);
@@ -37,6 +49,7 @@ namespace MobyPark.Services
             return await query.ToListAsync();
         }
 
+        //GET
         public async Task<Session?> GetSessionByIdAsync(
             int lid, string sid, string? username, bool isAdmin)
         {
@@ -53,6 +66,36 @@ namespace MobyPark.Services
                 return null;
 
             return session;
+        }
+
+        //DELETE
+        public async Task<bool> DeleteParkingLotAsync(int id)
+        {
+            var lot = await db.ParkingLots.FindAsync(id);
+
+            if (lot == null)
+                return false;
+
+            db.ParkingLots.Remove(lot);
+            await db.SaveChangesAsync();
+
+            return true;
+        }
+
+        //DELETE
+        public async Task<bool> DeleteParkingLotSessionAsync(int parkingLotId, Guid sessionId)
+        {
+            var session = await db.Sessions
+                .Where(s => s.ParkingLotId == parkingLotId && s.Id == sessionId)
+                .FirstOrDefaultAsync();
+
+            if (session == null)
+                return false;
+
+            db.Sessions.Remove(session);
+            await db.SaveChangesAsync();
+
+            return true;
         }
 
         public async Task<Payment?> StopSessionAsync(string licensePlate, string username, Guid userid, IEncryptionService encryption)
@@ -114,24 +157,38 @@ namespace MobyPark.Services
             return payment;
         }
 
-        public async Task<ParkingLot?> UpdateAsync(int lid, ParkingLotRequestDto dto)
+        public async Task<ParkingLot?> UpdateParkingLotAsync(int lid, ParkingLotUpdateDto dto)
         {
             var lot = await db.ParkingLots.FindAsync(lid);
             if (lot is null)
                 return null;
 
-            lot.Name = dto.Name;
-            lot.Location = dto.Location;
-            lot.Address = dto.Address;
-            lot.Capacity = dto.Capacity;
-            lot.ReservedSpots = dto.Reserved;
-            lot.Tariff = dto.Tariff;
-            lot.DayTariff = dto.DayTariff;
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                lot.Name = dto.Name;
 
-            // Convert dictionary -> JSON string
-            lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);
+            if (!string.IsNullOrWhiteSpace(dto.Location))
+                lot.Location = dto.Location;
+
+            if (!string.IsNullOrWhiteSpace(dto.Address))
+                lot.Address = dto.Address;
+
+            if (dto.Capacity is not null)
+                lot.Capacity = dto.Capacity.Value;
+
+            if (dto.Reserved is not null)
+                lot.ReservedSpots = dto.Reserved.Value;
+
+            if (dto.Tariff is not null)
+                lot.Tariff = dto.Tariff.Value;
+
+            if (dto.DayTariff is not null)
+                lot.DayTariff = dto.DayTariff.Value;
+
+            if (dto.Coordinates is not null)
+                lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);
 
             await db.SaveChangesAsync();
+
             return lot;
         }
 

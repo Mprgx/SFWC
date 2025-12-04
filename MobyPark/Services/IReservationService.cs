@@ -5,11 +5,11 @@ namespace MobyPark.Services
 {
     public interface IReservationService
     {
+        GetReservationDto CreateReservation(PostReservationDto dto);
         GetReservationDto? GetById(int reservationId);
         GetReservationDto? GetByVehicleId(int vehicleId);
-        GetReservationDto CreateReservation(PostReservationDto dto);
-        bool DeleteReservation(int reservationId);
         GetReservationDto? UpdateReservation(int reservationId, PostReservationDto dto);
+        bool DeleteReservation(int reservationId);
 
     }
 }
