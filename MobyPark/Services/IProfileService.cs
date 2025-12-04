@@ -7,5 +7,6 @@ namespace MobyPark.Services
         Task<UserReadDto?> GetProfileAsync(Guid userId);
         Task<(UserReadDto? dto, string? error, int? status)> UpdateProfileAsync(Guid userId, UpdateProfileDto dto);
         Task<(bool changed, string? error, int? status)> ChangePasswordAsync(Guid userId, string? currentPassword, string? newPassword);
+        Task<(bool deleted, string? error, int? status)> DeleteProfileAsync(Guid userId);
     }
 }

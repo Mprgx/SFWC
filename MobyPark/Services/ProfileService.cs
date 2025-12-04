@@ -171,5 +171,18 @@ namespace MobyPark.Services
             await context.SaveChangesAsync();
             return (true, null, 204);
         }
+
+        //DELETE
+        public async Task<(bool deleted, string? error, int? status)> DeleteProfileAsync(Guid userId)
+        {
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user is null)
+                return (false, null, 404);
+
+            context.Users.Remove(user);
+            await context.SaveChangesAsync();
+
+            return (true, null, 204);
+        }
     }
 }
