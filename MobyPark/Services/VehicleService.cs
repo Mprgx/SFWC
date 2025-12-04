@@ -44,12 +44,23 @@ namespace MobyPark.Services
         }
 
         //GET /vehicles
-        public async Task<List<Vehicle>> GetVehiclesForUserAsync(Guid userId)
+        public async Task<List<VehicleReadDto>> GetVehiclesForUserAsync(Guid userId)
         {
             return await context.Vehicles
-                .Where(v => v.UserId == userId)
-                .OrderBy(v => v.CreatedAt)
-                .ToListAsync();
+            .Where(v => v.UserId == userId)
+            .OrderBy(v => v.CreatedAt)
+            .Select(v => new VehicleReadDto
+            {
+                Id = v.Id,
+                UserId = v.UserId,
+                LicensePlate = v.LicensePlate,
+                Make = v.Make,
+                Model = v.Model,
+                Color = v.Color,
+                Year = v.Year,
+                CreatedAt = v.CreatedAt
+            })
+            .ToListAsync();
         }
 
         //GET /vehicles
@@ -76,6 +87,40 @@ namespace MobyPark.Services
         }
 
         //PUT /vehicles
+        public async Task<VehicleReadDto?> UpdateVehicleAsync(Guid userId, int vehicleId, VehicleUpdateDto request)
+        {
+            var vehicle = await context.Vehicles
+                .FirstOrDefaultAsync(v => v.Id == vehicleId && v.UserId == userId);
+
+            if (vehicle is null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(request.Make))
+                vehicle.Make = request.Make.Trim();
+
+            if (!string.IsNullOrWhiteSpace(request.Model))
+                vehicle.Model = request.Model.Trim();
+
+            if (!string.IsNullOrWhiteSpace(request.Color))
+                vehicle.Color = request.Color.Trim();
+
+            if (request.Year.HasValue)
+                vehicle.Year = request.Year.Value;
+
+            await context.SaveChangesAsync();
+
+            return new VehicleReadDto
+            {
+                Id = vehicle.Id,
+                UserId = vehicle.UserId,
+                LicensePlate = vehicle.LicensePlate,
+                Make = vehicle.Make,
+                Model = vehicle.Model,
+                Color = vehicle.Color,
+                Year = vehicle.Year,
+                CreatedAt = vehicle.CreatedAt
+            };
+        }
 
         //DELETE /vehicles
         public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)

@@ -47,6 +47,24 @@ namespace MobyPark.Controllers
             return NoContent();
         }
 
+        [HttpDelete]
+        public async Task<IActionResult> DeleteMe()
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (deleted, error, status) = await profileService.DeleteProfileAsync(userId);
+
+            if (status == 404) return NotFound();
+            if (status == 400) return BadRequest(error);
+            if (status == 409) return Conflict(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            return StatusCode(500, error ?? "Unexpected error while deleting profile.");
+        }
+
         private bool TryGetUserId(out Guid id)
         {
             var s = User.FindFirstValue(ClaimTypes.NameIdentifier);

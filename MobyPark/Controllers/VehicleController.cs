@@ -25,6 +25,32 @@ namespace MobyPark.Controllers
             return Ok(vehicle);
         }
 
+        [HttpGet("vehicles")]
+        public async Task<ActionResult<List<VehicleReadDto>>> GetMyVehicles()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var vehicles = await vehicleService.GetVehiclesForUserAsync(userId);
+            return Ok(vehicles);
+        }
+
+        [HttpPut("vehicle/{id:int}")]
+        public async Task<ActionResult<VehicleReadDto>> UpdateVehicle(int id, VehicleUpdateDto request)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var updated = await vehicleService.UpdateVehicleAsync(userId, id, request);
+
+            if (updated is null)
+                return NotFound("Vehicle not found or not owned by the user.");
+
+            return Ok(updated);
+        }
+
         [HttpDelete("vehicle/{id:int}")]
         public async Task<IActionResult> DeleteVehicle(int id)
         {
@@ -38,17 +64,6 @@ namespace MobyPark.Controllers
                 return NotFound("Vehicle not found or not owned by the user.");
 
             return Ok(new { status = "Deleted" });
-        }
-
-        [HttpGet("vehicles")]
-        public async Task<ActionResult<List<Vehicle>>> GetMyVehicles()
-        {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing user ID.");
-
-            var vehicles = await vehicleService.GetVehiclesForUserAsync(userId);
-            return Ok(vehicles);
         }
 
         [Authorize(Roles = "Admin")]
