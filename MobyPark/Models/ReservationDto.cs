@@ -41,8 +41,6 @@ namespace MobyPark.Models
 
     public class PutReservationDto : IValidatableObject
     {
-        public int? ParkingLotId { get; set; }
-        public Guid? UserId { get; set; }
         [MaxLength(10)]
         [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
         public string? LicensePlate { get; set; }
