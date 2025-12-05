@@ -207,7 +207,7 @@ namespace MobyPark.Services
         }
 
 
-        public async Task<object?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
+        public async Task<RefundResponseDto?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
         {
             var s = await db.Sessions.FindAsync(sessionId);
             if (s is null) return null;
@@ -244,16 +244,17 @@ namespace MobyPark.Services
 
             await db.SaveChangesAsync();
 
-            return new
+            return new RefundResponseDto
             {
-                sessionId = s.Id,
-                refunded = refundAmount,
-                percentage = pct * 100,
-                s.DurationMinutes,
-                s.Cost,
-                s.RefundDate
+                SessionId = s.Id,
+                Refunded = refundAmount,
+                Percentage = pct * 100,
+                DurationMinutes = s.DurationMinutes,
+                Cost = s.Cost,
+                RefundDate = s.RefundDate!.Value
             };
         }
+
 
         public async Task<List<Session>> GetAllForUserAsync(Guid userId, bool onlyActive)
         {
