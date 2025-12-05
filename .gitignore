@@ -3,7 +3,7 @@
 __pycache__/
 *.py[cod]
 .venv/
-Integratietests/conftest.py
+*conftest.py
 
 # VSCode
 .vscode/
