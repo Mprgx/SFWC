@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
+using MobyPark.Models;
+using System.Text.Json;
 
 namespace MobyPark.Services
 {
@@ -154,6 +156,42 @@ namespace MobyPark.Services
 
             return payment;
         }
+
+        public async Task<ParkingLot?> UpdateParkingLotAsync(int lid, ParkingLotUpdateDto dto)
+        {
+            var lot = await db.ParkingLots.FindAsync(lid);
+            if (lot is null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                lot.Name = dto.Name;
+
+            if (!string.IsNullOrWhiteSpace(dto.Location))
+                lot.Location = dto.Location;
+
+            if (!string.IsNullOrWhiteSpace(dto.Address))
+                lot.Address = dto.Address;
+
+            if (dto.Capacity is not null)
+                lot.Capacity = dto.Capacity.Value;
+
+            if (dto.Reserved is not null)
+                lot.ReservedSpots = dto.Reserved.Value;
+
+            if (dto.Tariff is not null)
+                lot.Tariff = dto.Tariff.Value;
+
+            if (dto.DayTariff is not null)
+                lot.DayTariff = dto.DayTariff.Value;
+
+            if (dto.Coordinates is not null)
+                lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);
+
+            await db.SaveChangesAsync();
+
+            return lot;
+        }
+
 
         private static string GenerateTransactionNumber()
         {
