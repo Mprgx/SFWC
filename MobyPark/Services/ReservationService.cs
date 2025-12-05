@@ -129,20 +129,12 @@ namespace MobyPark.Services
             var reservation = await _context.Reservations.FindAsync(reservationId)
                 ?? throw new KeyNotFoundException("Reservation not found");
 
-            var parkingLot = dto.ParkingLotId.HasValue
-                ? await _context.ParkingLots.FindAsync(dto.ParkingLotId.Value)
-                    ?? throw new KeyNotFoundException("Parking lot not found")
-                : await _context.ParkingLots.FindAsync(reservation.ParkingLotId)
-                    ?? throw new KeyNotFoundException("Parking lot not found");
-
-            if (dto.UserId.HasValue)
-            {
-                var user = await _context.Users.FindAsync(dto.UserId.Value)
-                    ?? throw new KeyNotFoundException("User not found");
-            }
-
             var newStart = dto.StartTime ?? reservation.StartTime;
             var newEnd = dto.EndTime ?? reservation.EndTime;
+
+            var parkingLot = await _context.ParkingLots
+                .FirstOrDefaultAsync(pl => pl.Id == reservation.ParkingLotId)
+                    ?? throw new KeyNotFoundException("Parking lot not found");
 
             if (newStart >= newEnd)
                 throw new ValidationException("StartTime must be before EndTime.");
@@ -150,11 +142,10 @@ namespace MobyPark.Services
             if (newStart < DateTimeOffset.UtcNow)
                 throw new ValidationException("StartTime cannot be in the past.");
 
-            if (dto.StartTime.HasValue || dto.EndTime.HasValue || dto.ParkingLotId.HasValue)
+            if (dto.StartTime.HasValue || dto.EndTime.HasValue)
             {
                 var reservedCount = await _context.Reservations
-                    .Where(r => r.ParkingLotId == parkingLot.Id
-                            && r.Id != reservation.Id
+                    .Where(r => r.Id != reservation.Id
                             && r.StartTime < newEnd
                             && r.EndTime > newStart)
                     .CountAsync();
@@ -163,10 +154,8 @@ namespace MobyPark.Services
                     throw new ParkingLotFullException("No spots available for the selected time slot.");
             }
 
-            if (dto.ParkingLotId.HasValue) reservation.ParkingLotId = dto.ParkingLotId.Value;
             if (dto.StartTime.HasValue) reservation.StartTime = dto.StartTime.Value;
             if (dto.EndTime.HasValue) reservation.EndTime = dto.EndTime.Value;
-            if (dto.UserId.HasValue) reservation.UserId = dto.UserId.Value;
             if (!string.IsNullOrEmpty(dto.LicensePlate)) reservation.LicensePlate = dto.LicensePlate;
 
             await _context.SaveChangesAsync();
