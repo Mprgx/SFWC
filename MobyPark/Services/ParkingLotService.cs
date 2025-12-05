@@ -175,9 +175,6 @@ namespace MobyPark.Services
             if (dto.Capacity is not null)
                 lot.Capacity = dto.Capacity.Value;
 
-            if (dto.Reserved is not null)
-                lot.ReservedSpots = dto.Reserved.Value;
-
             if (dto.Tariff is not null)
                 lot.Tariff = dto.Tariff.Value;
 
