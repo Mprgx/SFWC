@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
@@ -7,150 +10,184 @@ namespace MobyPark.Services
 {
     public class ReservationService(UserDbContext _context) : IReservationService
     {
-        private static GetReservationDto ToDto(Reservation reservation)
+
+        //POST
+        public async Task<GetReservationDto> CreateReservation(PostReservationDto dto)
         {
-            var creator = reservation.User;
-            var vehicle = reservation.Vehicle;
-            var vehicleOwner = vehicle?.User;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Check if parking lot and user exists
+                var parkingLot = await _context.ParkingLots.FirstOrDefaultAsync(p => p.Id == dto.ParkingLotId)
+                    ?? throw new KeyNotFoundException("Parking lot not found");
 
-            var creatorDto = creator is null
-                ? null
-                : new UserReadDto
+                var user = await _context.Users.FindAsync(dto.UserId)
+                    ?? throw new KeyNotFoundException("User not found");
+
+                // Check date validity
+                if (dto.StartTime >= dto.EndTime)
                 {
-                    Id = creator.Id,
-                    Username = creator.Username,
-                    Name = creator.Name,
-                    Email = creator.Email,
-                    PhoneNumber = creator.PhoneNumber,
-                    BirthYear = creator.BirthYear,
-                    Role = creator.Role,
-                    CreatedAt = creator.CreatedAt
+                    throw new ValidationException("Start time must be before end time");
+                }
+
+                if (dto.StartTime < DateTimeOffset.UtcNow)
+                {
+                    throw new ValidationException("Start time cannot be in the past");
+                }
+
+                // Check if there is a spot open
+                var reservedCount = await _context.Reservations
+                    .Where(r => r.ParkingLotId == dto.ParkingLotId
+                            && r.StartTime < dto.EndTime
+                            && r.EndTime > dto.StartTime)
+                    .CountAsync();
+
+                bool isAvailable = reservedCount < parkingLot.Capacity;
+
+                if (!isAvailable)
+                {
+                    throw new ParkingLotFullException("No spots available for the selected time slot.");
+                }
+
+                // Books the reservation
+                var reservation = new Reservation
+                {
+                    ParkingLotId = dto.ParkingLotId,
+                    UserId = dto.UserId,
+                    LicensePlate = dto.LicensePlate,
+                    StartTime = dto.StartTime,
+                    EndTime = dto.EndTime,
                 };
 
-            var vehicleOwnerDto = vehicleOwner is null
-                ? null
-                : new UserReadDto
+                await _context.Reservations.AddAsync(reservation);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return new GetReservationDto
                 {
-                    Id = vehicleOwner.Id,
-                    Username = vehicleOwner.Username,
-                    Name = vehicleOwner.Name,
-                    Email = vehicleOwner.Email,
-                    PhoneNumber = vehicleOwner.PhoneNumber,
-                    BirthYear = vehicleOwner.BirthYear,
-                    Role = vehicleOwner.Role,
-                    CreatedAt = vehicleOwner.CreatedAt
+                    Id = reservation.Id,
+                    ParkingLotId = reservation.ParkingLotId,
+                    UserId = reservation.UserId,
+                    LicensePlate = reservation.LicensePlate,
+                    StartTime = reservation.StartTime,
+                    EndTime = reservation.EndTime,
+                    IsActive = reservation.IsActive
                 };
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
 
-            var vehicleDto = vehicle is null
-                ? null
-                : new VehicleReadDto
-                {
-                    Id = vehicle.Id,
-                    UserId = vehicle.UserId,
-                    LicensePlate = vehicle.LicensePlate,
-                    Make = vehicle.Make,
-                    Model = vehicle.Model,
-                    Color = vehicle.Color,
-                    Year = vehicle.Year,
-                    CreatedAt = vehicle.CreatedAt
-                };
+        //GET
+        public async Task<GetReservationDto?> GetById(int reservationId)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefaultAsync(r => r.Id == reservationId);
 
-
-            return new GetReservationDto
+            return reservation is null ? null : new GetReservationDto
             {
                 Id = reservation.Id,
                 ParkingLotId = reservation.ParkingLotId,
                 UserId = reservation.UserId,
-                ReservationCreator = creatorDto,
                 LicensePlate = reservation.LicensePlate,
-                Vehicle = vehicleDto,
                 StartTime = reservation.StartTime,
                 EndTime = reservation.EndTime,
                 IsActive = reservation.IsActive
             };
         }
 
-        //POST
-        public GetReservationDto CreateReservation(PostReservationDto dto)
+        //GET
+        public async Task<GetReservationDto?> GetByVehicleId(int vehicleId)
         {
-            var reservation = new Reservation
+            var reservation = await _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Vehicle)
+                    .ThenInclude(v => v.User)
+                .FirstOrDefaultAsync(r => r.Vehicle.Id == vehicleId);
+
+            return reservation is null ? null : new GetReservationDto
             {
-                ParkingLotId = dto.ParkingLotId,
-                UserId = dto.UserId,
-                LicensePlate = dto.LicensePlate,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime,
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
             };
-
-            _context.Reservations.Add(reservation);
-            _context.SaveChanges();
-
-            var loaded = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .First(r => r.Id == reservation.Id);
-
-            return ToDto(loaded);
-        }
-
-        //GET
-        public GetReservationDto? GetById(int reservationId)
-        {
-            var reservation = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Id == reservationId);
-
-            return reservation is null ? null : ToDto(reservation);
-        }
-
-        //GET
-        public GetReservationDto? GetByVehicleId(int vehicleId)
-        {
-            var reservation = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Vehicle.Id == vehicleId);
-
-            return reservation is null ? null : ToDto(reservation);
         }
 
         //PUT
-        public GetReservationDto? UpdateReservation(int reservationId, PostReservationDto dto)
+        public async Task<GetReservationDto?> UpdateReservation(int reservationId, PutReservationDto dto)
         {
-            var reservation = _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
-                .FirstOrDefault(r => r.Id == reservationId);
+            var reservation = await _context.Reservations.FindAsync(reservationId)
+                ?? throw new KeyNotFoundException("Reservation not found");
 
-            if (reservation is null)
-                return null;
+            var newStart = dto.StartTime ?? reservation.StartTime;
+            var newEnd = dto.EndTime ?? reservation.EndTime;
 
-            reservation.ParkingLotId = dto.ParkingLotId;
-            reservation.StartTime = dto.StartTime;
-            reservation.EndTime = dto.EndTime;
-            reservation.UserId = dto.UserId;
-            reservation.LicensePlate = dto.LicensePlate;
+            var parkingLot = await _context.ParkingLots
+                .FirstOrDefaultAsync(pl => pl.Id == reservation.ParkingLotId)
+                    ?? throw new KeyNotFoundException("Parking lot not found");
 
-            _context.SaveChanges();
+            if (newStart >= newEnd)
+                throw new ValidationException("StartTime must be before EndTime.");
 
-            return ToDto(reservation);
+            if (newStart < DateTimeOffset.UtcNow)
+                throw new ValidationException("StartTime cannot be in the past.");
+
+            if (dto.StartTime.HasValue || dto.EndTime.HasValue)
+            {
+                var reservedCount = await _context.Reservations
+                    .Where(r => r.Id != reservation.Id
+                            && r.StartTime < newEnd
+                            && r.EndTime > newStart)
+                    .CountAsync();
+
+                if (reservedCount >= parkingLot.Capacity)
+                    throw new ParkingLotFullException("No spots available for the selected time slot.");
+            }
+
+            if (dto.StartTime.HasValue) reservation.StartTime = dto.StartTime.Value;
+            if (dto.EndTime.HasValue) reservation.EndTime = dto.EndTime.Value;
+            if (!string.IsNullOrEmpty(dto.LicensePlate)) reservation.LicensePlate = dto.LicensePlate;
+
+            await _context.SaveChangesAsync();
+
+            return new GetReservationDto
+            {
+                Id = reservation.Id,
+                ParkingLotId = reservation.ParkingLotId,
+                UserId = reservation.UserId,
+                LicensePlate = reservation.LicensePlate,
+                StartTime = reservation.StartTime,
+                EndTime = reservation.EndTime,
+                IsActive = reservation.IsActive
+            };
         }
 
         //DELETE
-        public bool DeleteReservation(int reservationId)
+        public async Task<bool> DeleteReservation(int reservationId)
         {
-            var reservation = _context.Reservations.Find(reservationId);
+            var reservation = await _context.Reservations.FindAsync(reservationId);
             if (reservation is null)
                 return false;
 
             _context.Reservations.Remove(reservation);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return true;
         }
     }
+
+    public class ParkingLotFullException : Exception
+    {
+        public ParkingLotFullException(string message) : base(message) { }
+    }
+
 }

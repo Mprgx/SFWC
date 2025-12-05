@@ -9,7 +9,7 @@ namespace MobyPark.Entities
                 public int ParkingLotId { get; set; }
                 public ParkingLot? ParkingLot { get; set; }
 
-                public Guid CompanyId { get; set; }
+                public Guid? CompanyId { get; set; }
                 public Company? Company { get; set; }
 
                 public Guid UserId { get; set; }

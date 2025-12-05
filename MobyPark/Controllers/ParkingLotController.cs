@@ -68,7 +68,6 @@ namespace MobyPark.Controllers
                 l.Location,
                 l.Address,
                 l.Capacity,
-                l.ReservedSpots,
                 l.Tariff,
                 l.DayTariff,
                 JsonSerializer.Deserialize<Dictionary<string, double>>(l.Coordinates) ?? default
@@ -86,7 +85,7 @@ namespace MobyPark.Controllers
 
             var dto = new ParkingLotRequestDto(
                 lot.Name, lot.Location, lot.Address, lot.Capacity,
-                lot.ReservedSpots, lot.Tariff, lot.DayTariff,
+                lot.Tariff, lot.DayTariff,
                 JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? default
 
             );

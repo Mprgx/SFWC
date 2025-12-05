@@ -40,7 +40,6 @@ namespace MobyParkxUnitTest
                 Location = "Test Location",
                 Address = "Test Address",
                 Capacity = 100,
-                ReservedSpots = 0,
                 Tariff = 2.0,
                 DayTariff = 10.0,
                 Coordinates = "{\"latitude\":0,\"longitude\":0}"
