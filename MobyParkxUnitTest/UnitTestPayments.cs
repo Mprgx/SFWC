@@ -1,173 +1,307 @@
-//using Xunit;
-//using Moq;
-//using Microsoft.AspNetCore.Mvc;
-//using Microsoft.AspNetCore.Http;
-//using System.Security.Claims;
-//using System.Threading.Tasks;
-//using MobyPark.Controllers;
-//using MobyPark.Services;
-//using MobyPark.Entities;
-//using MobyPark.Models;
-//using System.Collections.Generic;
-//using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Data;
+using MobyPark.Entities;
+using MobyPark.Models;
+using MobyPark.Services;
+using Xunit;
 
-//namespace MobyParkxUnitTest
-//{
-//    public class PaymentsControllerTests
-//    {
-//        private PaymentsController CreateController(Mock<IPaymentService> paymentServiceMock, string userId = "00000000-0000-0000-0000-000000000001")
-//        {
-//            var context = new DefaultHttpContext();
-//            var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
-//            {
-//                new Claim(ClaimTypes.NameIdentifier, userId)
-//            }, "mock"));
+namespace MobyParkxUnitTest
+{
+    public class PaymentServiceTests
+    {
+        private UserDbContext CreateDbContext(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(dbName)
+                .EnableSensitiveDataLogging()
+                .Options;
 
-//            context.User = claimsPrincipal;
+            return new UserDbContext(options);
+        }
 
-//            var controller = new PaymentsController(null, paymentServiceMock.Object)
-//            {
-//                ControllerContext = new ControllerContext()
-//                {
-//                    HttpContext = context
-//                }
-//            };
+        private PaymentService CreateService(UserDbContext db)
+        {
+            return new PaymentService(db);
+        }
 
-//            return controller;
-//        }
+        private User CreateTestUser(string username)
+        {
+            return new User
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                Name = $"{username} Name",
+                Email = $"{username}@example.com",
+                PhoneNumber = "1234567890",
+                BirthYear = 1990,
+                Role = UserRole.Customer,
+                PasswordHash = "fakehash",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+        }
 
+        private ParkingLot CreateTestParkingLot(int id)
+        {
+            return new ParkingLot
+            {
+                Id = id,
+                Name = "Test Lot",
+                Location = "Test Loc",
+                Address = "Test Address",
+                Capacity = 50,
+                Tariff = 1.0,
+                DayTariff = 10.0,
+                Coordinates = "0,0"
+            };
+        }
 
-//        [Fact]
-//        public async Task CompletePayment_Returns_BadRequest_WhenTDataMissing()
-//        {
-//            var serviceMock = new Mock<IPaymentService>();
-//            var controller = CreateController(serviceMock);
-//            var dto = new PaymentValidationDto { Validation = "hash123" }; // no T_Data
+        private Session CreateTestSession(Guid id, User user, ParkingLot lot)
+        {
+            return new Session
+            {
+                Id = id,
+                UserId = user.Id,
+                User = user,
+                ParkingLotId = lot.Id,
+                ParkingLot = lot,
+                LicensePlate = "TEST-PL",
+                Started = DateTimeOffset.UtcNow.AddHours(-1),
+                PaymentStatus = "unpaid",
+                Cost = 5.0m
+            };
+        }
 
-//            var result = await controller.CompletePayment("tx123", dto);
+        private Payment CreateTestPayment(User user, Session session, string transactionId, decimal amount = 10.0m)
+        {
+            return new Payment
+            {
+                Transaction = transactionId,
+                Amount = amount,
+                Initiator = user.Username,
+                UserId = user.Id,
+                Created_At = DateTimeOffset.UtcNow,
+                Hash = "dummyhash",
+                T_Data = "{}",
+                SessionId = session.Id,
+                ParkingLotId = session.ParkingLotId
+            };
+        }
 
-//            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-//            Assert.Equal("t_data field is missing", badRequest.Value);
-//        }
+        [Fact]
+        public async Task CompletePaymentAsync_Throws_Unauthorized_When_User_Not_Owner()
+        {
+            var dbName = Guid.NewGuid().ToString();
 
-//        [Fact]
-//        public async Task CompletePayment_Returns_BadRequest_WhenValidationMissing()
-//        {
-//            var serviceMock = new Mock<IPaymentService>();
-//            var controller = CreateController(serviceMock);
-//            var dto = new PaymentValidationDto { T_Data = new System.Text.Json.JsonElement() }; // dummy JsonElement
+            // 1. Setup Data
+            using (var db = CreateDbContext(dbName))
+            {
+                var owner = CreateTestUser("owner");
+                var hacker = CreateTestUser("hacker");
+                var lot = CreateTestParkingLot(1);
+                var session = CreateTestSession(Guid.NewGuid(), owner, lot);
+                var payment = CreateTestPayment(owner, session, "trans123");
 
-//            var result = await controller.CompletePayment("tx123", dto);
+                db.Users.AddRange(owner, hacker);
+                db.ParkingLots.Add(lot);
+                db.Sessions.Add(session);
+                db.Payments.Add(payment);
+                await db.SaveChangesAsync();
+            }
 
-//            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-//            Assert.Equal("validation field is missing", badRequest.Value);
-//        }
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+                var hacker = await db.Users.FirstAsync(u => u.Username == "hacker");
 
-//        [Fact]
-//        public async Task CompletePayment_Returns_NotFound_WhenPaymentNotFound()
-//        {
-//            var serviceMock = new Mock<IPaymentService>();
-//            serviceMock.Setup(s => s.CompletePaymentAsync(It.IsAny<System.Guid>(), "tx123", It.IsAny<PaymentValidationDto>()))
-//                       .ThrowsAsync(new KeyNotFoundException("Payment not found"));
+                var req = new PaymentValidationDto
+                {
+                    Validation = "abc",
+                    T_Data = JsonDocument.Parse("{}").RootElement
+                };
 
-//            var controller = CreateController(serviceMock);
-//            var dto = new PaymentValidationDto
-//            {
-//                T_Data = System.Text.Json.JsonDocument.Parse("{\"note\":\"done\"}").RootElement,
-//                Validation = "hash123"
-//            };
+                var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                    service.CompletePaymentAsync(hacker.Id, "trans123", req));
 
-//            var result = await controller.CompletePayment("tx123", dto);
+                Assert.Equal("You may only complete your own payments", ex.Message);
+            }
+        }
 
-//            var notFound = Assert.IsType<NotFoundObjectResult>(result);
-//            Assert.Equal("Payment not found", notFound.Value);
-//        }
+        [Fact]
+        public async Task GetPaymentsForUserAsync_Returns_List_Of_Payments()
+        {
+            var dbName = Guid.NewGuid().ToString();
 
-//        [Fact]
-//        public async Task CompletePayment_Returns_Unauthorized_WhenHashInvalid()
-//        {
-//            var serviceMock = new Mock<IPaymentService>();
-//            serviceMock.Setup(s => s.CompletePaymentAsync(It.IsAny<System.Guid>(), "tx123", It.IsAny<PaymentValidationDto>()))
-//                       .ThrowsAsync(new UnauthorizedAccessException("Validation failed"));
+            using (var db = CreateDbContext(dbName))
+            {
+                var user = CreateTestUser("alice");
+                var lot = CreateTestParkingLot(1);
+                var session1 = CreateTestSession(Guid.NewGuid(), user, lot);
+                var session2 = CreateTestSession(Guid.NewGuid(), user, lot);
 
-//            var controller = CreateController(serviceMock);
-//            var dto = new PaymentValidationDto
-//            {
-//                T_Data = System.Text.Json.JsonDocument.Parse("{\"note\":\"done\"}").RootElement,
-//                Validation = "wronghash"
-//            };
+                var p1 = CreateTestPayment(user, session1, "t1", 5.0m);
+                var p2 = CreateTestPayment(user, session2, "t2", 15.0m);
 
-//            var result = await controller.CompletePayment("tx123", dto);
+                db.Users.Add(user);
+                db.ParkingLots.Add(lot);
+                db.Sessions.AddRange(session1, session2);
+                db.Payments.AddRange(p1, p2);
+                await db.SaveChangesAsync();
+            }
 
-//            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
-//            Assert.Equal("Validation failed", unauthorized.Value);
-//        }
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+                var user = await db.Users.FirstAsync(u => u.Username == "alice");
 
-//        [Fact]
-//        public async Task CompletePayment_Returns_FullPayment_OnSuccess()
-//        {
-//            // Arrange
-//            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+                var result = await service.GetPaymentsForUserAsync(user.Id);
 
-//            // Create the DTO that the service will return
-//            var paymentDto = new PaymentResponseDto
-//            {
-//                Transaction = "tx123",
-//                Amount = 16.5m,
-//                Hash = "correcthash",
-//                Initiator = userId.ToString(),
-//                Completed = null, // Keep null to simulate not completed yet
-//                User = new UserReadDto
-//                {
-//                    Id = userId,
-//                    Username = "user1",
-//                    Name = "Test User",
-//                    Email = "test@example.com",
-//                    PhoneNumber = "123456789",
-//                    BirthYear = 1990,
-//                    Role = UserRole.Customer,
-//                    CreatedAt = DateTimeOffset.UtcNow
-//                }
-//            };
+                Assert.Equal(2, result.Count);
+                Assert.Contains(result, p => p!.Transaction == "t1");
+                Assert.Contains(result, p => p!.Transaction == "t2");
+            }
+        }
 
-//            // Mock the IPaymentService
-//            var serviceMock = new Mock<IPaymentService>();
-//            serviceMock
-//                .Setup(s => s.CompletePaymentAsync(userId, "tx123", It.IsAny<PaymentValidationDto>()))
-//                .ReturnsAsync(paymentDto);
+        [Fact]
+        public async Task GetPaymentsForAnyUserAsync_Returns_Correct_Payments()
+        {
+            var dbName = Guid.NewGuid().ToString();
 
-//            // Pass the mock object (.Object) to the controller
-//            var controller = CreateController(serviceMock);
+            using (var db = CreateDbContext(dbName))
+            {
+                var user1 = CreateTestUser("bob");
+                var user2 = CreateTestUser("charlie");
+                var lot = CreateTestParkingLot(1);
 
-//            // Prepare input DTO
-//            var requestDto = new PaymentValidationDto
-//            {
-//                T_Data = JsonDocument.Parse("{\"note\":\"done\"}").RootElement,
-//                Validation = "correcthash"
-//            };
+                var s1 = CreateTestSession(Guid.NewGuid(), user1, lot);
+                var s2 = CreateTestSession(Guid.NewGuid(), user2, lot);
 
-//            // Act
-//            var result = await controller.CompletePayment("tx123", requestDto);
+                db.Users.AddRange(user1, user2);
+                db.ParkingLots.Add(lot);
+                db.Sessions.AddRange(s1, s2);
 
-//            // Assert
-//            var okResult = Assert.IsType<OkObjectResult>(result);
-//            var returnedPayment = Assert.IsType<PaymentResponseDto>(okResult.Value);
+                db.Payments.Add(CreateTestPayment(user1, s1, "p_bob"));
+                db.Payments.Add(CreateTestPayment(user2, s2, "p_charlie"));
+                await db.SaveChangesAsync();
+            }
 
-//            Assert.Equal(paymentDto.Transaction, returnedPayment.Transaction);
-//            Assert.Equal(paymentDto.Amount, returnedPayment.Amount);
-//            Assert.Equal(paymentDto.Initiator, returnedPayment.Initiator);
-//            Assert.Equal(paymentDto.Hash, returnedPayment.Hash);
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+                var result = await service.GetPaymentsForAnyUserAsync("bob");
 
-//            // Check User fields
-//            Assert.NotNull(returnedPayment.User);
-//            Assert.Equal(paymentDto.User!.Id, returnedPayment.User.Id);
-//            Assert.Equal(paymentDto.User.Username, returnedPayment.User.Username);
-//            Assert.Equal(paymentDto.User.Name, returnedPayment.User.Name);
-//            Assert.Equal(paymentDto.User.Email, returnedPayment.User.Email);
+                Assert.Single(result);
+                Assert.Equal("p_bob", result[0]!.Transaction);
+            }
+        }
 
-//            // Completed is still null
-//            Assert.Null(returnedPayment.Completed);
-//        }
+        [Fact]
+        public async Task CompletePaymentAsync_Updates_Session_To_Paid_On_Success()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            Guid userId;
+            string transId = "trans_valid";
 
-//    }
-//}
+            using (var db = CreateDbContext(dbName))
+            {
+                var user = CreateTestUser("bob");
+                var lot = CreateTestParkingLot(1);
+                var session = CreateTestSession(Guid.NewGuid(), user, lot);
+                var payment = CreateTestPayment(user, session, transId);
+
+                userId = user.Id;
+
+                db.Users.Add(user);
+                db.ParkingLots.Add(lot);
+                db.Sessions.Add(session);
+                db.Payments.Add(payment);
+                await db.SaveChangesAsync();
+            }
+
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+
+                var req = new PaymentValidationDto
+                {
+                    Validation = "random_guess",
+                    T_Data = JsonDocument.Parse("{}").RootElement
+                };
+
+                var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                    service.CompletePaymentAsync(userId, transId, req));
+                Assert.Equal("Validation failed", ex.Message);
+            }
+        }
+
+        [Fact]
+        public async Task CompletePaymentAsync_Throws_ArgumentNullException_When_Request_Null()
+        {
+            var service = CreateService(CreateDbContext(Guid.NewGuid().ToString()));
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+                service.CompletePaymentAsync(Guid.NewGuid(), "t", null!));
+        }
+
+        [Fact]
+        public async Task CompletePaymentAsync_Throws_KeyNotFound_When_Payment_NotExists()
+        {
+            var service = CreateService(CreateDbContext(Guid.NewGuid().ToString()));
+            var req = new PaymentValidationDto { Validation = "x", T_Data = JsonDocument.Parse("{}").RootElement };
+            await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+                service.CompletePaymentAsync(Guid.NewGuid(), "ghost", req));
+        }
+
+        [Fact]
+        public async Task DeletePaymentByTransactionId_Removes_Payment()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            using (var db = CreateDbContext(dbName))
+            {
+                var u = CreateTestUser("del");
+                var l = CreateTestParkingLot(1);
+                var s = CreateTestSession(Guid.NewGuid(), u, l);
+                var p = CreateTestPayment(u, s, "del_t");
+                db.Users.Add(u); db.ParkingLots.Add(l); db.Sessions.Add(s); db.Payments.Add(p);
+                await db.SaveChangesAsync();
+            }
+
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+                var res = await service.DeletePaymentByTransactionId("del_t");
+                Assert.True(res);
+                Assert.Null(await db.Payments.FindAsync("del_t"));
+            }
+        }
+
+        [Fact]
+        public async Task FulfillPaymentAsync_Sets_Completed()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            Guid uId;
+            using (var db = CreateDbContext(dbName))
+            {
+                var u = CreateTestUser("ful");
+                var l = CreateTestParkingLot(1);
+                var s = CreateTestSession(Guid.NewGuid(), u, l);
+                var p = CreateTestPayment(u, s, "ful_t");
+                p.Completed = null;
+                uId = u.Id;
+                db.Users.Add(u); db.ParkingLots.Add(l); db.Sessions.Add(s); db.Payments.Add(p);
+                await db.SaveChangesAsync();
+            }
+
+            using (var db = CreateDbContext(dbName))
+            {
+                var service = CreateService(db);
+                var res = await service.FulfillPaymentAsync(uId.ToString(), new PaymentsDto { Transaction = "ful_t" });
+                Assert.NotNull(res);
+                Assert.NotNull(res.Completed);
+            }
+        }
+    }
+}

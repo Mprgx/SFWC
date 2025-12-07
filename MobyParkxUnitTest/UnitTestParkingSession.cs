@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
+using MobyPark.Models;
 using MobyPark.Services;
 using Moq;
 using Xunit;
@@ -17,7 +19,6 @@ namespace MobyParkxUnitTest
             var options = new DbContextOptionsBuilder<UserDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
-
             return new UserDbContext(options);
         }
 
@@ -26,24 +27,6 @@ namespace MobyParkxUnitTest
             return new ParkingLotService(db);
         }
 
-        // Helper to create a fully initialized User
-        private User CreateTestUser(string username)
-        {
-            return new User
-            {
-                Id = Guid.NewGuid(),
-                Username = username,
-                Name = $"{username} Name",
-                Email = $"{username}@example.com",
-                PhoneNumber = "1234567890",
-                BirthYear = 1990,
-                Role = UserRole.Customer,
-                PasswordHash = "fakehash",
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-        }
-
-        // Helper to create a fully initialized ParkingLot
         private ParkingLot CreateTestParkingLot(int id = 1)
         {
             return new ParkingLot
@@ -60,7 +43,88 @@ namespace MobyParkxUnitTest
         }
 
         [Fact]
-        public async Task GetByIdAsync_Returns_Lot_IfExists()
+        public async Task CreateParkingLotAsync_Adds_New_Lot_To_Database()
+        {
+            var db = CreateDbContext();
+            var service = CreateService(db);
+            var newLot = CreateTestParkingLot(10);
+            var result = await service.CreateParkingLotAsync(newLot);
+
+            Assert.NotNull(result);
+            var dbLot = await db.ParkingLots.FindAsync(result.Id);
+            Assert.NotNull(dbLot);
+            Assert.Equal("Lot10", dbLot!.Name);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Returns_All_ParkingLots()
+        {
+            var db = CreateDbContext();
+            db.ParkingLots.Add(CreateTestParkingLot(1));
+            db.ParkingLots.Add(CreateTestParkingLot(2));
+            await db.SaveChangesAsync();
+
+            var service = CreateService(db);
+
+            var result = await service.GetAllAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+            Assert.Contains(result, p => p.Name == "Lot1");
+            Assert.Contains(result, p => p.Name == "Lot2");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_Returns_Empty_List_When_None_Exist()
+        {
+            var service = CreateService(CreateDbContext());
+            var result = await service.GetAllAsync();
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task UpdateParkingLotAsync_Updates_Fields_Only_When_Provided()
+        {
+            // Arrange
+            var db = CreateDbContext();
+            var lot = CreateTestParkingLot(1);
+            lot.Name = "Old Name";
+            lot.Capacity = 50;
+            lot.Address = "Old Address";
+
+            db.ParkingLots.Add(lot);
+            await db.SaveChangesAsync();
+
+            var service = CreateService(db);
+
+            var updateDto = new ParkingLotUpdateDto
+            {
+                Name = "New Name",
+                Capacity = 200
+            };
+            var result = await service.UpdateParkingLotAsync(1, updateDto);
+
+            Assert.NotNull(result);
+            Assert.Equal("New Name", result!.Name);
+            Assert.Equal(200, result.Capacity);
+            Assert.Equal("Old Address", result.Address);
+
+            var dbLot = await db.ParkingLots.FindAsync(1);
+            Assert.Equal("New Name", dbLot!.Name);
+        }
+
+        [Fact]
+        public async Task UpdateParkingLotAsync_Returns_Null_When_Lot_Not_Found()
+        {
+            var service = CreateService(CreateDbContext());
+            var updateDto = new ParkingLotUpdateDto { Name = "New Name" };
+
+            var result = await service.UpdateParkingLotAsync(999, updateDto);
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task DeleteParkingLotAsync_Removes_Lot_And_Returns_True()
         {
             var db = CreateDbContext();
             var lot = CreateTestParkingLot(1);
@@ -68,145 +132,65 @@ namespace MobyParkxUnitTest
             await db.SaveChangesAsync();
 
             var service = CreateService(db);
-            var result = await service.GetByIdAsync(lot.Id);
+            var result = await service.DeleteParkingLotAsync(1);
 
-            Assert.NotNull(result);
-            Assert.Equal(lot.Name, result!.Name);
+            Assert.True(result);
+            var deletedLot = await db.ParkingLots.FindAsync(1);
+            Assert.Null(deletedLot);
         }
 
         [Fact]
-        public async Task GetByIdAsync_Returns_Null_IfNotExists()
+        public async Task DeleteParkingLotAsync_Returns_False_When_Lot_Not_Found()
         {
             var service = CreateService(CreateDbContext());
-            var result = await service.GetByIdAsync(999);
-            Assert.Null(result);
+            var result = await service.DeleteParkingLotAsync(999);
+
+            Assert.False(result);
         }
 
         [Fact]
-        public async Task GetSessionsAsync_Returns_Empty_If_ParkingLot_NotFound()
-        {
-            var service = CreateService(CreateDbContext());
-            var result = await service.GetSessionsAsync(777, "bob", false);
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public async Task GetSessionByIdAsync_Returns_Session_For_Admin()
+        public async Task DeleteParkingLotSessionAsync_Removes_Session_And_Returns_True()
         {
             var db = CreateDbContext();
-            var user = CreateTestUser("bob");
+            var sessionId = Guid.NewGuid();
             var session = new Session
             {
+                Id = sessionId,
                 ParkingLotId = 1,
-                Id = Guid.NewGuid(),
-                User = user,
-                UserId = user.Id
+                UserId = Guid.NewGuid(),
+                LicensePlate = "ABC-123"
             };
 
-            db.ParkingLots.Add(CreateTestParkingLot(1));
             db.Sessions.Add(session);
             await db.SaveChangesAsync();
 
             var service = CreateService(db);
-            var result = await service.GetSessionByIdAsync(1, session.Id.ToString(), null, true);
+            var result = await service.DeleteParkingLotSessionAsync(1, sessionId);
 
-            Assert.NotNull(result);
+            Assert.True(result);
+            var deletedSession = await db.Sessions.FindAsync(sessionId);
+            Assert.Null(deletedSession);
         }
 
         [Fact]
-        public async Task GetSessionByIdAsync_Returns_Null_When_NotOwner()
+        public async Task DeleteParkingLotSessionAsync_Returns_False_If_Session_Or_Lot_Mismatch()
         {
             var db = CreateDbContext();
-            var sessionUser = CreateTestUser("alice");
+            var sessionId = Guid.NewGuid();
             var session = new Session
             {
-                ParkingLotId = 1,
-                Id = Guid.NewGuid(),
-                User = sessionUser,
-                UserId = sessionUser.Id
+                Id = sessionId,
+                ParkingLotId = 1
             };
 
-            db.ParkingLots.Add(CreateTestParkingLot(1));
             db.Sessions.Add(session);
             await db.SaveChangesAsync();
 
             var service = CreateService(db);
-            var result = await service.GetSessionByIdAsync(1, session.Id.ToString(), "bob", false);
+            var result = await service.DeleteParkingLotSessionAsync(2, sessionId);
 
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task StopSessionAsync_Stops_Session_And_Creates_Payment()
-        {
-            var db = CreateDbContext();
-            var user = CreateTestUser("bob");
-
-            db.Users.Add(user);
-            db.ParkingLots.Add(CreateTestParkingLot(1));
-
-            var encryption = new Mock<IEncryptionService>();
-            encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("ABC123");
-
-            db.Sessions.Add(new Session
-            {
-                UserId = user.Id,
-                User = user,
-                ParkingLotId = 1,
-                LicensePlate = "encrypted",
-                Started = DateTimeOffset.UtcNow.AddHours(-2)
-            });
-
-            await db.SaveChangesAsync();
-
-            var service = CreateService(db);
-            var payment = await service.StopSessionAsync("ABC123", user.Username, user.Id, encryption.Object);
-
-            Assert.NotNull(payment);
-            Assert.True(payment!.Amount > 0);
-            Assert.Equal("bob", payment.Initiator);
-            Assert.NotNull(payment.Session);
-            Assert.NotNull(payment.User);
-        }
-
-        [Fact]
-        public async Task StopSessionAsync_ReturnsNull_When_User_Is_Not_Owner()
-        {
-            var db = CreateDbContext();
-            var user1 = CreateTestUser("alice");
-            var user2 = CreateTestUser("bob");
-
-            var encryption = new Mock<IEncryptionService>();
-            encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("PLATE");
-
-            db.Sessions.Add(new Session
-            {
-                UserId = user1.Id,
-                User = user1,
-                LicensePlate = "encrypted",
-                Started = DateTimeOffset.UtcNow
-            });
-
-            await db.SaveChangesAsync();
-
-            var service = CreateService(db);
-            var result = await service.StopSessionAsync("PLATE", user2.Username, user2.Id, encryption.Object);
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task StopSessionAsync_ReturnsNull_When_Plate_Not_Found()
-        {
-            var db = CreateDbContext();
-
-            var encryption = new Mock<IEncryptionService>();
-            encryption.Setup(e => e.Decrypt(It.IsAny<string>())).Returns("OTHER");
-
-            var service = CreateService(db);
-            var result = await service.StopSessionAsync("TARGET", "anyone", Guid.NewGuid(), encryption.Object);
-
-            Assert.Null(result);
+            Assert.False(result);
+            Assert.NotNull(await db.Sessions.FindAsync(sessionId));
         }
     }
 }
