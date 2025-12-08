@@ -10,7 +10,7 @@ using Xunit;
 
 namespace MobyParkxUnitTest
 {
-    public class ParkingLotServiceTests
+    public class SessionServiceTests
     {
         private UserDbContext CreateDbContext()
         {

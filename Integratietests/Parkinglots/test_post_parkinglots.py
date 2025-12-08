@@ -1,7 +1,6 @@
 import json
 import pytest
 import requests
-from jsonschema import validate, ValidationError
 from dateutil import parser as dateparser
 
 
