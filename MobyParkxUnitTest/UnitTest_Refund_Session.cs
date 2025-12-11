@@ -1,274 +1,334 @@
-using Xunit;
-using Moq;
 using System;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using MobyPark.Controllers;
-using MobyPark.Services;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Data;
+using MobyPark.Entities;
 using MobyPark.Models;
+using MobyPark.Services;
+using Xunit;
 
 namespace MobyParkxUnitTest
 {
-    public class RefundTests
+    public class RefundServiceTests
     {
-        private ClaimsPrincipal CreateUser(Guid id, bool isAdmin)
+        // ------------------------------------------------------------
+        // Helpers
+        // ------------------------------------------------------------
+        private static UserDbContext CreateDb(string name)
         {
-            var claims = new[]
-            {
-            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-            new Claim(ClaimTypes.Role, isAdmin ? "Admin" : "Customer")
-        };
+            var options = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(name)
+                .Options;
 
-            return new ClaimsPrincipal(new ClaimsIdentity(claims, "mock"));
+            return new UserDbContext(options);
         }
 
-        private SessionController CreateController(Mock<ISessionService> mockService, ClaimsPrincipal? user = null)
+        private class FakeEncryption : IEncryptionService
         {
-            return new SessionController(mockService.Object, Mock.Of<IEncryptionService>())
+            public string? Encrypt(string? plaintext) => plaintext;
+            public string? Decrypt(string? ciphertext) => ciphertext;
+        }
+
+        private static SessionService CreateService(UserDbContext db)
+        {
+            return new SessionService(db, new FakeEncryption());
+        }
+
+        private static Session CreateBaseSession(Guid userId, DateTimeOffset started, DateTimeOffset? stopped,
+            bool isCancelled = true, bool isRefunded = false)
+        {
+            return new Session
             {
-                ControllerContext = new ControllerContext
-                {
-                    HttpContext = new DefaultHttpContext
-                    {
-                        User = user ?? new ClaimsPrincipal()
-                    }
-                }
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ParkingLotId = 1,
+                LicensePlate = "TEST-123",
+                Started = started,
+                Stopped = stopped,
+                IsCancelled = isCancelled,
+                IsRefunded = isRefunded,
+                PaymentStatus = "paid"
             };
         }
 
-        // ----------------------------------------------------------------------
-        // 1. Refund can only occur when IsCancelled == true
-        // ----------------------------------------------------------------------
+        // ------------------------------------------------------------
+        // 1. Session must exist
+        // ------------------------------------------------------------
         [Fact]
-        public async Task Refund_Fails_When_Session_Not_Cancelled()
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionDoesNotExist()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionDoesNotExist));
+            var service = CreateService(db);
+
+            var result = await service.RequestRefundAsync(Guid.NewGuid(), Guid.NewGuid(), new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            Assert.Null(result);
+        }
+
+        // ------------------------------------------------------------
+        // 2. Session must be cancelled
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled));
+            var service = CreateService(db);
 
             var userId = Guid.NewGuid();
-            var controller = CreateController(mock, CreateUser(userId, true));
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-10),
+                DateTimeOffset.UtcNow,
+                isCancelled: false,
+                isRefunded: false);
+
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            Assert.Null(result);
+        }
+
+        // ------------------------------------------------------------
+        // 3. Session must be stopped
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-10),
+                stopped: null,
+                isCancelled: true,
+                isRefunded: false);
+
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            Assert.Null(result);
+        }
+
+        // ------------------------------------------------------------
+        // 4. No double refunds
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-20),
+                DateTimeOffset.UtcNow,
+                isCancelled: true,
+                isRefunded: true);
+
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            Assert.Null(result);
+        }
+
+        // ------------------------------------------------------------
+        // 5. Refund attempts limited to 3
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_StopsAfterThreeFailedRefundAttempts()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_StopsAfterThreeFailedRefundAttempts));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-5),
+                DateTimeOffset.UtcNow,
+                isCancelled: true,
+                isRefunded: false);
+
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
 
             var dto = new RefundRequestDto { IBAN = "NL91ABNA0417164300" };
 
-            var result = await controller.RefundSession(Guid.NewGuid(), dto);
+            var r1 = await service.RequestRefundAsync(userId, session.Id, dto);
+            var r2 = await service.RequestRefundAsync(userId, session.Id, dto);
+            var r3 = await service.RequestRefundAsync(userId, session.Id, dto);
+            var r4 = await service.RequestRefundAsync(userId, session.Id, dto);
 
-            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Refund not applicable.", badRequest.Value);
+            Assert.Null(r4);
         }
 
-        // ----------------------------------------------------------------------
-        // 2. Active sessions cannot be refunded
-        // ----------------------------------------------------------------------
+        // ------------------------------------------------------------
+        // 6. Minimum cost and 100% refund for short session
+        // ------------------------------------------------------------
         [Fact]
-        public async Task Refund_Fails_When_Session_Is_Active()
+        public async Task RequestRefundAsync_ReturnsFullRefund_ForShortSession()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsFullRefund_ForShortSession));
+            var service = CreateService(db);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
+            var userId = Guid.NewGuid();
+            var started = DateTimeOffset.UtcNow.AddMinutes(-5);
+            var stopped = DateTimeOffset.UtcNow;
+
+            var session = CreateBaseSession(userId, started, stopped, true, false);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            var data = Assert.IsType<RefundResponseDto>(result);
+
+            Assert.InRange(data.DurationMinutes, 4, 6);
+            Assert.Equal(0.50m, data.Cost);
+            Assert.Equal(100m, data.Percentage);
+            Assert.Equal(0.50m, data.Refunded);
+        }
+
+        // ------------------------------------------------------------
+        // 7. Medium session → 50% refund
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsHalfRefund_ForMediumSession()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsHalfRefund_ForMediumSession));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var started = DateTimeOffset.UtcNow.AddMinutes(-20);
+            var stopped = DateTimeOffset.UtcNow;
+
+            var session = CreateBaseSession(userId, started, stopped, true, false);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
+
+            var data = Assert.IsType<RefundResponseDto>(result);
+
+            Assert.InRange(data.DurationMinutes, 19, 21);
+            var expectedCost = Math.Round(data.DurationMinutes * 0.05m, 2);
+            Assert.Equal(expectedCost, data.Cost);
+            Assert.Equal(50m, data.Percentage);
+            Assert.Equal(Math.Round(expectedCost * 0.5m, 2), data.Refunded);
+        }
+
+        // ------------------------------------------------------------
+        // 8. Long session → 0% refund → returns null
+        // ------------------------------------------------------------
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero()
+        {
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var started = DateTimeOffset.UtcNow.AddMinutes(-60);
+            var stopped = DateTimeOffset.UtcNow;
+
+            var session = CreateBaseSession(userId, started, stopped, true, false);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
 
             var dto = new RefundRequestDto { IBAN = "NL91ABNA0417164300" };
 
-            var result = await controller.RefundSession(Guid.NewGuid(), dto);
+            var result = await service.RequestRefundAsync(userId, session.Id, dto);
 
-            Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Null(result);
+
+            var dbSession = await db.Sessions.FindAsync(session.Id);
+            Assert.False(dbSession!.IsRefunded);
+            Assert.Null(dbSession.RefundDate);
+            Assert.Equal("paid", dbSession.PaymentStatus);
         }
 
-        // ----------------------------------------------------------------------
-        // 3. Refund is blocked if already refunded
-        // ----------------------------------------------------------------------
+        // ------------------------------------------------------------
+        // 9. IBAN required
+        // ------------------------------------------------------------
         [Fact]
-        public async Task Refund_Fails_If_Already_Refunded()
+        public async Task RequestRefundAsync_ReturnsNull_WhenIBANIsMissing()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
+            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenIBANIsMissing));
+            var service = CreateService(db);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
+            var userId = Guid.NewGuid();
+            var started = DateTimeOffset.UtcNow.AddMinutes(-8);
+            var stopped = DateTimeOffset.UtcNow;
 
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
+            var session = CreateBaseSession(userId, started, stopped, true, false);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
 
-            Assert.IsType<BadRequestObjectResult>(result);
+            var dto = new RefundRequestDto { IBAN = "   " };
+
+            var result = await service.RequestRefundAsync(userId, session.Id, dto);
+
+            Assert.Null(result);
+
+            var dbSession = await db.Sessions.FindAsync(session.Id);
+            Assert.False(dbSession!.IsRefunded);
+            Assert.Null(dbSession.RefundDate);
+            Assert.Equal("paid", dbSession.PaymentStatus);
         }
 
-        // ----------------------------------------------------------------------
-        // 4. Only session owner can request refund (unless admin)
-        // ----------------------------------------------------------------------
+        // ------------------------------------------------------------
+        // 10. Successful refund updates DB
+        // ------------------------------------------------------------
         [Fact]
-        public async Task Refund_Fails_When_User_Not_Owner()
+        public async Task RequestRefundAsync_UpdatesRefundStateInDatabase()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
+            using var db = CreateDb(nameof(RequestRefundAsync_UpdatesRefundStateInDatabase));
+            var service = CreateService(db);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), false));
+            var userId = Guid.NewGuid();
+            var started = DateTimeOffset.UtcNow.AddMinutes(-12);
+            var stopped = DateTimeOffset.UtcNow;
 
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
+            var session = CreateBaseSession(userId, started, stopped, true, false);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
 
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
+            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            });
 
-        // ----------------------------------------------------------------------
-        // 5. Admin may refund on behalf of user
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Admin_Can_Refund_On_Behalf_Of_User()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync(new { Success = true });
+            var data = Assert.IsType<RefundResponseDto>(result);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            Assert.IsType<OkObjectResult>(result);
-        }
-
-        // ----------------------------------------------------------------------
-        // 6. Refund amount calculation (base rate €0.05/min)
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Succeeds_With_Correct_Calculation()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync(new { Amount = 1.50m });
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            var ok = Assert.IsType<OkObjectResult>(result);
-            dynamic data = ok.Value!;
-            Assert.Equal(1.50m, (decimal)data.Amount);
-        }
-
-        // ----------------------------------------------------------------------
-        // 7–9. Refund percentage calculation (10 min = 100%, 30 min = 50%, >30 = 0%)
-        // ----------------------------------------------------------------------
-        [Theory]
-        [InlineData(10, 100)]
-        [InlineData(30, 50)]
-        [InlineData(31, 0)]
-        public async Task Refund_Percentage_Is_Correct(int minutes, int expectedPercent)
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync(new { Percentage = expectedPercent });
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            var ok = Assert.IsType<OkObjectResult>(result);
-            dynamic data = ok.Value!;
-            Assert.Equal(expectedPercent, (int)data.Percentage);
-        }
-
-        // ----------------------------------------------------------------------
-        // 10. Unauthorized when no token
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Returns_Unauthorized_When_No_Token()
-        {
-            var mock = new Mock<ISessionService>();
-            var controller = CreateController(mock, user: null); // NO USER AT ALL
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            Assert.IsType<UnauthorizedResult>(result);
-        }
-
-        // ----------------------------------------------------------------------
-        // 11. Refund attempts limiting
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Fails_When_Attempt_Limit_Reached()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        // ----------------------------------------------------------------------
-        // 12. SessionId must exist
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Fails_When_Session_Not_Found()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        // ----------------------------------------------------------------------
-        // 13. IBAN format validation
-        // ----------------------------------------------------------------------
-        // [Fact]
-        // public async Task Refund_Fails_When_IBAN_Invalid()
-        // {
-        //     var mock = new Mock<ISessionService>();
-        //     var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-        //     var dto = new RefundRequestDto { IBAN = "NOT-VALID" };
-
-        //     var validation = controller.TryValidateModel(dto);
-
-        //     Assert.False(validation);
-        // }
-
-        // ----------------------------------------------------------------------
-        // 14. Refund amount cannot be negative or > original cost
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Fails_When_Amount_Invalid()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync((object?)null);
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        // ----------------------------------------------------------------------
-        // 15. Database updated: IsRefunded + RefundDate
-        // (controller can only confirm service returned something)
-        // ----------------------------------------------------------------------
-        [Fact]
-        public async Task Refund_Succeeds_When_Service_Returns_Updated_Session()
-        {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.RequestRefundAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<RefundRequestDto>()))
-                .ReturnsAsync(new { IsRefunded = true });
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
-
-            var result = await controller.RefundSession(Guid.NewGuid(), new RefundRequestDto());
-
-            var ok = Assert.IsType<OkObjectResult>(result);
-            dynamic data = ok.Value!;
-            Assert.True((bool)data.IsRefunded);
+            var dbSession = await db.Sessions.FindAsync(session.Id);
+            Assert.True(dbSession!.IsRefunded);
+            Assert.NotNull(dbSession.RefundDate);
+            Assert.Equal("refunded", dbSession.PaymentStatus);
         }
     }
 }
-
