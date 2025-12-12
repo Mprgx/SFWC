@@ -1,69 +1,78 @@
 using Microsoft.EntityFrameworkCore;
 
 using MobyPark.Data;
+using MobyPark.Entities;
 using MobyPark.Models;
 
 namespace MobyPark.Services
 {
     public class BillingService(UserDbContext db) : IBillingService
     {
-        public async Task<List<BillingReceiptDto>> GetReceiptsForUserAsync(string username)
+        public async Task<(List<BillingReceiptDto>? dto, string? error, int? status)> GetReceiptsForUserAsync(string username)
         {
-            return await db.Billings
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                return (null, "Username is required.", 400);
+            }
+
+            var billings = await db.Billings
                 .Include(b => b.ParkingLot)
                 .Where(b => b.Username == username)
-                .Select(b => new BillingReceiptDto
-                {
-                    Id = b.Id,
-                    LicensePlate = b.LicensePlate,
-                    ParkingLotId = b.ParkingLotId,
-                    ParkingLotName = b.ParkingLot!.Name,
-                    Started = b.Started,
-                    Stopped = b.Stopped,
-                    DurationMinutes = b.DurationMinutes,
-                    Cost = Math.Round(b.Cost, 2),
-                    PaymentStatus = b.PaymentStatus
-                })
+                .OrderByDescending(b => b.Stopped)
                 .ToListAsync();
+
+            var receipts = billings
+                .Select(ToDto)
+                .ToList();
+
+            return (receipts, null, null);
         }
 
-        public async Task<List<BillingReceiptDto>> GetAllReceiptsAsync()
+        public async Task<(List<BillingReceiptDto>? dto, string? error, int? status)> GetAllReceiptsAsync()
         {
-            return await db.Billings
+            var billings = await db.Billings
                 .Include(b => b.ParkingLot)
-                .Select(b => new BillingReceiptDto
-                {
-                    Id = b.Id,
-                    LicensePlate = b.LicensePlate,
-                    ParkingLotId = b.ParkingLotId,
-                    ParkingLotName = b.ParkingLot!.Name,
-                    Started = b.Started,
-                    Stopped = b.Stopped,
-                    DurationMinutes = b.DurationMinutes,
-                    Cost = Math.Round(b.Cost, 2),
-                    PaymentStatus = b.PaymentStatus
-                })
+                .OrderByDescending(b => b.Stopped)
                 .ToListAsync();
+
+            var receipts = billings
+                .Select(ToDto)
+                .ToList();
+
+            return (receipts, null, null);
         }
 
-        public async Task<BillingReceiptDto?> GetByIdAsync(Guid billingId)
+        public async Task<(BillingReceiptDto? dto, string? error, int? status)> GetByIdAsync(Guid billingId)
         {
-            return await db.Billings
+            if (billingId == Guid.Empty)
+            {
+                return (null, "Billing ID is required.", 400);
+            }
+
+            var billing = await db.Billings
                 .Include(b => b.ParkingLot)
-                .Where(b => b.Id == billingId)
-                .Select(b => new BillingReceiptDto
-                {
-                    Id = b.Id,
-                    LicensePlate = b.LicensePlate,
-                    ParkingLotId = b.ParkingLotId,
-                    ParkingLotName = b.ParkingLot!.Name,
-                    Started = b.Started,
-                    Stopped = b.Stopped,
-                    DurationMinutes = b.DurationMinutes,
-                    Cost = Math.Round(b.Cost, 2),
-                    PaymentStatus = b.PaymentStatus
-                })
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(b => b.Id == billingId);
+
+            if (billing is null)
+            {
+                return (null, $"Billing with id '{billingId}' was not found.", 404);
+            }
+
+            var dto = ToDto(billing);
+            return (dto, null, null);
         }
+
+        private static BillingReceiptDto ToDto(Billing billing) => new()
+        {
+            Id = billing.Id,
+            LicensePlate = billing.LicensePlate,
+            ParkingLotId = billing.ParkingLotId,
+            ParkingLotName = billing.ParkingLot?.Name ?? string.Empty,
+            Started = billing.Started,
+            Stopped = billing.Stopped,
+            DurationMinutes = billing.DurationMinutes,
+            Cost = Math.Round(billing.Cost, 2),
+            PaymentStatus = billing.PaymentStatus
+        };
     }
 }
