@@ -34,18 +34,18 @@ namespace MobyPark.Services
             s.IsRefunded, s.RefundDate
         );
 
-        public async Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLotRequestDto dto)
+        public async Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLot parkinglot)
         {
             var lot = new ParkingLot
             {
                 Id = 0,
-                Name = dto.Name,
-                Location = dto.Location,
-                Address = dto.Address,
-                Capacity = dto.Capacity,
-                Tariff = dto.Tariff,
-                DayTariff = dto.DayTariff,
-                Coordinates = JsonSerializer.Serialize(dto.Coordinates)
+                Name = parkinglot.Name,
+                Location = parkinglot.Location,
+                Address = parkinglot.Address,
+                Capacity = parkinglot.Capacity,
+                Tariff = parkinglot.Tariff,
+                DayTariff = parkinglot.DayTariff,
+                Coordinates = JsonSerializer.Serialize(parkinglot.Coordinates)
             };
 
             db.ParkingLots.Add(lot);
