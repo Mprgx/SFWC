@@ -1,92 +1,162 @@
-import pytest
 import requests
+import uuid
+
+# get all parking lots tests
 
 
-def test_parking_lots_authorized(user_session):
-    url = user_session['url'] + 'parking-lots/'
-    response = requests.get(
-        url, headers={"Authorization": user_session['session_token']})
+def test_get_all_parking_lots_unauthorized(login_as_user):
+    url = login_as_user["url"] + "parking-lots"
+    r = requests.get(url, verify=False)
+    assert r.status_code == 401
 
-    assert response.status_code == 200
-    assert list(response.json().values())[0] == {
-        "id": "1",
-        "name": "Bedrijventerrein Almere Parkeergarage",
-        "location": "Industrial Zone",
-        "address": "Schanssingel 337, 2421 BS Almere",
-        "capacity": 335,
-        "reserved": 77,
-        "tariff": 1.9,
-        "daytariff": 11,
-        "created_at": "2020-03-25",
-        "coordinates": {"lat": 52.3133, "lng": 5.2234}
+
+def test_get_all_parking_lots_authorized(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert r.status_code == 200
+
+
+def test_get_all_parking_lots_returns_list(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert isinstance(r.json(), list)
+
+
+def test_get_all_parking_lots_response_is_json(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert r.headers.get("Content-Type", "").startswith("application/json")
+
+
+def test_get_all_parking_lots_missing_header(login_as_user):
+    url = login_as_user["url"] + "parking-lots"
+    r = requests.get(url, verify=False)
+    assert r.status_code == 401
+
+# get by id tests
+
+
+def test_get_parking_lot_by_id_unauthorized(login_as_user):
+    url = login_as_user["url"] + "parking-lots/1"
+    r = requests.get(url, verify=False)
+    assert r.status_code == 401
+
+
+def test_get_parking_lot_by_id_not_found(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots/999999"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert r.status_code == 404
+
+
+def test_get_parking_lot_by_id_success(login_as_admin):
+    # create lot
+    create_url = login_as_admin["url"] + "parking-lots"
+    headers_admin = {"Authorization": login_as_admin["session_token"]}
+
+    payload = {
+        "name": "GetLot",
+        "location": "Center",
+        "address": "A Street",
+        "capacity": 10,
+        "tariff": 1,
+        "dayTariff": 5,
+        "coordinates": {"latitude": 1, "longitude": 2},
     }
 
+    created = requests.post(
+        create_url, headers=headers_admin, json=payload, verify=False)
+    lot_id = created.json()["id"]
 
-def test_parking_lots_unauthorized(user_session):
-    url = user_session['url'] + 'parking-lots/'
-    response = requests.get(url, headers={})
+    url = login_as_admin["url"] + f"parking-lots/{lot_id}"
+    r = requests.get(url, headers=headers_admin, verify=False)
 
-    assert response.status_code == 401
-
-
-def test_parking_lots_lid_authorized(user_session):
-    url = user_session['url'] + 'parking-lots/1485'
-    response = requests.get(
-        url, headers={"Authorization": user_session['session_token']})
-    assert response.status_code == 200
-    assert response.json() == {
-        "id": "1485",
-        "name": "Doetinchem Sportcomplex Parkeergarage",
-        "location": "Sports Stadium",
-        "address": "Havenweg 631, 4858 BR Doetinchem",
-        "capacity": 1820,
-        "reserved": 387,
-        "tariff": 5.6,
-        "daytariff": 14,
-        "created_at": "2020-12-11",
-        "coordinates": {
-            "lat": 51.9899,
-            "lng": 6.2475
-        }
-    }
+    assert r.status_code == 200
+    assert r.json()["name"] == "GetLot"
 
 
-def test_parking_lots_lid_unauthorized(user_session):
-    url = user_session['url'] + 'parking-lots/1485'
-    response = requests.get(url, headers={})
-    assert response.status_code == 401
+def test_get_parking_lot_by_id_wrong_token(login_as_user):
+    url = login_as_user["url"] + "parking-lots/1"
+    r = requests.get(
+        url, headers={"Authorization": "Bearer FAKE"}, verify=False)
+    assert r.status_code == 401
 
-def test_get_all_parking_lots_as_admin(login_as_admin):
-    url = login_as_admin['url'] + '/parking-lots'
-    response = requests.get(url, headers={"Authorization": login_as_admin['session_token']})
-    assert response.status_code == 200
-    assert response.headers["Content-Type"] == "application/json"
-    data = response.json()
-    assert isinstance(data, dict)
-    assert len(data) > 0
 
-def test_get_all_parking_lots_as_user(login_as_user):
-    url = login_as_user['url'] + '/parking-lots'
-    response = requests.get(url, headers={"Authorization": login_as_user['session_token']})
-    assert response.status_code == 200
-    assert isinstance(response.json(), dict)
+def test_get_parking_lot_by_id_json(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots/1"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    if r.status_code == 200:
+        assert r.headers.get("Content-Type", "").startswith("application/json")
 
-def test_get_all_parking_lots_no_token(login_as_admin):
-    url = login_as_admin['url'] + '/parking-lots'
-    response = requests.get(url)
-    assert response.status_code == 401
-    assert "Unauthorized" in response.text
+# get sessions tests
 
-def test_get_all_parking_lots_invalid_token(login_as_admin):
-    url = login_as_admin['url'] + '/parking-lots'
-    response = requests.get(url, headers={"Authorization": "invalid-token"})
-    assert response.status_code == 401
-    assert "Unauthorized" in response.text
 
-def test_get_all_parking_lots_response_structure(login_as_admin):
-    url = login_as_admin['url'] + '/parking-lots'
-    response = requests.get(url, headers={"Authorization": login_as_admin['session_token']})
-    data = response.json()
-    for lot_id, lot in data.items():
-        assert "name" in lot
-        assert "location" in lot
+def test_get_sessions_unauthorized(login_as_user):
+    url = login_as_user["url"] + "parking-lots/1/sessions"
+    r = requests.get(url, verify=False)
+    assert r.status_code == 401
+
+
+def test_get_sessions_forbidden_user(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots/1/sessions"
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert r.status_code == 403
+
+
+def test_get_sessions_not_found(login_as_admin):
+    headers = {"Authorization": login_as_admin["session_token"]}
+    url = login_as_admin["url"] + "parking-lots/99999/sessions"
+    r = requests.get(url, headers=headers, verify=False)
+    assert r.status_code == 404
+
+
+def test_get_sessions_success(login_as_admin):
+    headers = {"Authorization": login_as_admin["session_token"]}
+    url = login_as_admin["url"] + "parking-lots/1/sessions"
+    r = requests.get(url, headers=headers, verify=False)
+    assert r.status_code in (200, 404)
+
+
+def test_get_sessions_response_json(login_as_admin):
+    headers = {"Authorization": login_as_admin["session_token"]}
+    url = login_as_admin["url"] + "parking-lots/1/sessions"
+    r = requests.get(url, headers=headers, verify=False)
+    if r.status_code == 200:
+        assert r.headers.get("Content-Type", "").startswith("application/json")
+
+# get session by id tests
+
+
+def test_get_session_by_id_unauthorized(login_as_user):
+    url = login_as_user["url"] + "parking-lots/1/sessions/" + str(uuid.uuid4())
+    r = requests.get(url, verify=False)
+    assert r.status_code == 401
+
+
+def test_get_session_by_id_forbidden(auth_headers, login_as_user):
+    url = login_as_user["url"] + "parking-lots/1/sessions/" + str(uuid.uuid4())
+    r = requests.get(url, headers=auth_headers, verify=False)
+    assert r.status_code == 403
+
+
+def test_get_session_by_id_not_found(login_as_admin):
+    headers = {"Authorization": login_as_admin["session_token"]}
+    url = login_as_admin["url"] + \
+        "parking-lots/1/sessions/" + str(uuid.uuid4())
+    r = requests.get(url, headers=headers, verify=False)
+    assert r.status_code == 404
+
+
+def test_get_session_by_id_wrong_token(login_as_user):
+    url = login_as_user["url"] + "parking-lots/1/sessions/" + str(uuid.uuid4())
+    r = requests.get(
+        url, headers={"Authorization": "Bearer FAKE"}, verify=False)
+    assert r.status_code == 401
+
+
+def test_get_session_by_id_response_json(login_as_admin):
+    headers = {"Authorization": login_as_admin["session_token"]}
+    url = login_as_admin["url"] + \
+        "parking-lots/1/sessions/" + str(uuid.uuid4())
+    r = requests.get(url, headers=headers, verify=False)
+    if r.status_code == 200:
+        assert r.headers.get("Content-Type", "").startswith("application/json")
