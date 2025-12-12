@@ -14,16 +14,16 @@ using MobyPark.Services;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("parkinglots")]
     [Authorize]
     public class ParkingLotController(IParkingLotService service) : ControllerBase
     {
         [Authorize(Roles = Roles.Admin)]
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<ParkingLotReadDto>> Create([FromBody] ParkingLot parkinglot)
+        public async Task<ActionResult<ParkingLotReadDto>> Create([FromBody] ParkingLotRequestDto dto)
         {
-            var lot = await service.CreateParkingLotAsync(parkinglot);
+            var lot = await service.CreateParkingLotAsync(dto);
             return CreatedAtAction(nameof(GetById), new { lid = lot.Id }, lot);
         }
 

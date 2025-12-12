@@ -34,7 +34,7 @@ namespace MobyPark.Services
             s.IsRefunded, s.RefundDate
         );
 
-        public async Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLot parkinglot)
+        public async Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLotRequestDto parkinglot)
         {
             var lot = new ParkingLot
             {
