@@ -19,7 +19,6 @@ namespace MobyPark.Entities
         public required string LicensePlate { get; set; }
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset EndTime { get; set; }
-        public int SpotsReserved { get; set; } = 1;
         public bool IsActive { get; set; } = true;
 
     }

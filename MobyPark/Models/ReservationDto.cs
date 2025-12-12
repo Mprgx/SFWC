@@ -7,9 +7,6 @@ namespace MobyPark.Models
         [Required]
         public int ParkingLotId { get; set; }
 
-        [Required]
-        public Guid UserId { get; set; }
-
         [Required, MaxLength(10)]
         [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
         public string LicensePlate { get; set; }
@@ -75,6 +72,8 @@ namespace MobyPark.Models
         public int ParkingLotId { get; set; }
         [Required]
         public Guid UserId { get; set; }
+        [Required]
+        public int VehicleId { get; set; }
         [Required]
         public string LicensePlate { get; set; }
         [Required]

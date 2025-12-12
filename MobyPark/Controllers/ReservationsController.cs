@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,9 +50,11 @@ namespace MobyPark.Controllers
 
             GetReservationDto reservation;
 
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
             try
             {
-                reservation = await reservationService.CreateReservation(dto);
+                reservation = await reservationService.CreateReservation(dto, userId);
             }
             catch (ParkingLotFullException ex)
             {
@@ -124,6 +126,12 @@ namespace MobyPark.Controllers
                 });
 
             return Ok(updated);
+        }
+
+        private bool TryGetUserId(out Guid id)
+        {
+            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(s, out id);
         }
     }
 }

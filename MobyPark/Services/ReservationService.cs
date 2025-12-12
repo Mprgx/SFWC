@@ -12,7 +12,7 @@ namespace MobyPark.Services
     {
 
         //POST
-        public async Task<GetReservationDto> CreateReservation(PostReservationDto dto)
+        public async Task<GetReservationDto> CreateReservation(PostReservationDto dto, Guid userId)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -21,7 +21,7 @@ namespace MobyPark.Services
                 var parkingLot = await _context.ParkingLots.FirstOrDefaultAsync(p => p.Id == dto.ParkingLotId)
                     ?? throw new KeyNotFoundException("Parking lot not found");
 
-                var user = await _context.Users.FindAsync(dto.UserId)
+                var user = await _context.Users.FindAsync(userId)
                     ?? throw new KeyNotFoundException("User not found");
 
                 // Check date validity
@@ -33,6 +33,15 @@ namespace MobyPark.Services
                 if (dto.StartTime < DateTimeOffset.UtcNow)
                 {
                     throw new ValidationException("Start time cannot be in the past");
+                }
+
+                // Check vehicle existence
+
+                var vehicleExistence = await _context.Vehicles.AnyAsync(v => v.LicensePlate == dto.LicensePlate);
+
+                if (!vehicleExistence)
+                {
+                    throw new ValidationException($"Vehicle with license plate {dto.LicensePlate} does not exist");
                 }
 
                 // Check if there is a spot open
@@ -49,11 +58,27 @@ namespace MobyPark.Services
                     throw new ParkingLotFullException("No spots available for the selected time slot.");
                 }
 
+                // Check if there is an overlapping reservation
+                var overlappingReservation = await _context.Reservations
+                    .Where(r => r.IsActive)
+                    .Where(r => r.UserId == userId)
+                    .Where(r => r.ParkingLotId == dto.ParkingLotId)
+                    .Where(r => r.StartTime <= dto.EndTime && r.EndTime > dto.StartTime)
+                    .AnyAsync();
+
+                if (overlappingReservation)
+                {
+                    throw new ValidationException("There is already an overlapping reservation for this user at this time");
+                }
+
+                var vehicle = await _context.Vehicles.FirstOrDefaultAsync(v => v.LicensePlate == dto.LicensePlate);
+
                 // Books the reservation
                 var reservation = new Reservation
                 {
                     ParkingLotId = dto.ParkingLotId,
-                    UserId = dto.UserId,
+                    UserId = userId,
+                    VehicleId = vehicle.Id,
                     LicensePlate = dto.LicensePlate,
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
@@ -68,6 +93,7 @@ namespace MobyPark.Services
                     Id = reservation.Id,
                     ParkingLotId = reservation.ParkingLotId,
                     UserId = reservation.UserId,
+                    VehicleId = reservation.VehicleId,
                     LicensePlate = reservation.LicensePlate,
                     StartTime = reservation.StartTime,
                     EndTime = reservation.EndTime,
@@ -85,9 +111,6 @@ namespace MobyPark.Services
         public async Task<GetReservationDto?> GetById(int reservationId)
         {
             var reservation = await _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
                 .FirstOrDefaultAsync(r => r.Id == reservationId);
 
             return reservation is null ? null : new GetReservationDto
@@ -106,9 +129,6 @@ namespace MobyPark.Services
         public async Task<GetReservationDto?> GetByVehicleId(int vehicleId)
         {
             var reservation = await _context.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Vehicle)
-                    .ThenInclude(v => v.User)
                 .FirstOrDefaultAsync(r => r.Vehicle.Id == vehicleId);
 
             return reservation is null ? null : new GetReservationDto
