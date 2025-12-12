@@ -1,11 +1,8 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
-using MobyPark.Services;
-using Xunit;
 using MobyPark.Models;
+using MobyPark.Services;
 
 namespace MobyParkxUnitTest
 {

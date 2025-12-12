@@ -1,8 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using MobyPark.Constants;
 using MobyPark.Models;
 using MobyPark.Services;
-using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
@@ -115,7 +118,7 @@ namespace MobyPark.Controllers
             });
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("/test-admin-only")]
         public IActionResult AdminOnlyEndpoint()
         {

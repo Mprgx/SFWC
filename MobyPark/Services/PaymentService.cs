@@ -1,5 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+
+using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;

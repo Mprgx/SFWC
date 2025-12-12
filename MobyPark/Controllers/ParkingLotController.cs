@@ -1,11 +1,13 @@
+using System.Text.Json;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+using MobyPark.Constants;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
-using System.Security.Claims;
-using System.Text.Json;
 using MobyPark.Services;
 
 namespace MobyPark.Controllers
@@ -32,8 +34,8 @@ namespace MobyPark.Controllers
         );
 
         //POST
+        [Authorize(Roles = Roles.Admin)]
         [HttpPost("/parking-lots")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Create([FromBody] ParkingLotRequestDto body)
         {
             var coords = JsonSerializer.Serialize(body.Coordinates);
@@ -94,8 +96,8 @@ namespace MobyPark.Controllers
         }
 
         //GET
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("/parking-lots/{lid:int}/sessions")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<SessionReadDto>>> GetSessions(int lid)
         {
             var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
@@ -110,8 +112,8 @@ namespace MobyPark.Controllers
         }
 
         //GET
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("/parking-lots/{lid:int}/sessions/{sid:guid}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<SessionReadDto>> GetSessionById(int lid, Guid sid)
         {
             var session = await db.Sessions
@@ -124,8 +126,8 @@ namespace MobyPark.Controllers
         }
 
         //DELETE
+        [Authorize(Roles = Roles.Admin)]
         [HttpDelete("/parking-lots/{lid:int}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> DeleteParkingLot(int lid)
         {
             var lot = await db.ParkingLots.FindAsync(lid);
@@ -139,8 +141,8 @@ namespace MobyPark.Controllers
         }
 
         //DELETE
+        [Authorize(Roles = Roles.Admin)]
         [HttpDelete("/parking-lots/{lid:int}/sessions/{sid:int}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> DeleteSession(int lid, Guid sid)
         {
             var session = await db.Sessions
@@ -155,8 +157,8 @@ namespace MobyPark.Controllers
             return Ok("Session deleted");
         }
 
+        [Authorize(Roles = Roles.Admin)]
         [HttpPut("/parking-lots/{lid:int}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int lid, [FromBody] ParkingLotUpdateDto dto)
         {
             var updated = await service.UpdateParkingLotAsync(lid, dto);

@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace MobyPark.Entities
 {
     public class CompanyUser

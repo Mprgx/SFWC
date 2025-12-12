@@ -1,5 +1,4 @@
 using MobyPark.Models;
-using MobyPark.Entities;
 
 namespace MobyPark.Services
 {
