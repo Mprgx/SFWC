@@ -1,177 +1,177 @@
-using Xunit;
-using Moq;
-using System;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using MobyPark.Controllers;
-using MobyPark.Services;
-using MobyPark.Models;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Data;
 using MobyPark.Entities;
+using MobyPark.Models;
+using MobyPark.Services;
 
 namespace MobyParkxUnitTest
 {
-    public class CancelSessionTests
+    public class CancelSessionServiceTests
     {
-        private ClaimsPrincipal CreateUser(Guid id, bool isAdmin)
+        private static UserDbContext CreateDb(string name)
         {
-            var claims = new[]
+            var opts = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(name)
+                .Options;
+
+            return new UserDbContext(opts);
+        }
+
+        private class FakeEncryptionService : IEncryptionService
+        {
+            public string? Encrypt(string? plaintext)
             {
-            new Claim(ClaimTypes.NameIdentifier, id.ToString()),
-            new Claim(ClaimTypes.Role, isAdmin ? "Admin" : "Customer")
-        };
+                return plaintext is null ? null : $"ENC:{plaintext}";
+            }
 
-            return new ClaimsPrincipal(new ClaimsIdentity(claims, "mock"));
-        }
-
-        private SessionController CreateController(Mock<ISessionService> mock, ClaimsPrincipal user)
-        {
-            return new SessionController(mock.Object, Mock.Of<IEncryptionService>())
+            public string? Decrypt(string? ciphertext)
             {
-                ControllerContext = new()
-                {
-                    HttpContext = new DefaultHttpContext
-                    {
-                        User = user
-                    }
-                }
-            };
+                if (ciphertext is null)
+                    return null;
+
+                const string prefix = "ENC:";
+                if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
+                    return ciphertext[prefix.Length..];
+
+                return ciphertext;
+            }
         }
 
-        // ---------------------------------------------------------------
-        // 1. User cannot cancel someone else's session
-        // ---------------------------------------------------------------
-        [Fact]
-        public async Task Cancel_Fails_When_User_Not_Owner()
+        private static SessionService CreateService(UserDbContext db)
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync((Session?)null);  // service refuses
-
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), false));
-
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
+            return new SessionService(db, new FakeEncryptionService());
         }
 
-        // ---------------------------------------------------------------
-        // 2. Cannot cancel completed sessions (Stopped != null)
-        // ---------------------------------------------------------------
+        // -------------------------------------------------------------------
+        // 1. Returns null when session does not exist
+        // -------------------------------------------------------------------
         [Fact]
-        public async Task Cancel_Fails_When_Session_Already_Completed()
+        public async Task CancelSessionAsync_ReturnsNull_WhenSessionDoesNotExist()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync((Session?)null);
+            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsNull_WhenSessionDoesNotExist));
+            var service = CreateService(db);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), false));
+            var result = await service.CancelSessionAsync(Guid.NewGuid(), Guid.NewGuid(), new CancelSessionDto());
 
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Null(result);
         }
 
-        // ---------------------------------------------------------------
-        // 3. Cannot cancel if already cancelled
-        // ---------------------------------------------------------------
+        // -------------------------------------------------------------------
+        // 2. Returns null when already cancelled
+        // -------------------------------------------------------------------
         [Fact]
-        public async Task Cancel_Fails_When_Already_Cancelled()
+        public async Task CancelSessionAsync_ReturnsNull_WhenSessionAlreadyCancelled()
         {
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync((Session?)null);
+            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsNull_WhenSessionAlreadyCancelled));
+            var service = CreateService(db);
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), false));
-
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
-
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        // ---------------------------------------------------------------
-        // 4. Successful cancel → Session returned with updated fields
-        // ---------------------------------------------------------------
-        [Fact]
-        public async Task Cancel_Succeeds_And_Returns_Updated_Session()
-        {
-            var updated = new Session
+            var s = new Session
             {
                 Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                Started = DateTimeOffset.UtcNow.AddMinutes(-5),
+                Stopped = DateTimeOffset.UtcNow,
                 IsCancelled = true,
-                CancelledAt = DateTimeOffset.UtcNow
+                ParkingLotId = 1,
+                LicensePlate = "TESTPLATE"
             };
 
-            var mock = new Mock<ISessionService>();
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync(updated);
+            db.Sessions.Add(s);
+            await db.SaveChangesAsync();
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
+            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
 
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
-
-            var ok = Assert.IsType<OkObjectResult>(result);
-            dynamic value = ok.Value!;
-            Assert.True(value.IsCancelled);
+            Assert.Null(result);
         }
 
-        // ---------------------------------------------------------------
-        // 5. Unauthenticated → Unauthorized
-        // ---------------------------------------------------------------
+        // -------------------------------------------------------------------
+        // 3. Cancelling automatically sets Stopped when null
+        // -------------------------------------------------------------------
         [Fact]
-        public async Task Cancel_Fails_When_Not_Authenticated()
+        public async Task CancelSessionAsync_SetsStoppedTimestamp_WhenStoppedIsNull()
         {
-            var mock = new Mock<ISessionService>();
-            var controller = new SessionController(mock.Object, Mock.Of<IEncryptionService>())
+            using var db = CreateDb(nameof(CancelSessionAsync_SetsStoppedTimestamp_WhenStoppedIsNull));
+            var service = CreateService(db);
+
+            var before = DateTimeOffset.UtcNow.AddMinutes(-20);
+
+            var s = new Session
             {
-                ControllerContext = new()
-                {
-                    HttpContext = new DefaultHttpContext()  // no user
-                }
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                Started = before,
+                Stopped = null,
+                IsCancelled = false,
+                ParkingLotId = 1,
+                LicensePlate = "TEST"
             };
 
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
+            db.Sessions.Add(s);
+            await db.SaveChangesAsync();
 
-            Assert.IsType<UnauthorizedResult>(result);
+            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
+
+            Assert.NotNull(result);
+            Assert.NotNull(result!.Stopped);
+            Assert.True(result!.Stopped >= s.Started);
         }
 
-        // ---------------------------------------------------------------
-        // 6. Admin override with reason
-        // ---------------------------------------------------------------
+        // -------------------------------------------------------------------
+        // 4. Cancel sets IsCancelled + CancelledAt
+        // -------------------------------------------------------------------
         [Fact]
-        public async Task Admin_Can_Cancel_With_Reason()
+        public async Task CancelSessionAsync_MarksSessionCancelledAndSetsCancelledAt()
         {
-            var mock = new Mock<ISessionService>();
+            using var db = CreateDb(nameof(CancelSessionAsync_MarksSessionCancelledAndSetsCancelledAt));
+            var service = CreateService(db);
 
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync(new Session { Id = Guid.NewGuid(), IsCancelled = true });
+            var s = new Session
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                Started = DateTimeOffset.UtcNow.AddMinutes(-5),
+                ParkingLotId = 1,
+                LicensePlate = "TEST"
+            };
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
+            db.Sessions.Add(s);
+            await db.SaveChangesAsync();
 
-            var dto = new CancelSessionDto { Reason = "Admin override" };
+            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
 
-            var result = await controller.CancelSession(Guid.NewGuid(), dto);
-
-            Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(result);
+            Assert.True(result!.IsCancelled);
+            Assert.NotNull(result!.CancelledAt);
         }
 
-        // ---------------------------------------------------------------
-        // 7. Success → Confirmation (Ok result)
-        // ---------------------------------------------------------------
+        // -------------------------------------------------------------------
+        // 5. Cancel persists DB state
+        // -------------------------------------------------------------------
         [Fact]
-        public async Task Cancel_Returns_Ok_On_Success()
+        public async Task CancelSessionAsync_SavesChangesToDatabase()
         {
-            var mock = new Mock<ISessionService>();
+            using var db = CreateDb(nameof(CancelSessionAsync_SavesChangesToDatabase));
+            var service = CreateService(db);
 
-            mock.Setup(s => s.CancelSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancelSessionDto>()))
-                .ReturnsAsync(new Session { Id = Guid.NewGuid(), IsCancelled = true });
+            var s = new Session
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                Started = DateTimeOffset.UtcNow.AddMinutes(-10),
+                ParkingLotId = 1,
+                LicensePlate = "TEST"
+            };
 
-            var controller = CreateController(mock, CreateUser(Guid.NewGuid(), true));
+            db.Sessions.Add(s);
+            await db.SaveChangesAsync();
 
-            var result = await controller.CancelSession(Guid.NewGuid(), new CancelSessionDto());
+            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
+            Assert.NotNull(result);
 
-            Assert.IsType<OkObjectResult>(result);
+            var dbSession = await db.Sessions.FindAsync(s.Id);
+
+            Assert.True(dbSession!.IsCancelled);
+            Assert.NotNull(dbSession.CancelledAt);
         }
     }
 }
-

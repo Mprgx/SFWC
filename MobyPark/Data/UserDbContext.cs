@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Entities;
 
 namespace MobyPark.Data

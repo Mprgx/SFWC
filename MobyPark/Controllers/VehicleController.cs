@@ -1,9 +1,11 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MobyPark.Entities;
+
+using MobyPark.Constants;
 using MobyPark.Models;
 using MobyPark.Services;
-using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
@@ -66,7 +68,7 @@ namespace MobyPark.Controllers
             return Ok(new { status = "Deleted" });
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("vehicle/{username}")]
         public async Task<ActionResult<List<VehicleReadDto>>> GetVehicleByUser(string username)
         {

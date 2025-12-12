@@ -12,7 +12,7 @@ namespace MobyPark.Models
 
         [Required, MaxLength(10)]
         [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
-        public required string LicensePlate { get; set; }
+        public string LicensePlate { get; set; }
 
         [Required]
         public DateTimeOffset StartTime { get; set; }
@@ -39,6 +39,34 @@ namespace MobyPark.Models
         }
     }
 
+    public class PutReservationDto : IValidatableObject
+    {
+        [MaxLength(10)]
+        [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
+        public string? LicensePlate { get; set; }
+        public DateTimeOffset? StartTime { get; set; }
+        public DateTimeOffset? EndTime { get; set; }
+        public IEnumerable<ValidationResult> Validate(ValidationContext _)
+        {
+            // Check if end time is after start time.
+            if (StartTime.HasValue && EndTime.HasValue)
+            {
+                if (EndTime <= StartTime)
+                {
+                    yield return new ValidationResult(
+                        "EndTime must be after StartTime.",
+                        new[] { nameof(EndTime) });
+                }
+            }
+
+            // Check if reservation is in the future.
+            if (StartTime.HasValue && StartTime < DateTimeOffset.UtcNow)
+                yield return new ValidationResult(
+                    "StartTime can not be in the past.",
+                    new[] { nameof(StartTime) });
+        }
+    }
+
     public class GetReservationDto
     {
         [Required]
@@ -48,11 +76,7 @@ namespace MobyPark.Models
         [Required]
         public Guid UserId { get; set; }
         [Required]
-        public required UserReadDto ReservationCreator { get; set; }
-        [Required]
-        public required string LicensePlate { get; set; }
-        [Required]
-        public required VehicleReadDto Vehicle { get; set; }
+        public string LicensePlate { get; set; }
         [Required]
         public DateTimeOffset StartTime { get; set; }
         [Required]

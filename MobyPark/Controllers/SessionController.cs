@@ -1,9 +1,12 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using MobyPark.Constants;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
-using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {
@@ -63,7 +66,7 @@ namespace MobyPark.Controllers
             return Ok(ToDto(result));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpPut("/stop-session/{id:guid}")]
         public async Task<IActionResult> StopSession(Guid id)
         {
@@ -78,7 +81,7 @@ namespace MobyPark.Controllers
             return Ok(ToDto(result));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("/get-session-by-id")]
         public async Task<IActionResult> GetSession(Guid id)
         {
@@ -93,7 +96,7 @@ namespace MobyPark.Controllers
             return Ok(ToDto(session));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpPut("/cancel-session/{id:guid}")]
         public async Task<IActionResult> CancelSession(Guid id, CancelSessionDto dto)
         {
@@ -108,7 +111,7 @@ namespace MobyPark.Controllers
             return Ok(ToDto(result));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpPost("/refund-session/{id:guid}")]
         public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
         {
@@ -123,7 +126,7 @@ namespace MobyPark.Controllers
             return Ok(result);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpDelete("/parking-lots/{lid:guid}/sessions/{sid:guid}")]
         public async Task<IActionResult> DeleteSession(int lid, Guid sid)
         {

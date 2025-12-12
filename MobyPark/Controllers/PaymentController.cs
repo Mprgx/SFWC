@@ -1,10 +1,12 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+
+using MobyPark.Constants;
 using MobyPark.Data;
-using MobyPark.Models;
-using System.Security.Claims;
 using MobyPark.Entities;
+using MobyPark.Models;
 using MobyPark.Services;
 
 namespace MobyPark.Controllers
@@ -12,17 +14,8 @@ namespace MobyPark.Controllers
     [ApiController]
     [Route("api/")]
     [Authorize]
-    public class PaymentsController : ControllerBase
+    public class PaymentsController(UserDbContext context, IPaymentService paymentService) : ControllerBase
     {
-        private readonly UserDbContext _context;
-
-        private readonly IPaymentService _paymentService;
-
-        public PaymentsController(UserDbContext context, IPaymentService paymentService)
-        {
-            _context = context;
-            _paymentService = paymentService;
-        }
 
         [HttpPost("payments")]
         public async Task<ActionResult> FulfillPayment(PaymentsDto paymentRequest)
@@ -40,7 +33,7 @@ namespace MobyPark.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var result = await _paymentService.FulfillPaymentAsync(userId.ToString(), paymentRequest);
+            var result = await paymentService.FulfillPaymentAsync(userId.ToString(), paymentRequest);
 
             return Ok(result);
         }
@@ -63,7 +56,7 @@ namespace MobyPark.Controllers
 
             try
             {
-                var payment = await _paymentService
+                var payment = await paymentService
                     .CompletePaymentAsync(userId, transactionId, request);
 
                 return Ok(payment);
@@ -86,32 +79,31 @@ namespace MobyPark.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var paymentList = await _paymentService.GetPaymentsForUserAsync(userId);
+            var paymentList = await paymentService.GetPaymentsForUserAsync(userId);
 
             return Ok(paymentList);
         }
 
-
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("payments/{username}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> GetPaymentsForUser(string username)
         {
             if (string.IsNullOrWhiteSpace(username))
                 return BadRequest("Username is required");
 
-            var paymentList = await _paymentService.GetPaymentsForAnyUserAsync(username);
+            var paymentList = await paymentService.GetPaymentsForAnyUserAsync(username);
 
             return Ok(paymentList);
         }
 
+        [Authorize(Roles = Roles.Admin)]
         [HttpDelete("Payments/{transactionId}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> DeletePaymentBytransactionId(string transactionId)
         {
             if (string.IsNullOrWhiteSpace(transactionId))
                 return BadRequest("transactionId is required");
 
-            var deleted = await _paymentService.DeletePaymentByTransactionId(transactionId);
+            var deleted = await paymentService.DeletePaymentByTransactionId(transactionId);
 
             if (!deleted)
                 return NotFound(new

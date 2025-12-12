@@ -1,4 +1,7 @@
+using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
@@ -18,7 +21,6 @@ namespace MobyPark.Services
                 Location = lot.Location,
                 Address = lot.Address,
                 Capacity = lot.Capacity,
-                Reserved = lot.ReservedSpots,
                 Tariff = lot.Tariff,
                 DayTariff = lot.DayTariff,
                 Coordinates = JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new()
@@ -41,7 +43,6 @@ namespace MobyPark.Services
                 Location = dto.Location,
                 Address = dto.Address,
                 Capacity = dto.Capacity,
-                ReservedSpots = dto.Reserved,
                 Tariff = dto.Tariff,
                 DayTariff = dto.DayTariff,
                 Coordinates = JsonSerializer.Serialize(dto.Coordinates)
@@ -111,7 +112,6 @@ namespace MobyPark.Services
             if (!string.IsNullOrWhiteSpace(dto.Location)) lot.Location = dto.Location;
             if (!string.IsNullOrWhiteSpace(dto.Address)) lot.Address = dto.Address;
             if (dto.Capacity.HasValue) lot.Capacity = dto.Capacity.Value;
-            if (dto.Reserved.HasValue) lot.ReservedSpots = dto.Reserved.Value;
             if (dto.Tariff.HasValue) lot.Tariff = dto.Tariff.Value;
             if (dto.DayTariff.HasValue) lot.DayTariff = dto.DayTariff.Value;
             if (dto.Coordinates is not null) lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);

@@ -1,5 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+
+using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
@@ -193,7 +195,6 @@ namespace MobyPark.Services
                         Location = payment.ParkingLot.Location,
                         Address = payment.ParkingLot.Address,
                         Capacity = payment.ParkingLot.Capacity,
-                        ReservedSpots = payment.ParkingLot.ReservedSpots,
                         Tariff = payment.ParkingLot.Tariff,
                         DayTariff = payment.ParkingLot.DayTariff
                     }
@@ -263,7 +264,6 @@ namespace MobyPark.Services
                         Location = p.ParkingLot.Location,
                         Address = p.ParkingLot.Address,
                         Capacity = p.ParkingLot.Capacity,
-                        ReservedSpots = p.ParkingLot.ReservedSpots,
                         Tariff = p.ParkingLot.Tariff,
                         DayTariff = p.ParkingLot.DayTariff
                     }

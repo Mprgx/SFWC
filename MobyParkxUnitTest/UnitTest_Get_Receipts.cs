@@ -1,18 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
-using Moq;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Controllers;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
-using MobyPark.Controllers;
+using Moq;
+using System.Security.Claims;
 
 namespace MobyParkxUnitTest
 {
@@ -40,7 +35,6 @@ namespace MobyParkxUnitTest
                 Location = "Test Location",
                 Address = "Test Address",
                 Capacity = 100,
-                ReservedSpots = 0,
                 Tariff = 2.0,
                 DayTariff = 10.0,
                 Coordinates = "{\"latitude\":0,\"longitude\":0}"

@@ -22,7 +22,7 @@ namespace MobyPark.Models
         public DateTimeOffset CreatedAt { get; set; }
     }
 
-    public class  VehicleUpdateDto
+    public class VehicleUpdateDto
     {
         public string? Make { get; set; }
         public string? Model { get; set; }
