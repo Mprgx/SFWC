@@ -10,7 +10,7 @@ using MobyPark.Services;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/billing")]
+    [Route("billing")]
     [Authorize]
     public class BillingController(IBillingService billingService) : ControllerBase
     {
