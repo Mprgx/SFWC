@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using MobyPark.Constants;
+using MobyPark.Models;
 using MobyPark.Services;
 
 namespace MobyPark.Controllers
@@ -11,26 +12,78 @@ namespace MobyPark.Controllers
     [ApiController]
     [Route("api/billing")]
     [Authorize]
-    public class BillingController(IBillingService billing) : ControllerBase
+    public class BillingController(IBillingService billingService) : ControllerBase
     {
-        private string Username => User.FindFirst(ClaimTypes.Name)!.Value;
-        private bool IsAdmin => User.IsInRole("ADMIN");
-
         [HttpGet("receipts")]
-        public async Task<IActionResult> GetMyReceipts()
+        public async Task<ActionResult<List<BillingReceiptDto>>> GetMyReceipts()
         {
-            if (IsAdmin)
-                return Ok(await billing.GetAllReceiptsAsync());
+            var username = User.FindFirstValue(ClaimTypes.Name);
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized();
+            }
 
-            return Ok(await billing.GetReceiptsForUserAsync(Username));
+            var (dto, error, status) = await billingService.GetReceiptsForUserAsync(username);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            return Ok(dto ?? new List<BillingReceiptDto>());
         }
 
+        [HttpGet]
         [Authorize(Roles = Roles.Admin)]
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<ActionResult<List<BillingReceiptDto>>> GetAll()
         {
-            var result = await billing.GetByIdAsync(id);
-            return result is null ? NotFound() : Ok(result);
+            var (dto, error, status) = await billingService.GetAllReceiptsAsync();
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            return Ok(dto ?? new List<BillingReceiptDto>());
+        }
+
+        [HttpGet("{id:guid}")]
+        [Authorize(Roles = Roles.Admin)]
+        public async Task<ActionResult<BillingReceiptDto>> GetById(Guid id)
+        {
+            var (dto, error, status) = await billingService.GetByIdAsync(id);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (dto is null)
+                return StatusCode(500, "Unexpected null billing receipt.");
+
+            return Ok(dto);
+        }
+
+        [HttpGet("{username}")]
+        [Authorize(Roles = Roles.Admin)]
+        public async Task<ActionResult<List<BillingReceiptDto>>> GetForUser(string username)
+        {
+            var (dto, error, status) = await billingService.GetReceiptsForUserAsync(username);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            return Ok(dto ?? new List<BillingReceiptDto>());
         }
     }
 }
