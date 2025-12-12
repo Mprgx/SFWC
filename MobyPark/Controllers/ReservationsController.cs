@@ -1,10 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MobyPark.Entities;
+
 using MobyPark.Models;
 using MobyPark.Services;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 
 namespace MobyPark.Controllers
 {

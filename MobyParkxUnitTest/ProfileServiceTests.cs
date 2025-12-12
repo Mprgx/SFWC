@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
-using Xunit;
 
 namespace MobyParkxUnitTest
 {

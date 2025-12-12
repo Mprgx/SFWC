@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Services;
-using Xunit;
 
 namespace MobyParkxUnitTest
 {

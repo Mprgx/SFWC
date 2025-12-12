@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
-using Xunit;
-using BCrypt.Net;
 
 namespace MobyParkxUnitTest
 {
@@ -265,7 +258,7 @@ namespace MobyParkxUnitTest
             };
 
             var tokens = await service.LoginAsync(request);
-            
+
             Assert.Null(tokens);
         }
 

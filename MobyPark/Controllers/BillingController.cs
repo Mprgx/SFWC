@@ -1,6 +1,9 @@
+using System.Security.Claims;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+
+using MobyPark.Constants;
 using MobyPark.Services;
 
 namespace MobyPark.Controllers
@@ -22,7 +25,7 @@ namespace MobyPark.Controllers
             return Ok(await billing.GetReceiptsForUserAsync(Username));
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {

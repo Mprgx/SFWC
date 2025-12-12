@@ -1,8 +1,10 @@
+using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
-using System.Text.Json;
 
 namespace MobyPark.Services
 {
