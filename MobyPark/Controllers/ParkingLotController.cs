@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Security.Claims;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,9 @@ namespace MobyPark.Controllers
     {
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<ParkingLotReadDto>> Create([FromBody] ParkingLotRequestDto dto)
+        public async Task<ActionResult<ParkingLotReadDto>> Create([FromBody] ParkingLot parkinglot)
         {
-            var lot = await service.CreateParkingLotAsync(dto);
+            var lot = await service.CreateParkingLotAsync(parkinglot);
             return CreatedAtAction(nameof(GetById), new { lid = lot.Id }, lot);
         }
 
@@ -62,7 +63,7 @@ namespace MobyPark.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<List<SessionReadDto>>> GetSessions(int lid)
         {
-            var sessions = await service.GetSessionsAsync(lid);
+            var sessions = await service.GetSessionsAsync(lid, User.FindFirstValue(ClaimTypes.Name), User.IsInRole("Admin"));
             return Ok(sessions);
         }
 
@@ -70,7 +71,7 @@ namespace MobyPark.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<SessionReadDto>> GetSessionById(int lid, Guid sid)
         {
-            var session = await service.GetSessionByIdAsync(lid, sid);
+            var session = await service.GetSessionByIdAsync(lid, sid, User.FindFirstValue(ClaimTypes.Name), User.IsInRole("Admin"));
             if (session is null) return NotFound();
             return Ok(session);
         }
