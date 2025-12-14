@@ -76,7 +76,6 @@ namespace MobyPark.Services
                 var reservation = new Reservation
                 {
                     ParkingLotId = dto.ParkingLotId,
-                    UserId = dto.UserId,
                     LicensePlate = encryption.Encrypt(dto.LicensePlate) ?? string.Empty,
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,

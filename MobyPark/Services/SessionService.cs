@@ -35,47 +35,14 @@ namespace MobyPark.Services
                 return (null, "There is already an active session for this vehicle.", 409);
             }
 
-            var now = DateTimeOffset.UtcNow;
-
-            var reservation = await db.Reservations
-                .Where(r => r.IsActive)
-                .Where(r => r.UserId == userId)
-                .Where(r => r.ParkingLotId == dto.ParkingLotId)
-                .Where(r => r.StartTime <= now && r.EndTime > now)
-                .FirstOrDefaultAsync();
-
-            Session session;
-
-            if (reservation is null)
-            {
-                session = new Session
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    VehicleId = vehicle.Id,
-                    LicensePlate = vehicle.LicensePlate,
-                    ParkingLotId = dto.ParkingLotId,
-                    Started = now,
-                    DurationMinutes = 0,
-                    Cost = 0,
-                    PaymentStatus = "unpaid"
-                };
-
-                await db.Sessions.AddAsync(session);
-                await db.SaveChangesAsync();
-
-                return session;
-            }
-
-            session = new Session
+            var session = new Session
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 VehicleId = vehicle.Id,
                 LicensePlate = vehicle.LicensePlate,
                 ParkingLotId = dto.ParkingLotId,
-                ReservationId = reservation.Id,
-                Started = now,
+                Started = DateTimeOffset.UtcNow,
                 DurationMinutes = 0,
                 Cost = 0,
                 PaymentStatus = PaymentStatuses.Unpaid
