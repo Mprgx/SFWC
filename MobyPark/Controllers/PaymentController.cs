@@ -14,7 +14,7 @@ namespace MobyPark.Controllers
     [ApiController]
     [Route("api/")]
     [Authorize]
-    public class PaymentsController(UserDbContext context, IPaymentService paymentService) : ControllerBase
+    public class PaymentsController(IPaymentService paymentService) : ControllerBase
     {
 
         [HttpPost("payments")]

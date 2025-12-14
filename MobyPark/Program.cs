@@ -93,6 +93,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IParkingLotService, ParkingLotService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 
 builder.Services.AddHttpsRedirection(o => o.HttpsPort = 7197);
 
