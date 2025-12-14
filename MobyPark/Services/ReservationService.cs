@@ -8,9 +8,8 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ReservationService(UserDbContext _context) : IReservationService
+    public class ReservationService(UserDbContext _context, IEncryptionService encryption) : IReservationService
     {
-
         //POST
         public async Task<GetReservationDto> CreateReservation(PostReservationDto dto)
         {
@@ -54,7 +53,7 @@ namespace MobyPark.Services
                 {
                     ParkingLotId = dto.ParkingLotId,
                     UserId = dto.UserId,
-                    LicensePlate = dto.LicensePlate,
+                    LicensePlate = encryption.Encrypt(dto.LicensePlate) ?? string.Empty,
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                 };
@@ -68,7 +67,7 @@ namespace MobyPark.Services
                     Id = reservation.Id,
                     ParkingLotId = reservation.ParkingLotId,
                     UserId = reservation.UserId,
-                    LicensePlate = reservation.LicensePlate,
+                    LicensePlate = encryption.Decrypt(reservation.LicensePlate) ?? string.Empty,
                     StartTime = reservation.StartTime,
                     EndTime = reservation.EndTime,
                     IsActive = reservation.IsActive
@@ -95,7 +94,7 @@ namespace MobyPark.Services
                 Id = reservation.Id,
                 ParkingLotId = reservation.ParkingLotId,
                 UserId = reservation.UserId,
-                LicensePlate = reservation.LicensePlate,
+                LicensePlate = encryption.Decrypt(reservation.LicensePlate) ?? string.Empty,
                 StartTime = reservation.StartTime,
                 EndTime = reservation.EndTime,
                 IsActive = reservation.IsActive
@@ -109,14 +108,14 @@ namespace MobyPark.Services
                 .Include(r => r.User)
                 .Include(r => r.Vehicle)
                     .ThenInclude(v => v.User)
-                .FirstOrDefaultAsync(r => r.Vehicle.Id == vehicleId);
+                .FirstOrDefaultAsync(r => r.VehicleId == vehicleId);
 
             return reservation is null ? null : new GetReservationDto
             {
                 Id = reservation.Id,
                 ParkingLotId = reservation.ParkingLotId,
                 UserId = reservation.UserId,
-                LicensePlate = reservation.LicensePlate,
+                LicensePlate = encryption.Decrypt(reservation.LicensePlate) ?? string.Empty,
                 StartTime = reservation.StartTime,
                 EndTime = reservation.EndTime,
                 IsActive = reservation.IsActive
@@ -156,7 +155,8 @@ namespace MobyPark.Services
 
             if (dto.StartTime.HasValue) reservation.StartTime = dto.StartTime.Value;
             if (dto.EndTime.HasValue) reservation.EndTime = dto.EndTime.Value;
-            if (!string.IsNullOrEmpty(dto.LicensePlate)) reservation.LicensePlate = dto.LicensePlate;
+            if (!string.IsNullOrEmpty(dto.LicensePlate))
+                reservation.LicensePlate = encryption.Encrypt(dto.LicensePlate) ?? string.Empty;
 
             await _context.SaveChangesAsync();
 
@@ -165,7 +165,7 @@ namespace MobyPark.Services
                 Id = reservation.Id,
                 ParkingLotId = reservation.ParkingLotId,
                 UserId = reservation.UserId,
-                LicensePlate = reservation.LicensePlate,
+                LicensePlate = encryption.Decrypt(reservation.LicensePlate) ?? string.Empty,
                 StartTime = reservation.StartTime,
                 EndTime = reservation.EndTime,
                 IsActive = reservation.IsActive
