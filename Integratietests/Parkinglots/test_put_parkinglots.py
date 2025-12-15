@@ -1,36 +1,36 @@
 import requests
+import re
 
 
 def test_update_parking_lot_unauthorized(login_as_user):
-    base = login_as_user["url"]
-    url = f"{base}api/parking-lots/1"
+    url = login_as_user["url"] + "parking-lots/1"
 
     r = requests.put(url, json={}, verify=False)
     assert r.status_code == 401
 
 
-def test_update_parking_lot_forbidden(auth_headers):
+def test_update_parking_lot_forbidden(login_as_user):
     # normal user (not admin)
-    base = "https://localhost:7197/"
-    url = f"{base}api/parking-lots/1"
+    url = login_as_user["url"] + "parking-lots/1"
+    headers = {"Authorization": login_as_user["session_token"]}
 
-    r = requests.put(url, json={}, headers=auth_headers, verify=False)
+    r = requests.put(url, json={}, headers=headers, verify=False)
     assert r.status_code == 403
 
 
-def test_update_parking_lot_not_found(auth_headers_admin):
-    base = "https://localhost:7197/"
-    url = f"{base}api/parking-lots/99999"
+def test_update_parking_lot_not_found(login_as_admin):
+    url = login_as_admin["url"] + "parking-lots/fake"
+    headers = {"Authorization": login_as_admin["session_token"]}
 
     payload = {"name": "Updated"}
-    r = requests.put(url, headers=auth_headers_admin,
+    r = requests.put(url, headers=headers,
                      json=payload, verify=False)
     assert r.status_code == 404
 
 
-def test_update_parking_lot_success(auth_headers_admin):
-    base = "https://localhost:7197/"
-    create_url = f"{base}api/parking-lots"
+def test_update_parking_lot_success(login_as_admin):
+    url = login_as_admin["url"] + "parking-lots"
+    headers = {"Authorization": login_as_admin["session_token"]}
 
     payload = {
         "name": "UpdLot",
@@ -43,23 +43,23 @@ def test_update_parking_lot_success(auth_headers_admin):
     }
 
     # create lot
-    res = requests.post(create_url, headers=auth_headers_admin,
-                        json=payload, verify=False)
-    res.raise_for_status()
-    lot_id = res.json()["id"]
+    created = requests.post(url, headers=headers,
+                            json=payload, verify=False)
+
+    assert created.status_code == 201
+    
+    lot_id = created.json()["id"]
 
     # update
-    update_url = f"{base}api/parking-lots/{lot_id}"
-    r = requests.put(update_url, headers=auth_headers_admin,
-                     json={"name": "UpdatedName"}, verify=False)
+    new_url = login_as_admin["url"] + f"parking-lots/{lot_id}"
+    new_headers = {"Authorization": login_as_admin["session_token"]}
+    r = requests.put(new_url, headers=new_headers, json={"name": "UpdatedName"}, verify=False)
 
     assert r.status_code == 200
 
 
-def test_update_parking_lot_wrong_token():
-    base = "https://localhost:7197/"
-    url = f"{base}api/parking-lots/1"
+def test_update_parking_lot_wrong_token(login_as_admin):
+    url = login_as_admin["url"] + "parking-lots/1"
 
-    r = requests.put(url, headers={"Authorization": "Fake"}, json={
-                     "name": "X"}, verify=False)
+    r = requests.put(url, headers={"Authorization": "Fake"}, json={"name": "X"}, verify=False)
     assert r.status_code == 401

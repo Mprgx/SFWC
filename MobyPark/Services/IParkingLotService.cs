@@ -5,13 +5,17 @@ namespace MobyPark.Services
 {
     public interface IParkingLotService
     {
+        Task<(ParkingLotReadDto? dto, string? error, int? status)> CreateAsync(ParkingLotRequestDto dto, bool isAdmin);
         Task<List<ParkingLotReadDto>> GetAllAsync();
         Task<ParkingLotReadDto?> GetByIdAsync(int lid);
-        Task<List<SessionReadDto>> GetSessionsAsync(int lid, string? username, bool isAdmin);
-        Task<SessionReadDto?> GetSessionByIdAsync(int lid, Guid sid, string? username, bool isAdmin);
-        Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLotRequestDto parkingLot);
-        Task<bool> DeleteParkingLotAsync(int id);
-        Task<bool> DeleteParkingLotSessionAsync(int parkingLotId, Guid sessionId);
-        Task<ParkingLotReadDto?> UpdateParkingLotAsync(int lid, ParkingLotUpdateDto dto);
+
+        Task<(ParkingLotReadDto? dto, string? error, int? status)> UpdateAsync(int lid, ParkingLotUpdateDto dto, bool isAdmin);
+        Task<(bool deleted, string? error, int? status)> DeleteAsync(int lid, bool isAdmin);
+
+        Task<(List<SessionReadDto>? dto, string? error, int? status)> GetSessionsAsync(int lid, string? username, bool isAdmin);
+
+        Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(int lid, Guid sid, string? username, bool isAdmin);
+
+        Task<(bool deleted, string? error, int? status)> DeleteSessionAsync(int lid, Guid sid, bool isAdmin);
     }
 }
