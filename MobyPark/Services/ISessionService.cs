@@ -5,8 +5,8 @@ namespace MobyPark.Services
     public interface ISessionService
     {
         Task<(SessionReadDto? dto, string? error, int? status)> StartSessionAsync(Guid userId, SessionStartDto dto);
-        Task<(SessionReadDto? dto, string? error, int? status)> StopSessionByPlateAsync(Guid userId, SessionStopDto dto);
-        Task<(SessionReadDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId);
+        Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByPlateAsync(Guid userId, SessionStopDto dto);
+        Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId);
         Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(Guid userId, Guid sessionId);
         Task<(SessionReadDto? dto, string? error, int? status)> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto);
         Task<(List<SessionReadDto>? dto, string? error, int? status)> GetAllForUserAsync(Guid userId, bool onlyActive);

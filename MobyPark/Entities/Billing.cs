@@ -9,7 +9,7 @@ namespace MobyPark.Entities
 
         public int ParkingLotId { get; set; }
         public ParkingLot? ParkingLot { get; set; }
-
+        [Required, MaxLength(128)]
         public string LicensePlate { get; set; } = default!;
 
         public DateTimeOffset Started { get; set; }

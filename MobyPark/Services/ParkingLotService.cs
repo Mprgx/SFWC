@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
-using System.Text.Json;
-using MobyPark.Models;
 
 namespace MobyPark.Services
 {

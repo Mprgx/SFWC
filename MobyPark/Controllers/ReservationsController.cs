@@ -9,14 +9,16 @@ using MobyPark.Services;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("reservations")]
     [Authorize]
     public class ReservationsController(IReservationService reservationService) : ControllerBase
     {
         [HttpGet("by-id/{reservationid}")]
         public async Task<ActionResult<GetReservationDto>> GetById(int reservationid)
         {
-            var reservation = await reservationService.GetById(reservationid);
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var reservation = await reservationService.GetById(reservationid, userId);
             if (reservation is null)
                 return NotFound(new
                 {
@@ -29,12 +31,11 @@ namespace MobyPark.Controllers
         [HttpGet("by-vehicle-id/{vehicleid}")]
         public async Task<ActionResult<GetReservationDto>> GetByVehicleId(int vehicleid)
         {
-            var reservation = await reservationService.GetByVehicleId(vehicleid);
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var reservation = await reservationService.GetByVehicleId(vehicleid, userId);
             if (reservation is null)
-                return NotFound(new
-                {
-                    message = $"No reservation found"
-                });
+                return NotFound(new { message = "No reservation found" });
 
             return Ok(reservation);
         }
@@ -79,12 +80,11 @@ namespace MobyPark.Controllers
         [HttpDelete("{reservationid}")]
         public async Task<IActionResult> DeleteReservation(int reservationid)
         {
-            var deleted = await reservationService.DeleteReservation(reservationid);
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var deleted = await reservationService.DeleteReservation(reservationid, userId);
             if (!deleted)
-                return NotFound(new
-                {
-                    message = $"Reservation not found"
-                });
+                return NotFound(new { message = "Reservation not found" });
 
             return NoContent();
         }
@@ -93,39 +93,23 @@ namespace MobyPark.Controllers
         public async Task<ActionResult<GetReservationDto>> UpdateReservation(int reservationid, PutReservationDto dto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new
-                {
-                    message = ModelState
-                });
+                return BadRequest(new { message = ModelState });
 
-            GetReservationDto? updated;
+            if (!TryGetUserId(out var userId)) return Unauthorized();
 
             try
             {
-                updated = await reservationService.UpdateReservation(reservationid, dto);
+                var updated = await reservationService.UpdateReservation(reservationid, dto, userId);
+                return Ok(updated);
             }
             catch (ValidationException ex)
             {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
+                return BadRequest(new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new
-                {
-                    message = ex.Message
-                });
+                return NotFound(new { message = ex.Message });
             }
-
-            if (updated is null)
-                return NotFound(new
-                {
-                    message = $"Reservation not found"
-                });
-
-            return Ok(updated);
         }
 
         private bool TryGetUserId(out Guid id)

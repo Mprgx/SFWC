@@ -5,10 +5,10 @@ namespace MobyPark.Services
     public interface IReservationService
     {
         Task<GetReservationDto> CreateReservation(PostReservationDto dto, Guid userId);
-        Task<GetReservationDto?> GetById(int reservationId);
-        Task<GetReservationDto?> GetByVehicleId(int vehicleId);
-        Task<GetReservationDto?> UpdateReservation(int reservationId, PutReservationDto dto);
-        Task<bool> DeleteReservation(int reservationId);
+        Task<GetReservationDto?> GetById(int reservationId, Guid userId);
+        Task<GetReservationDto?> GetByVehicleId(int vehicleId, Guid userId);
+        Task<GetReservationDto?> UpdateReservation(int reservationId, PutReservationDto dto, Guid userId);
+        Task<bool> DeleteReservation(int reservationId, Guid userId);
 
     }
 }

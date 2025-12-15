@@ -18,6 +18,12 @@ namespace MobyPark.Models
         public string LicensePlate { get; set; } = string.Empty;
     }
 
+    public class StopSessionResponseDto
+    {
+        public SessionReadDto Session { get; init; } = default!;
+        public PaymentInitiationDto Payment { get; init; } = default!;
+    }
+
     public class CancelSessionDto
     {
         [StringLength(300)]

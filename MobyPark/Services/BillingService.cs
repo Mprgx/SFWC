@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using MobyPark.Data;
+using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
 using MobyPark.Models;
 
@@ -67,7 +68,7 @@ namespace MobyPark.Services
             return new()
             {
                 Id = billing.Id,
-                LicensePlate = encryption.Decrypt(billing.LicensePlate) ?? string.Empty,
+                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, billing.LicensePlate),
                 ParkingLotId = billing.ParkingLotId,
                 ParkingLotName = billing.ParkingLot?.Name ?? string.Empty,
                 Started = billing.Started,
