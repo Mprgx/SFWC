@@ -37,23 +37,24 @@ namespace MobyPark.Controllers
         }
 
         [HttpPost("stop-session")]
-        public async Task<ActionResult<SessionReadDto>> StopSessionByPlate(SessionStopDto dto)
+        public async Task<ActionResult<StopSessionResponseDto>> StopSessionByPlate(SessionStopDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var (session, error, status) = await service.StopSessionByPlateAsync(userId, dto);
+            var (result, error, status) = await service.StopSessionByPlateAsync(userId, dto);
 
             if (status == 400) return BadRequest(error);
             if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
 
             if (status.HasValue)
                 return StatusCode(status.Value, error);
 
-            if (session is null)
-                return StatusCode(500, "Unexpected null session.");
+            if (result is null)
+                return StatusCode(500, "Unexpected null stop-session result.");
 
-            return Ok(session);
+            return Ok(result);
         }
 
         [HttpGet("sessions")]
@@ -72,12 +73,12 @@ namespace MobyPark.Controllers
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPut("stop-session/{id:guid}")]
-        public async Task<ActionResult<SessionReadDto>> StopSession(Guid id)
+        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var (session, error, status) = await service.StopSessionByIdAsync(userId, id);
+            var (result, error, status) = await service.StopSessionByIdAsync(userId, id);
 
             if (status == 400) return BadRequest(error);
             if (status == 404) return NotFound(error);
@@ -86,10 +87,10 @@ namespace MobyPark.Controllers
             if (status.HasValue)
                 return StatusCode(status.Value, error);
 
-            if (session is null)
-                return StatusCode(500, "Unexpected null session.");
+            if (result is null)
+                return StatusCode(500, "Unexpected null stop-session result.");
 
-            return Ok(session);
+            return Ok(result);
         }
 
         [Authorize(Roles = Roles.Admin)]

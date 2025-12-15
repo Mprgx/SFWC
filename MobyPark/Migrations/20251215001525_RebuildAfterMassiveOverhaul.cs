@@ -1,11 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace MobyPark.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialRecreatedRebuild : Migration
+    public partial class RebuildAfterMassiveOverhaul : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -36,7 +37,6 @@ namespace MobyPark.Migrations
                     Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Address = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Capacity = table.Column<int>(type: "int", nullable: false),
-                    ReservedSpots = table.Column<int>(type: "int", nullable: false),
                     Tariff = table.Column<double>(type: "float", nullable: false),
                     DayTariff = table.Column<double>(type: "float", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -75,6 +75,31 @@ namespace MobyPark.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Billings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParkingLotId = table.Column<int>(type: "int", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Started = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Stopped = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Username = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    Cost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    PaymentStatus = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Billings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Billings_ParkingLots_ParkingLotId",
+                        column: x => x.ParkingLotId,
+                        principalTable: "ParkingLots",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CompanyUsers",
                 columns: table => new
                 {
@@ -105,7 +130,7 @@ namespace MobyPark.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     Make = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Model = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Color = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
@@ -130,13 +155,12 @@ namespace MobyPark.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ParkingLotId = table.Column<int>(type: "int", nullable: false),
-                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     VehicleId = table.Column<int>(type: "int", nullable: false),
-                    LicensePlate = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LicensePlate = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     StartTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     EndTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    SpotsReserved = table.Column<int>(type: "int", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -169,48 +193,6 @@ namespace MobyPark.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Sessions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ParkingLotId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    VehicleId = table.Column<int>(type: "int", nullable: false),
-                    LicensePlate = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Started = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    Stopped = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
-                    Cost = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: false),
-                    PaymentStatus = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    IsCancelled = table.Column<bool>(type: "bit", nullable: false),
-                    CancelledAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    IsRefunded = table.Column<bool>(type: "bit", nullable: false),
-                    RefundDate = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Sessions", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Sessions_ParkingLots_ParkingLotId",
-                        column: x => x.ParkingLotId,
-                        principalTable: "ParkingLots",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Sessions_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Sessions_Vehicles_VehicleId",
-                        column: x => x.VehicleId,
-                        principalTable: "Vehicles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "UserVehicles",
                 columns: table => new
                 {
@@ -235,18 +217,66 @@ namespace MobyPark.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Sessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ParkingLotId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    VehicleId = table.Column<int>(type: "int", nullable: false),
+                    ReservationId = table.Column<int>(type: "int", nullable: true),
+                    LicensePlate = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Started = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Stopped = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    DurationMinutes = table.Column<int>(type: "int", nullable: false),
+                    Cost = table.Column<decimal>(type: "decimal(10,2)", precision: 10, scale: 2, nullable: false),
+                    PaymentStatus = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    IsCancelled = table.Column<bool>(type: "bit", nullable: false),
+                    CancelledAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    IsRefunded = table.Column<bool>(type: "bit", nullable: false),
+                    RefundDate = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Sessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Sessions_ParkingLots_ParkingLotId",
+                        column: x => x.ParkingLotId,
+                        principalTable: "ParkingLots",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Sessions_Reservations_ReservationId",
+                        column: x => x.ReservationId,
+                        principalTable: "Reservations",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Sessions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Sessions_Vehicles_VehicleId",
+                        column: x => x.VehicleId,
+                        principalTable: "Vehicles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Payments",
                 columns: table => new
                 {
-                    Transaction = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Transaction = table.Column<string>(type: "nvarchar(12)", maxLength: 12, nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Initiator = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Initiator = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Created_At = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     Completed = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    Hash = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    T_Data = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SessionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    T_Data = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SessionId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ParkingLotId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -262,8 +292,7 @@ namespace MobyPark.Migrations
                         name: "FK_Payments_Sessions_SessionId",
                         column: x => x.SessionId,
                         principalTable: "Sessions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Payments_Users_UserId",
                         column: x => x.UserId,
@@ -271,6 +300,11 @@ namespace MobyPark.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Billings_ParkingLotId",
+                table: "Billings",
+                column: "ParkingLotId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CompanyUsers_UserId",
@@ -318,6 +352,11 @@ namespace MobyPark.Migrations
                 column: "ParkingLotId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Sessions_ReservationId",
+                table: "Sessions",
+                column: "ReservationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Sessions_UserId",
                 table: "Sessions",
                 column: "UserId");
@@ -348,19 +387,22 @@ namespace MobyPark.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "Billings");
+
+            migrationBuilder.DropTable(
                 name: "CompanyUsers");
 
             migrationBuilder.DropTable(
                 name: "Payments");
 
             migrationBuilder.DropTable(
-                name: "Reservations");
-
-            migrationBuilder.DropTable(
                 name: "UserVehicles");
 
             migrationBuilder.DropTable(
                 name: "Sessions");
+
+            migrationBuilder.DropTable(
+                name: "Reservations");
 
             migrationBuilder.DropTable(
                 name: "ParkingLots");

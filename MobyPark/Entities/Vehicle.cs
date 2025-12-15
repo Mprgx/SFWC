@@ -14,7 +14,7 @@ namespace MobyPark.Entities
         public User User { get; set; } = null!;
 
 
-        [Required, MaxLength(20)]
+        [Required, MaxLength(128)]
         public string LicensePlate { get; set; } = string.Empty;
 
         [Required, MaxLength(50)]

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MobyPark.Entities
 {
     public class Reservation
@@ -15,7 +17,7 @@ namespace MobyPark.Entities
 
         public int VehicleId { get; set; }
         public Vehicle? Vehicle { get; set; }
-
+        [Required, MaxLength(128)]
         public required string LicensePlate { get; set; }
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset EndTime { get; set; }

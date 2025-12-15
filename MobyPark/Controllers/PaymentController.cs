@@ -4,118 +4,94 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using MobyPark.Constants;
-using MobyPark.Data;
-using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("api/")]
+    [Route("payments")]
     [Authorize]
     public class PaymentsController(IPaymentService paymentService) : ControllerBase
     {
 
-        [HttpPost("payments")]
-        public async Task<ActionResult> FulfillPayment(PaymentsDto paymentRequest)
+        [HttpPost("fulfill")]
+        public async Task<ActionResult<PaymentReadDto>> FulfillPayment([FromBody] PaymentsDto paymentRequest)
         {
-            if (paymentRequest == null)
-                return BadRequest("Request body is required");
-
-            if (string.IsNullOrEmpty(paymentRequest.Transaction))
-                return BadRequest("Transaction number is required");
-
-            if (paymentRequest.Amount <= 0)
-                return BadRequest("Amount must be a positive number");
-
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var result = await paymentService.FulfillPaymentAsync(userId.ToString(), paymentRequest);
+            var (dto, error, status) = await paymentService.FulfillPaymentAsync(userId, paymentRequest);
 
-            return Ok(result);
+            if (status == 400) return BadRequest(error);
+            if (status == 401) return Unauthorized(error);
+            if (status == 403) return Forbid();
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            if (dto is null) return StatusCode(500, "Unexpected null payment.");
+            return Ok(dto);
         }
 
-        [HttpPut("payments/{transactionId}")]
-        public async Task<ActionResult<Payment>> UpdatePayment(string transactionId, [FromBody] PaymentValidationDto request)
+        [HttpPut("{transactionId}")]
+        public async Task<ActionResult<PaymentReadDto>> CompletePayment(string transactionId, [FromBody] PaymentValidationDto request)
         {
-            if (request == null)
-                return BadRequest("Body is required");
-
-            if (string.IsNullOrWhiteSpace(request.Validation))
-                return BadRequest("validation field is missing");
-
-            if (string.IsNullOrWhiteSpace(request.T_Data.GetRawText()))
-                return BadRequest("t_data field is missing");
-
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized("Invalid or missing user ID");
-
-            try
-            {
-                var payment = await paymentService
-                    .CompletePaymentAsync(userId, transactionId, request);
-
-                return Ok(payment);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-        }
-
-        [HttpGet("payments")]
-        public async Task<ActionResult> GetMyPayments()
-        {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var paymentList = await paymentService.GetPaymentsForUserAsync(userId);
+            var (dto, error, status) = await paymentService.CompletePaymentAsync(userId, transactionId, request);
 
-            return Ok(paymentList);
+            if (status == 400) return BadRequest(error);
+            if (status == 401) return Unauthorized(error);
+            if (status == 403) return Forbid();
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            if (dto is null) return StatusCode(500, "Unexpected null payment.");
+            return Ok(dto);
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<List<PaymentReadDto>>> GetMyPayments()
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var (dto, error, status) = await paymentService.GetPaymentsForUserAsync(userId);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            return Ok(dto ?? new List<PaymentReadDto>());
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpGet("payments/{username}")]
-        public async Task<ActionResult> GetPaymentsForUser(string username)
+        [HttpGet("user/{username}")]
+        public async Task<ActionResult<List<PaymentReadDto>>> GetPaymentsForUser(string username)
         {
-            if (string.IsNullOrWhiteSpace(username))
-                return BadRequest("Username is required");
+            var (dto, error, status) = await paymentService.GetPaymentsForAnyUserAsync(username);
 
-            var paymentList = await paymentService.GetPaymentsForAnyUserAsync(username);
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
 
-            return Ok(paymentList);
+            return Ok(dto ?? new List<PaymentReadDto>());
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpDelete("Payments/{transactionId}")]
-        public async Task<ActionResult> DeletePaymentBytransactionId(string transactionId)
+        [HttpDelete("{transactionId}")]
+        public async Task<IActionResult> DeletePayment(string transactionId)
         {
-            if (string.IsNullOrWhiteSpace(transactionId))
-                return BadRequest("transactionId is required");
+            var (deleted, error, status) = await paymentService.DeletePaymentByTransactionId(transactionId);
 
-            var deleted = await paymentService.DeletePaymentByTransactionId(transactionId);
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
 
-            if (!deleted)
-                return NotFound(new
-                {
-                    message = $"Payment with id {transactionId} not found"
-                });
-
-            return Ok(new
-            {
-                status = "Success",
-                message = $"Transaction with transactionId:{transactionId} is succesfully deleted."
-            });
+            return deleted ? NoContent() : StatusCode(500, "Failed to delete payment.");
         }
     }
 }

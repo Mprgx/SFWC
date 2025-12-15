@@ -37,7 +37,7 @@ namespace MobyParkxUnitTest
             }
         }
 
-        private static ProfileService CreateService(UserDbContext context, IEncryptionService encryption = null)
+        private static ProfileService CreateService(UserDbContext context, IEncryptionService? encryption = null)
         {
             return new ProfileService(context, encryption ?? new FakeEncryptionService());
         }

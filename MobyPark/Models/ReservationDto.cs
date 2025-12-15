@@ -7,9 +7,11 @@ namespace MobyPark.Models
         [Required]
         public int ParkingLotId { get; set; }
 
-        [Required, MaxLength(10)]
+        public int? VehicleId { get; set; }
+
+        [MaxLength(10)]
         [RegularExpression(@"^[A-Z0-9 -]{1,10}$", ErrorMessage = "Invalid license plate.")]
-        public string LicensePlate { get; set; }
+        public string? LicensePlate { get; set; }
 
         [Required]
         public DateTimeOffset StartTime { get; set; }
@@ -19,20 +21,14 @@ namespace MobyPark.Models
 
         public IEnumerable<ValidationResult> Validate(ValidationContext _)
         {
-
-            // Check if end time is after start time.
             if (EndTime <= StartTime)
-            {
-                yield return new ValidationResult(
-                    "EndTime must be after StartTime.",
-                    new[] { nameof(EndTime) });
-            }
+                yield return new ValidationResult("EndTime must be after StartTime.", new[] { nameof(EndTime) });
 
-            // Check if reservation is in the future.
             if (StartTime < DateTimeOffset.UtcNow)
-                yield return new ValidationResult(
-                    "StartTime can not be in the past.",
-                    new[] { nameof(StartTime) });
+                yield return new ValidationResult("StartTime can not be in the past.", new[] { nameof(StartTime) });
+
+            if (!VehicleId.HasValue && string.IsNullOrWhiteSpace(LicensePlate))
+                yield return new ValidationResult("VehicleId or LicensePlate is required.", new[] { nameof(VehicleId), nameof(LicensePlate) });
         }
     }
 
@@ -75,7 +71,7 @@ namespace MobyPark.Models
         [Required]
         public int VehicleId { get; set; }
         [Required]
-        public string LicensePlate { get; set; }
+        public string? LicensePlate { get; set; }
         [Required]
         public DateTimeOffset StartTime { get; set; }
         [Required]

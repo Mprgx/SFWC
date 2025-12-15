@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 using MobyPark.Data;
 using MobyPark.Entities;
@@ -154,9 +153,8 @@ namespace MobyPark.Services
             if (string.IsNullOrEmpty(currentPassword))
                 return (false, "Current password is required.", 400);
 
-            var hasher = new PasswordHasher<User>();
-            var verify = hasher.VerifyHashedPassword(user, user.PasswordHash, currentPassword);
-            if (verify == PasswordVerificationResult.Failed)
+            var ok = BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash);
+            if (!ok)
                 return (false, "Current password is incorrect.", 400);
 
             bool strong = newPassword.Length >= 8
@@ -165,7 +163,7 @@ namespace MobyPark.Services
             if (!strong)
                 return (false, "New password must be 8+ chars with a number and a special character.", 400);
 
-            user.PasswordHash = hasher.HashPassword(user, newPassword);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
 
