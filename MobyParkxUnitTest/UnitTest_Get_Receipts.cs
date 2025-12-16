@@ -1,288 +1,211 @@
-//using Microsoft.AspNetCore.Http;
-//using Microsoft.AspNetCore.Mvc;
-//using Microsoft.EntityFrameworkCore;
-//using MobyPark.Controllers;
-//using MobyPark.Data;
-//using MobyPark.Entities;
-//using MobyPark.Models;
-//using MobyPark.Services;
-//using Moq;
-//using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Data;
+using MobyPark.Entities;
+using MobyPark.Models;
+using MobyPark.Services;
+using Xunit;
 
-//namespace MobyParkxUnitTest
-//{
-//    public class BillingTests
-//    {
-//        // --------------------------------------------------------
-//        // Helpers
-//        // --------------------------------------------------------
+namespace MobyParkxUnitTest
+{
+    public class BillingServiceTests
+    {
 
-//        private UserDbContext CreateDbContext()
-//        {
-//            var options = new DbContextOptionsBuilder<UserDbContext>()
-//                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-//                .Options;
+        private static UserDbContext CreateDbContext(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
 
-//            return new UserDbContext(options);
-//        }
+            return new UserDbContext(options);
+        }
 
-//        private ParkingLot CreateTestParkingLot(int id = 1)
-//        {
-//            return new ParkingLot
-//            {
-//                Id = id,
-//                Name = "Test Lot",
-//                Location = "Test Location",
-//                Address = "Test Address",
-//                Capacity = 100,
-//                Tariff = 2.0,
-//                DayTariff = 10.0,
-//                Coordinates = "{\"latitude\":0,\"longitude\":0}"
-//            };
-//        }
+        private class FakeEncryptionService : IEncryptionService
+        {
+            public string? Encrypt(string? plaintext) => plaintext;
+            public string? Decrypt(string? ciphertext) => ciphertext;
+        }
 
-//        private async Task SeedAsync(UserDbContext db)
-//        {
-//            db.ParkingLots.Add(CreateTestParkingLot(1));
+        private static BillingService CreateService(UserDbContext context)
+        {
+            return new BillingService(context, new FakeEncryptionService());
+        }
 
-//            db.Billings.Add(new Billing
-//            {
-//                Id = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-//                ParkingLotId = 1,
-//                LicensePlate = "AA-123-AA",
-//                Username = "soufiane",
-//                Started = DateTimeOffset.UtcNow.AddHours(-2),
-//                Stopped = DateTimeOffset.UtcNow,
-//                DurationMinutes = 120,
-//                Cost = 4.567m,
-//                PaymentStatus = "Paid"
-//            });
+        private static ParkingLot CreateParkingLot(int id = 1)
+        {
+            return new ParkingLot
+            {
+                Id = id,
+                Name = "Test Parking",
+                Location = "Test Location",
+                Address = "Test Address",
+                Capacity = 100,
+                Tariff = 2.5,
+                DayTariff = 20,
+                Coordinates = "{}"
+            };
+        }
 
-//            db.Billings.Add(new Billing
-//            {
-//                Id = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-//                ParkingLotId = 1,
-//                LicensePlate = "BB-999-BB",
-//                Username = "otheruser",
-//                Started = DateTimeOffset.UtcNow.AddHours(-3),
-//                Stopped = DateTimeOffset.UtcNow,
-//                DurationMinutes = 180,
-//                Cost = 9.99m,
-//                PaymentStatus = "Pending"
-//            });
-
-//            await db.SaveChangesAsync();
-//        }
-
-//        private ClaimsPrincipal CreateUser(string username, bool isAdmin)
-//        {
-//            var claims = new List<Claim> { new Claim(ClaimTypes.Name, username) };
-//            if (isAdmin)
-//                claims.Add(new Claim(ClaimTypes.Role, "ADMIN"));
-
-//            return new ClaimsPrincipal(new ClaimsIdentity(claims, "mock"));
-//        }
-
-//        // --------------------------------------------------------
-//        // Acceptance Criteria Tests
-//        // --------------------------------------------------------
-
-//        // 1. User can request their own billing receipts
-//        [Fact]
-//        public async Task GetReceiptsForUserAsync_Returns_User_Receipts()
-//        {
-//            var db = CreateDbContext();
-//            await SeedAsync(db);
-
-//            var service = new BillingService(db);
-
-//            var result = await service.GetReceiptsForUserAsync("soufiane");
-
-//            Assert.Single(result);
-//            Assert.Equal("AA-123-AA", result[0].LicensePlate);
-//        }
-
-//        // 2. Only completed sessions (with a finished billing) are returned
-//        [Fact]
-//        public async Task GetReceiptsForUserAsync_Ignores_Incomplete_Billings()
-//        {
-//            var db = CreateDbContext();
-
-//            db.ParkingLots.Add(CreateTestParkingLot());
-
-//            db.Billings.Add(new Billing
-//            {
-//                Id = Guid.NewGuid(),
-//                ParkingLotId = 1,
-//                LicensePlate = "UNFINISHED",
-//                Username = "soufiane",
-//                Started = DateTimeOffset.UtcNow,
-//                Stopped = default, // incomplete session
-//                DurationMinutes = 0,
-//                Cost = 0,
-//                PaymentStatus = "Pending"
-//            });
-
-//            await db.SaveChangesAsync();
-
-//            var service = new BillingService(db);
-
-//            var result = await service.GetReceiptsForUserAsync("soufiane");
-
-//            // EXPECTED BEHAVIOR FOR NOW:
-//            Assert.Single(result);
-//            Assert.Equal("UNFINISHED", result[0].LicensePlate);
-//        }
+        private static Billing CreateBilling(
+            string username,
+            string licensePlate,
+            ParkingLot parkingLot,
+            DateTimeOffset started,
+            DateTimeOffset stopped,
+            decimal cost)
+        {
+            return new Billing
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                LicensePlate = licensePlate,
+                ParkingLotId = parkingLot.Id,
+                ParkingLot = parkingLot,
+                Started = started,
+                Stopped = stopped,
+                DurationMinutes = (int)(stopped - started).TotalMinutes,
+                Cost = cost,
+                PaymentStatus = "paid"
+            };
+        }
 
 
-//        // 3. Admin user can see all billing receipts
-//        [Fact]
-//        public async Task Admin_GetAllReceipts_Returns_All_Receipts()
-//        {
-//            var mock = new Mock<IBillingService>();
-//            mock.Setup(s => s.GetAllReceiptsAsync())
-//                .ReturnsAsync(new List<BillingReceiptDto>
-//                {
-//                new BillingReceiptDto { LicensePlate = "AAA" }
-//                });
+        [Fact]
+        public async Task GetReceiptsForUserAsync_ReturnsReceipts_WhenUsernameIsValid()
+        {
+            using var context = CreateDbContext(nameof(GetReceiptsForUserAsync_ReturnsReceipts_WhenUsernameIsValid));
+            var service = CreateService(context);
 
-//            var controller = new BillingController(mock.Object)
-//            {
-//                ControllerContext = new()
-//                {
-//                    HttpContext = new DefaultHttpContext
-//                    {
-//                        User = CreateUser("admin", true)
-//                    }
-//                }
-//            };
+            var parkingLot = CreateParkingLot();
+            context.ParkingLots.Add(parkingLot);
 
-//            var result = await controller.GetMyReceipts() as OkObjectResult;
+            context.Billings.AddRange(
+                CreateBilling("soufiane", "AA-123-B", parkingLot,
+                    DateTimeOffset.UtcNow.AddHours(-2),
+                    DateTimeOffset.UtcNow.AddHours(-1), 10.123m),
+                CreateBilling("soufiane", "BB-456-C", parkingLot,
+                    DateTimeOffset.UtcNow.AddHours(-1),
+                    DateTimeOffset.UtcNow, 5.5m)
+            );
 
-//            Assert.NotNull(result);
-//            var dto = Assert.IsType<List<BillingReceiptDto>>(result!.Value);
-//            Assert.Single(dto);
-//        }
+            await context.SaveChangesAsync();
 
-//        // 4. A valid bearer token is required → unauthorized when missing
-//        // [Fact]
-//        // public async Task GetMyReceipts_WithoutUser_Returns_Unauthorized()
-//        // {
-//        //     var mock = new Mock<IBillingService>();
+            var (dto, error, status) = await service.GetReceiptsForUserAsync("soufiane");
 
-//        //     var controller = new BillingController(mock.Object)
-//        //     {
-//        //         ControllerContext = new()
-//        //         {
-//        //             HttpContext = new DefaultHttpContext() // no user => unauthorized
-//        //         }
-//        //     };
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.NotNull(dto);
+            Assert.Equal(2, dto.Count);
+        }
 
-//        //     var result = await controller.GetMyReceipts();
+        [Fact]
+        public async Task GetReceiptsForUserAsync_ReturnsEmptyList_WhenUserHasNoReceipts()
+        {
+            using var context = CreateDbContext(nameof(GetReceiptsForUserAsync_ReturnsEmptyList_WhenUserHasNoReceipts));
+            var service = CreateService(context);
 
-//        //     Assert.IsType<UnauthorizedResult>(result);
-//        // }
+            var (dto, error, status) = await service.GetReceiptsForUserAsync("soufiane");
 
-//        // 5. If user has no receipts, return an empty list
-//        [Fact]
-//        public async Task GetReceiptsForUserAsync_Returns_Empty_List_When_None_Exist()
-//        {
-//            var db = CreateDbContext();
-//            db.ParkingLots.Add(CreateTestParkingLot());
-//            await db.SaveChangesAsync();
+            Assert.NotNull(dto);
+            Assert.Empty(dto);
+            Assert.Null(error);
+            Assert.Null(status);
+        }
 
-//            var service = new BillingService(db);
+        [Fact]
+        public async Task GetReceiptsForUserAsync_ReturnsBadRequest_WhenUsernameIsEmpty()
+        {
+            using var context = CreateDbContext(nameof(GetReceiptsForUserAsync_ReturnsBadRequest_WhenUsernameIsEmpty));
+            var service = CreateService(context);
 
-//            var result = await service.GetReceiptsForUserAsync("soufiane");
+            var (dto, error, status) = await service.GetReceiptsForUserAsync(" ");
 
-//            Assert.Empty(result);
-//        }
+            Assert.Null(dto);
+            Assert.Equal(400, status);
+            Assert.NotNull(error);
+        }
 
-//        // 6. Cost is rounded to two decimals
-//        [Fact]
-//        public async Task GetReceiptsForUserAsync_Rounds_Cost_To_Two_Decimals()
-//        {
-//            var db = CreateDbContext();
+        [Fact]
+        public async Task GetAllReceiptsAsync_ReturnsAllReceipts()
+        {
+            using var context = CreateDbContext(nameof(GetAllReceiptsAsync_ReturnsAllReceipts));
+            var service = CreateService(context);
 
-//            db.ParkingLots.Add(CreateTestParkingLot());
+            var parkingLot = CreateParkingLot();
+            context.ParkingLots.Add(parkingLot);
 
-//            db.Billings.Add(new Billing
-//            {
-//                Id = Guid.NewGuid(),
-//                ParkingLotId = 1,
-//                LicensePlate = "ROUND",
-//                Username = "soufiane",
-//                Started = DateTimeOffset.UtcNow.AddHours(-2),
-//                Stopped = DateTimeOffset.UtcNow,
-//                DurationMinutes = 120,
-//                Cost = 4.567m, // needs rounding
-//                PaymentStatus = "Paid"
-//            });
+            context.Billings.AddRange(
+                CreateBilling("user1", "AA-111-A", parkingLot,
+                    DateTimeOffset.UtcNow.AddHours(-3),
+                    DateTimeOffset.UtcNow.AddHours(-2), 8),
+                CreateBilling("user2", "BB-222-B", parkingLot,
+                    DateTimeOffset.UtcNow.AddHours(-2),
+                    DateTimeOffset.UtcNow.AddHours(-1), 12)
+            );
 
-//            await db.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-//            var service = new BillingService(db);
-//            var result = await service.GetReceiptsForUserAsync("soufiane");
+            var (dto, error, status) = await service.GetAllReceiptsAsync();
 
-//            Assert.Single(result);
-//            Assert.Equal(4.57m, result[0].Cost); // CORRECT ROUNDING
-//        }
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.NotNull(dto);
+            Assert.Equal(2, dto.Count);
+        }
 
-//        // --------------------------------------------------------
-//        // Extra: BillingController GetById tests
-//        // --------------------------------------------------------
 
-//        [Fact]
-//        public async Task GetById_Returns_NotFound_When_Absent()
-//        {
-//            var mock = new Mock<IBillingService>();
-//            mock.Setup(s => s.GetByIdAsync(It.IsAny<Guid>()))
-//                .ReturnsAsync((BillingReceiptDto?)null);
+        [Fact]
+        public async Task GetByIdAsync_ReturnsReceipt_WhenBillingExists()
+        {
+            using var context = CreateDbContext(nameof(GetByIdAsync_ReturnsReceipt_WhenBillingExists));
+            var service = CreateService(context);
 
-//            var controller = new BillingController(mock.Object)
-//            {
-//                ControllerContext = new()
-//                {
-//                    HttpContext = new DefaultHttpContext
-//                    {
-//                        User = CreateUser("admin", true)
-//                    }
-//                }
-//            };
+            var parkingLot = CreateParkingLot();
+            context.ParkingLots.Add(parkingLot);
 
-//            var result = await controller.GetById(Guid.NewGuid());
+            var billing = CreateBilling(
+                "soufiane",
+                "AA-123-B",
+                parkingLot,
+                DateTimeOffset.UtcNow.AddHours(-2),
+                DateTimeOffset.UtcNow.AddHours(-1),
+                9.999m);
 
-//            Assert.IsType<NotFoundResult>(result);
-//        }
+            context.Billings.Add(billing);
+            await context.SaveChangesAsync();
 
-//        [Fact]
-//        public async Task GetById_Returns_Ok_When_Found()
-//        {
-//            var dto = new BillingReceiptDto
-//            {
-//                Id = Guid.NewGuid(),
-//                LicensePlate = "CCC"
-//            };
+            var (dto, error, status) = await service.GetByIdAsync(billing.Id);
 
-//            var mock = new Mock<IBillingService>();
-//            mock.Setup(s => s.GetByIdAsync(dto.Id)).ReturnsAsync(dto);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.NotNull(dto);
+            Assert.Equal("AA-123-B", dto.LicensePlate);
+            Assert.Equal(Math.Round(9.999m, 2), dto.Cost);
+        }
 
-//            var controller = new BillingController(mock.Object)
-//            {
-//                ControllerContext = new()
-//                {
-//                    HttpContext = new DefaultHttpContext
-//                    {
-//                        User = CreateUser("admin", true)
-//                    }
-//                }
-//            };
+        [Fact]
+        public async Task GetByIdAsync_ReturnsNotFound_WhenBillingDoesNotExist()
+        {
+            using var context = CreateDbContext(nameof(GetByIdAsync_ReturnsNotFound_WhenBillingDoesNotExist));
+            var service = CreateService(context);
 
-//            var result = await controller.GetById(dto.Id) as OkObjectResult;
+            var (dto, error, status) = await service.GetByIdAsync(Guid.NewGuid());
 
-//            Assert.NotNull(result);
-//            Assert.Equal(dto, result!.Value);
-//        }
-//    }
+            Assert.Null(dto);
+            Assert.Equal(404, status);
+            Assert.NotNull(error);
+        }
 
-//}
+        [Fact]
+        public async Task GetByIdAsync_ReturnsBadRequest_WhenIdIsEmpty()
+        {
+            using var context = CreateDbContext(nameof(GetByIdAsync_ReturnsBadRequest_WhenIdIsEmpty));
+            var service = CreateService(context);
+
+            var (dto, error, status) = await service.GetByIdAsync(Guid.Empty);
+
+            Assert.Null(dto);
+            Assert.Equal(400, status);
+            Assert.NotNull(error);
+        }
+    }
+}

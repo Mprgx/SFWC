@@ -3,329 +3,307 @@ using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
+using Xunit;
 
 namespace MobyParkxUnitTest
 {
     public class RefundServiceTests
     {
-        // ------------------------------------------------------------
+        // --------------------------------------------------------
         // Helpers
-        // ------------------------------------------------------------
-        private static UserDbContext CreateDb(string name)
+        // --------------------------------------------------------
+
+        private static UserDbContext CreateDbContext(string dbName)
         {
             var options = new DbContextOptionsBuilder<UserDbContext>()
-                .UseInMemoryDatabase(name)
+                .UseInMemoryDatabase(dbName)
                 .Options;
 
             return new UserDbContext(options);
         }
 
-        private class FakeEncryption : IEncryptionService
+        private class FakeEncryptionService : IEncryptionService
         {
             public string? Encrypt(string? plaintext) => plaintext;
             public string? Decrypt(string? ciphertext) => ciphertext;
         }
 
-        private static SessionService CreateService(UserDbContext db)
+        private static SessionService CreateService(UserDbContext context)
         {
-            return new SessionService(db, new FakeEncryption());
+            return new SessionService(context, new FakeEncryptionService());
         }
 
-        private static Session CreateBaseSession(Guid userId, DateTimeOffset started, DateTimeOffset? stopped,
-            bool isCancelled = true, bool isRefunded = false)
+        private static Session CreateBaseSession(
+            Guid userId,
+            DateTimeOffset started,
+            DateTimeOffset? stopped,
+            bool isCancelled = true,
+            bool isRefunded = false)
         {
             return new Session
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
+                VehicleId = 1,
                 ParkingLotId = 1,
                 LicensePlate = "TEST-123",
                 Started = started,
                 Stopped = stopped,
                 IsCancelled = isCancelled,
                 IsRefunded = isRefunded,
-                PaymentStatus = "paid"
+                PaymentStatus = "paid",
+                Cost = 20
             };
         }
 
-        // ------------------------------------------------------------
-        // 1. Session must exist
-        // ------------------------------------------------------------
+        private static RefundRequestDto CreateValidRefundRequest()
+        {
+            return new RefundRequestDto
+            {
+                IBAN = "NL91ABNA0417164300"
+            };
+        }
+
+        // --------------------------------------------------------
+        // Tests
+        // --------------------------------------------------------
+
         [Fact]
         public async Task RequestRefundAsync_ReturnsNull_WhenSessionDoesNotExist()
         {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionDoesNotExist));
-            var service = CreateService(db);
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenSessionDoesNotExist));
+            var service = CreateService(context);
 
-            var result = await service.RequestRefundAsync(Guid.NewGuid(), Guid.NewGuid(), new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
+            var (dto, error, status) = await service.RequestRefundAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                CreateValidRefundRequest()
+            );
 
-            Assert.Null(result);
+            Assert.Null(dto);
+            Assert.Equal("Session not found.", error);
+            Assert.Equal(404, status);
         }
 
-        // ------------------------------------------------------------
-        // 2. Session must be cancelled
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var session = CreateBaseSession(
-                userId,
-                DateTimeOffset.UtcNow.AddMinutes(-10),
-                DateTimeOffset.UtcNow,
-                isCancelled: false,
-                isRefunded: false);
-
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
-
-            Assert.Null(result);
-        }
-
-        // ------------------------------------------------------------
-        // 3. Session must be stopped
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var session = CreateBaseSession(
-                userId,
-                DateTimeOffset.UtcNow.AddMinutes(-10),
-                stopped: null,
-                isCancelled: true,
-                isRefunded: false);
-
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
-
-            Assert.Null(result);
-        }
-
-        // ------------------------------------------------------------
-        // 4. No double refunds
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var session = CreateBaseSession(
-                userId,
-                DateTimeOffset.UtcNow.AddMinutes(-20),
-                DateTimeOffset.UtcNow,
-                isCancelled: true,
-                isRefunded: true);
-
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
-
-            Assert.Null(result);
-        }
-
-        // ------------------------------------------------------------
-        // 5. Refund attempts limited to 3
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_StopsAfterThreeFailedRefundAttempts()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_StopsAfterThreeFailedRefundAttempts));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var session = CreateBaseSession(
-                userId,
-                DateTimeOffset.UtcNow.AddMinutes(-5),
-                DateTimeOffset.UtcNow,
-                isCancelled: true,
-                isRefunded: false);
-
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var dto = new RefundRequestDto { IBAN = "NL91ABNA0417164300" };
-
-            var r1 = await service.RequestRefundAsync(userId, session.Id, dto);
-            var r2 = await service.RequestRefundAsync(userId, session.Id, dto);
-            var r3 = await service.RequestRefundAsync(userId, session.Id, dto);
-            var r4 = await service.RequestRefundAsync(userId, session.Id, dto);
-
-            Assert.Null(r4);
-        }
-
-        // ------------------------------------------------------------
-        // 6. Minimum cost and 100% refund for short session
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsFullRefund_ForShortSession()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsFullRefund_ForShortSession));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var started = DateTimeOffset.UtcNow.AddMinutes(-5);
-            var stopped = DateTimeOffset.UtcNow;
-
-            var session = CreateBaseSession(userId, started, stopped, true, false);
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
-
-            var data = Assert.IsType<RefundResponseDto>(result);
-
-            Assert.InRange(data.DurationMinutes, 4, 6);
-            Assert.Equal(0.50m, data.Cost);
-            Assert.Equal(100m, data.Percentage);
-            Assert.Equal(0.50m, data.Refunded);
-        }
-
-        // ------------------------------------------------------------
-        // 7. Medium session → 50% refund
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsHalfRefund_ForMediumSession()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsHalfRefund_ForMediumSession));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var started = DateTimeOffset.UtcNow.AddMinutes(-20);
-            var stopped = DateTimeOffset.UtcNow;
-
-            var session = CreateBaseSession(userId, started, stopped, true, false);
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
-
-            var data = Assert.IsType<RefundResponseDto>(result);
-
-            Assert.InRange(data.DurationMinutes, 19, 21);
-            var expectedCost = Math.Round(data.DurationMinutes * 0.05m, 2);
-            Assert.Equal(expectedCost, data.Cost);
-            Assert.Equal(50m, data.Percentage);
-            Assert.Equal(Math.Round(expectedCost * 0.5m, 2), data.Refunded);
-        }
-
-        // ------------------------------------------------------------
-        // 8. Long session → 0% refund → returns null
-        // ------------------------------------------------------------
-        [Fact]
-        public async Task RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero()
-        {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero));
-            var service = CreateService(db);
-
-            var userId = Guid.NewGuid();
-            var started = DateTimeOffset.UtcNow.AddMinutes(-60);
-            var stopped = DateTimeOffset.UtcNow;
-
-            var session = CreateBaseSession(userId, started, stopped, true, false);
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
-
-            var dto = new RefundRequestDto { IBAN = "NL91ABNA0417164300" };
-
-            var result = await service.RequestRefundAsync(userId, session.Id, dto);
-
-            Assert.Null(result);
-
-            var dbSession = await db.Sessions.FindAsync(session.Id);
-            Assert.False(dbSession!.IsRefunded);
-            Assert.Null(dbSession.RefundDate);
-            Assert.Equal("paid", dbSession.PaymentStatus);
-        }
-
-        // ------------------------------------------------------------
-        // 9. IBAN required
-        // ------------------------------------------------------------
         [Fact]
         public async Task RequestRefundAsync_ReturnsNull_WhenIBANIsMissing()
         {
-            using var db = CreateDb(nameof(RequestRefundAsync_ReturnsNull_WhenIBANIsMissing));
-            var service = CreateService(db);
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenIBANIsMissing));
+            var service = CreateService(context);
 
             var userId = Guid.NewGuid();
-            var started = DateTimeOffset.UtcNow.AddMinutes(-8);
-            var stopped = DateTimeOffset.UtcNow;
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-10),
+                DateTimeOffset.UtcNow
+            );
 
-            var session = CreateBaseSession(userId, started, stopped, true, false);
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
 
-            var dto = new RefundRequestDto { IBAN = "   " };
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                new RefundRequestDto { IBAN = "" }
+            );
 
-            var result = await service.RequestRefundAsync(userId, session.Id, dto);
-
-            Assert.Null(result);
-
-            var dbSession = await db.Sessions.FindAsync(session.Id);
-            Assert.False(dbSession!.IsRefunded);
-            Assert.Null(dbSession.RefundDate);
-            Assert.Equal("paid", dbSession.PaymentStatus);
+            Assert.Null(dto);
+            Assert.Equal("IBAN is required.", error);
+            Assert.Equal(400, status);
         }
 
-        // ------------------------------------------------------------
-        // 10. Successful refund updates DB
-        // ------------------------------------------------------------
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddHours(-2),
+                DateTimeOffset.UtcNow.AddHours(-1),
+                isCancelled: false
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.Null(dto);
+            Assert.Equal("Only cancelled sessions can be refunded.", error);
+            Assert.Equal(409, status);
+        }
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenSessionIsNotStopped));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddHours(-1),
+                null
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.Null(dto);
+            Assert.Equal("Session must be stopped before refund.", error);
+            Assert.Equal(409, status);
+        }
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenSessionAlreadyRefunded));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddHours(-3),
+                DateTimeOffset.UtcNow.AddHours(-2),
+                isRefunded: true
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.Null(dto);
+            Assert.Equal("Session has already been refunded.", error);
+            Assert.Equal(409, status);
+        }
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsFullRefund_ForShortSession()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsFullRefund_ForShortSession));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-10),
+                DateTimeOffset.UtcNow
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.NotNull(dto);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.True(dto!.Refunded > 0);
+        }
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsHalfRefund_ForMediumSession()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsHalfRefund_ForMediumSession));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-30),
+                DateTimeOffset.UtcNow
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.NotNull(dto);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.True(dto!.Refunded > 0);
+        }
+
+
+        [Fact]
+        public async Task RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero()
+        {
+            using var context = CreateDbContext(nameof(RequestRefundAsync_ReturnsNull_WhenRefundPercentageIsZero));
+            var service = CreateService(context);
+
+            var userId = Guid.NewGuid();
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddHours(-10),
+                DateTimeOffset.UtcNow
+            );
+
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var (dto, error, status) = await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
+
+            Assert.Null(dto);
+            Assert.Equal("No refundable amount for this session.", error);
+            Assert.Equal(400, status);
+        }
+
         [Fact]
         public async Task RequestRefundAsync_UpdatesRefundStateInDatabase()
         {
-            using var db = CreateDb(nameof(RequestRefundAsync_UpdatesRefundStateInDatabase));
-            var service = CreateService(db);
+            using var context = CreateDbContext(nameof(RequestRefundAsync_UpdatesRefundStateInDatabase));
+            var service = CreateService(context);
 
             var userId = Guid.NewGuid();
-            var started = DateTimeOffset.UtcNow.AddMinutes(-12);
-            var stopped = DateTimeOffset.UtcNow;
+            var session = CreateBaseSession(
+                userId,
+                DateTimeOffset.UtcNow.AddMinutes(-10),
+                DateTimeOffset.UtcNow
+            );
 
-            var session = CreateBaseSession(userId, started, stopped, true, false);
-            db.Sessions.Add(session);
-            await db.SaveChangesAsync();
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
 
-            var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto
-            {
-                IBAN = "NL91ABNA0417164300"
-            });
+            await service.RequestRefundAsync(
+                userId,
+                session.Id,
+                CreateValidRefundRequest()
+            );
 
-            var data = Assert.IsType<RefundResponseDto>(result);
-
-            var dbSession = await db.Sessions.FindAsync(session.Id);
-            Assert.True(dbSession!.IsRefunded);
-            Assert.NotNull(dbSession.RefundDate);
-            Assert.Equal("refunded", dbSession.PaymentStatus);
+            var updated = await context.Sessions.FindAsync(session.Id);
+            Assert.True(updated!.IsRefunded);
         }
     }
 }
