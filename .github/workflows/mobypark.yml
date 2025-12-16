@@ -63,7 +63,7 @@ jobs:
 
       - name: Check API health
         run: |
-          curl --fail http://localhost:5280 || (echo "Server log:" && cat server.log && exit 1)
+          curl --fail http://localhost:5280/scalar/v1 || (echo "Server log:" && cat server.log && exit 1)
       
       
       - name: Run pytest integration tests
