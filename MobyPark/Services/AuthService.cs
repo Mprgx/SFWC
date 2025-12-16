@@ -78,7 +78,7 @@ namespace MobyPark.Services
                 PhoneNumber = string.IsNullOrEmpty(phonePlain) ? string.Empty : encryption.Encrypt(phonePlain)!,
                 BirthYear = birth,
                 CreatedAt = DateTimeOffset.UtcNow,
-                Role = UserRole.Customer,
+                Role = request.Role ?? UserRole.Customer,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
             };
 

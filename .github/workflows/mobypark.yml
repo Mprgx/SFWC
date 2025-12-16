@@ -59,7 +59,7 @@ jobs:
       - name: Start C# server
         run: |
           nohup dotnet run --project ./MobyPark/MobyPark.csproj > server.log 2>&1 &
-          sleep 50
+          sleep 60
 
       - name: Check API health
         run: |

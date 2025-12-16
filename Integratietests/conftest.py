@@ -3,6 +3,38 @@ import requests
 
 BASE_URL = "http://localhost:5280/"
 
+def _register(
+    username: str,
+    name: str,
+    password: str,
+    role: int | None = None,
+):
+    """
+    Helper: registers a user via POST /register.
+    If the user already exists, we ignore the error.
+    """
+    url = BASE_URL + "register"
+
+    payload = {
+        "username": username,
+        "name": name,
+        "password": password,
+    }
+
+    if role is not None:
+        payload["role"] = role  # 0 = Customer, 1 = Admin
+
+    response = requests.post(
+        url,
+        json=payload,
+        timeout=5,
+        verify=False,
+    )
+
+    # 200 / 201 = success
+    # 400 / 409 = user already exists → fine for tests
+    if response.status_code not in (200, 201, 400, 409):
+        response.raise_for_status()
 
 def _login(username: str, password: str) -> dict:
     """
@@ -31,6 +63,24 @@ def _login(username: str, password: str) -> dict:
         "session_token": f"Bearer {raw_token}",
     }
 
+@pytest.fixture(scope="session", autouse=True)
+def register_test_users():
+    """
+    Ensures test users exist before any tests run.
+    """
+    _register(
+        username="usersharad",
+        name="User Sharad",
+        password="Sharad2002!",
+        role=0,  # Customer
+    )
+
+    _register(
+        username="adminsharad",
+        name="Admin Sharad",
+        password="Sharad2002!",
+        role=1,  # Admin
+    )
 
 # -------------------------
 # Logged-in user fixtures

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MobyPark.Entities;
 
 namespace MobyPark.Models
 {
@@ -31,5 +32,6 @@ namespace MobyPark.Models
         public string? PhoneNumber { get; set; }
 
         public int? BirthYear { get; set; }
+        public UserRole? Role { get; set; }
     }
 }
