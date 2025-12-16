@@ -95,6 +95,18 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IParkingLotService, ParkingLotService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 
+builder.WebHost.ConfigureKestrel(options =>
+{
+    // HTTP (voor CI / integratietests)
+    options.ListenLocalhost(5280);
+
+    // HTTPS (voor lokaal ontwikkelen)
+    options.ListenLocalhost(7197, listenOptions =>
+    {
+        listenOptions.UseHttps();
+    });
+});
+
 builder.Services.AddHttpsRedirection(o => o.HttpsPort = 7197);
 
 var app = builder.Build();
