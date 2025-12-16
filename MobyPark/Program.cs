@@ -107,7 +107,7 @@ builder.WebHost.ConfigureKestrel(options =>
     });
 });
 
-builder.Services.AddHttpsRedirection(o => o.HttpsPort = 7197);
+//builder.Services.AddHttpsRedirection(o => o.HttpsPort = 7197);
 
 var app = builder.Build();
 
@@ -117,7 +117,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
