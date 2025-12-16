@@ -1,5 +1,9 @@
 import pytest
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 BASE_PATH = "billing/"
 
@@ -8,22 +12,19 @@ BASE_PATH = "billing/"
 def test_billing_valid_token(auth_headers, user_session):
     """GET /billing with a valid token returns 200"""
     response = requests.get(user_session["url"] + BASE_PATH, headers=auth_headers)
+    full_url = user_session["url"] + BASE_PATH
+    logger.info("Calling URL: %s", full_url)
     assert response.status_code == 200, f"Expected 200 but got {response.status_code}"
     data = response.json()
     assert isinstance(data, list)
-    # optional structure check
-    # if data:
-    #     record = data[0]
-    #     assert "session" in record
-    #     assert "parking" in record
-    #     assert "amount" in record
-    #     assert "balance" in record
 
 
 # 2️⃣ Missing token — should return 401 Unauthorized
 def test_billing_no_token(user_session):
     """GET /billing without Authorization header"""
     response = requests.get(user_session["url"] + BASE_PATH)
+    full_url = user_session["url"] + BASE_PATH
+    logger.info("Calling URL: %s", full_url)
     assert response.status_code == 401
 
 
@@ -32,13 +33,17 @@ def test_billing_invalid_token(user_session):
     """GET /billing with invalid token"""
     headers = {"Authorization": "Bearer invalidtoken123"}
     response = requests.get(user_session["url"] + BASE_PATH, headers=headers)
+    full_url = user_session["url"] + BASE_PATH
+    logger.info("Calling URL: %s", full_url)
     assert response.status_code == 401
 
 
 # 4️⃣ Valid token but no sessions — should return 200 with empty list
-def test_billing_empty_result(auth_headers_empty_user, user_session):
+def test_billing_empty_result(auth_headers_admin, user_session):
     """GET /billing for user with no sessions"""
-    response = requests.get(user_session["url"] + BASE_PATH, headers=auth_headers_empty_user)
+    response = requests.get(user_session["url"] + BASE_PATH, headers=auth_headers_admin)
+    full_url = user_session["url"] + BASE_PATH
+    logger.info("Calling URL: %s", full_url)
     assert response.status_code == 200
     data = response.json()
     assert data == [] or len(data) == 0
@@ -48,12 +53,12 @@ def test_billing_empty_result(auth_headers_empty_user, user_session):
 def test_billing_balance_math(auth_headers, user_session):
     """Ensure /billing balances are correct"""
     response = requests.get(user_session["url"] + BASE_PATH, headers=auth_headers)
+    full_url = user_session["url"] + BASE_PATH
+    logger.info("Calling URL: %s", full_url)
     if response.status_code != 200:
         pytest.skip(f"Endpoint not available: {response.status_code}")
 
     data = response.json()
-    if not data:
-        pytest.skip("No billing data to validate.")
 
     for record in data:
         amount = record.get("amount", 0)
