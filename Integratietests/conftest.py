@@ -1,7 +1,7 @@
 import pytest
 import requests
 
-BASE_URL = "https://localhost:7197/"
+BASE_URL = "http://localhost:5280/"
 
 
 def _login(username: str, password: str) -> dict:
