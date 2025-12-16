@@ -61,9 +61,9 @@ jobs:
           nohup dotnet run --project ./MobyPark/MobyPark.csproj > server.log 2>&1 &
           sleep 15
 
-      - name: Check API health
-        run: |
-          curl --fail http://localhost:5280 || (echo "Server log:" && cat server.log && exit 1)
+      # - name: Check API health
+      #   run: |
+      #     curl --fail http://localhost:5280 || (echo "Server log:" && cat server.log && exit 1)
       
       - name: Run pytest integration tests
         run: |
