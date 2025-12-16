@@ -7,7 +7,7 @@ import string
 # --- SETUP HELPER ---
 
 
-def setup_payment_scenario(base_url, admin_token, user_token):
+def _setup_payment_scenario(base_url, admin_token, user_token):
     """
     Maakt resources aan en stopt de sessie.
     admin_token: voor het aanmaken van ParkingLot
@@ -30,7 +30,7 @@ def setup_payment_scenario(base_url, admin_token, user_token):
         "coordinates": {"latitude": 52.0, "longitude": 5.0}
     }
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=admin_headers, verify=False)
+        f"{base_url}parking-lots", json=lot_payload, headers=admin_headers, verify=False)
     lot_resp.raise_for_status()
     lot_id = lot_resp.json()["id"]
 
@@ -82,7 +82,7 @@ def test_fulfill_payment_success(user_session, admin_session):
     """
     base_url = user_session["url"]
     # Setup uses admin token for parking lot creation, user token for session/payment
-    payment_data = setup_payment_scenario(
+    payment_data = _setup_payment_scenario(
         base_url, admin_session["session_token"], user_session["session_token"])
 
     url = base_url + "payments/fulfill"
@@ -104,7 +104,7 @@ def test_fulfill_payment_success(user_session, admin_session):
 def test_fulfill_payment_amount_mismatch(user_session, admin_session):
     """Test conflict (409) als het bedrag niet klopt."""
     base_url = user_session["url"]
-    payment_data = setup_payment_scenario(
+    payment_data = _setup_payment_scenario(
         base_url, admin_session["session_token"], user_session["session_token"])
 
     url = base_url + "payments/fulfill"

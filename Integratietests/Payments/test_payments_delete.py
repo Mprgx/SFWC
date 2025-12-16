@@ -7,7 +7,7 @@ import string
 # --- SETUP HELPER ---
 
 
-def setup_payment_transaction(base_url, session_token):
+def _setup_payment_transaction(base_url, session_token):
     """
     Maakt ParkingLot -> Vehicle -> Start Session -> Stop Session
     Geeft de Transaction ID terug.
@@ -26,7 +26,7 @@ def setup_payment_transaction(base_url, session_token):
         "coordinates": {"latitude": 52.0, "longitude": 5.0}
     }
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=headers, verify=False)
+        f"{base_url}parking-lots", json=lot_payload, headers=headers, verify=False)
     lot_resp.raise_for_status()
     lot_id = lot_resp.json()["id"]
 
@@ -72,7 +72,7 @@ def test_admin_delete_payment_success(admin_session):
 
     # STAP 1: Genereer data
     try:
-        transaction_id = setup_payment_transaction(base_url, admin_token)
+        transaction_id = _setup_payment_transaction(base_url, admin_token)
     except requests.exceptions.HTTPError as e:
         pytest.fail(
             f"Setup faalde (waarschijnlijk rechten of model validatie): {e}")

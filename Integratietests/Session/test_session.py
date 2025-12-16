@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 # --- HELPERS (Uitgebreid) ---
 
 
-def generate_license_plate():
+def _generate_license_plate():
     """Genereer een random Nederlands kenteken om conflicten te voorkomen (NL-LL-NNNN)."""
     chars = "".join(random.choices(string.ascii_uppercase, k=2))
     nums = "".join(random.choices(string.digits, k=4))
@@ -18,7 +18,7 @@ def generate_license_plate():
     return f"{chars}-{random.choices(string.digits, k=2)[0]}{random.choices(string.digits, k=2)[0]}-{random.choices(string.ascii_uppercase, k=2)[0]}{random.choices(string.ascii_uppercase, k=2)[0]}"
 
 
-def create_setup_data(base_url, user_token, admin_token):
+def _create_setup_data(base_url, user_token, admin_token):
     """
     Maakt een ParkingLot en een Vehicle aan via de API en returnt de ID's.
     Vereist een ADMIN token voor ParkingLot.
@@ -40,9 +40,9 @@ def create_setup_data(base_url, user_token, admin_token):
         "coordinates": {"latitude": 52.0, "longitude": 5.0}
     }
 
-    # POST /parkinglots (Admin route)
+    # POST /parking-lots (Admin route for creating parking lot)
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=admin_headers, verify=False)
+        f"{base_url}parking-lots", json=lot_payload, headers=admin_headers, verify=False)
 
     if lot_resp.status_code == 403:
         pytest.fail(
@@ -51,7 +51,7 @@ def create_setup_data(base_url, user_token, admin_token):
     parking_lot_id = lot_resp.json()["id"]
 
     # 2. Maak uniek Vehicle aan (User token vereist, aangenomen route /vehicle)
-    license_plate = generate_license_plate()
+    license_plate = _generate_license_plate()
     vehicle_payload = {
         "licensePlate": license_plate,
         "vehicleType": "PassengerCar",
@@ -86,7 +86,7 @@ def test_session_lifecycle_success_user_flow(user_session, admin_session):
                     "Content-Type": "application/json"}
 
     # STAP 0: Setup Resources (ParkingLot & Vehicle)
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     parking_lot_id = test_data["parkingLotId"]
     vehicle_id = test_data["vehicleId"]
     license_plate = test_data["licensePlate"]
@@ -146,7 +146,7 @@ def test_start_session_conflict(user_session, admin_session):
                     "Content-Type": "application/json"}
 
     # STAP 0: Setup Resources
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     parking_lot_id = test_data["parkingLotId"]
     vehicle_id = test_data["vehicleId"]
 
@@ -174,7 +174,7 @@ def test_stop_session_not_found(user_session):
         "Authorization": user_session["session_token"], "Content-Type": "application/json"}
 
     # Probeer te stoppen met een kenteken dat niet geassocieerd is met een actieve sessie
-    non_existent_plate = generate_license_plate()
+    non_existent_plate = _generate_license_plate()
     stop_url = base_url + "parkinglots/stop-session"
     stop_payload = {"licensePlate": non_existent_plate}
 
@@ -194,8 +194,8 @@ def test_get_sessions_only_active(user_session, admin_session):
                     "Content-Type": "application/json"}
 
     # STAP 0: Setup Resources voor 2 sessies
-    data_active = create_setup_data(base_url, user_token, admin_token)
-    data_stopped = create_setup_data(base_url, user_token, admin_token)
+    data_active = _create_setup_data(base_url, user_token, admin_token)
+    data_stopped = _create_setup_data(base_url, user_token, admin_token)
 
     # Sessie 1: Actief
     start_url = base_url + "parkinglots/start-session"
@@ -249,7 +249,7 @@ def test_admin_stop_session_by_id_success(user_session, admin_session):
                      "Content-Type": "application/json"}
 
     # STAP 0: Setup en Start een sessie (als normale gebruiker)
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     start_payload = {
         "vehicleId": test_data["vehicleId"],
         "parkingLotId": test_data["parkingLotId"]
@@ -278,7 +278,7 @@ def test_admin_stop_session_by_id_not_admin_403(user_session, admin_session):
                     "Content-Type": "application/json"}
 
     # STAP 0: Setup en Start een sessie
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     start_payload = {
         "vehicleId": test_data["vehicleId"],
         "parkingLotId": test_data["parkingLotId"]
@@ -306,7 +306,7 @@ def test_admin_cancel_session_success(user_session, admin_session):
                      "Content-Type": "application/json"}
 
     # STAP 0: Setup en Start een sessie
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     start_payload = {
         "vehicleId": test_data["vehicleId"],
         "parkingLotId": test_data["parkingLotId"]
@@ -331,7 +331,7 @@ def test_admin_cancel_session_success(user_session, admin_session):
 
 
 def test_admin_delete_session_success(user_session, admin_session):
-    """Test DELETE /parking-lots/{parkingLotId}/sessions/{sessionId} met Admin-token."""
+    """Test DELETE /parkinglots/{parkingLotId}/sessions/{sessionId} met Admin-token."""
     base_url = user_session["url"]
     user_token = user_session["session_token"]
     admin_token = admin_session["session_token"]
@@ -341,7 +341,7 @@ def test_admin_delete_session_success(user_session, admin_session):
                      "Content-Type": "application/json"}
 
     # STAP 0: Setup en Start een sessie
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     parking_lot_id = test_data["parkingLotId"]
     start_payload = {
         "vehicleId": test_data["vehicleId"],
@@ -354,7 +354,7 @@ def test_admin_delete_session_success(user_session, admin_session):
 
     # STAP 1: Verwijder de sessie
     delete_url = base_url + \
-        f"parkinglots/{parking_lot_id}/sessions/{session_id}"
+        f"parkinglots/parking-lots/{parking_lot_id}/sessions/{session_id}"
     delete_resp = requests.delete(
         delete_url, headers=admin_headers, verify=False)
 
@@ -377,7 +377,7 @@ def test_admin_refund_session_success(user_session, admin_session):
                      "Content-Type": "application/json"}
 
     # STAP 0: Setup, Start en Stop een sessie
-    test_data = create_setup_data(base_url, user_token, admin_token)
+    test_data = _create_setup_data(base_url, user_token, admin_token)
     start_payload = {
         "vehicleId": test_data["vehicleId"],
         "parkingLotId": test_data["parkingLotId"]

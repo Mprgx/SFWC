@@ -7,7 +7,7 @@ import string
 # --- HELPER FUNCTIES ---
 
 
-def generate_license_plate():
+def _generate_license_plate():
     """Genereer een random Nederlands kentaken (XX-NN-XX format)."""
     chars = "".join(random.choices(string.ascii_uppercase, k=2))
     nums = "".join(random.choices(string.digits, k=2))
@@ -15,7 +15,7 @@ def generate_license_plate():
     return f"{chars}-{nums}-{chars2}"
 
 
-def create_setup_data(base_url, admin_token, user_token=None):
+def _create_setup_data(base_url, admin_token, user_token=None):
     """
     Maakt een ParkingLot en een Vehicle aan via de API en returnt de ID's.
     admin_token: Voor het aanmaken van een ParkingLot (vereist Admin)
@@ -42,9 +42,9 @@ def create_setup_data(base_url, admin_token, user_token=None):
         "coordinates": {"latitude": 52.0, "longitude": 5.0}
     }
 
-    # POST /parkinglots (Vereist Admin rol in jouw C# controller)
+    # POST /parking-lots (Vereist Admin rol in jouw C# controller)
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=admin_headers, verify=False)
+        f"{base_url}parking-lots", json=lot_payload, headers=admin_headers, verify=False)
 
     if lot_resp.status_code == 403:
         pytest.fail(
@@ -53,7 +53,7 @@ def create_setup_data(base_url, admin_token, user_token=None):
     parking_lot_id = lot_resp.json()["id"]
 
     # 2. Maak uniek Vehicle aan (USER)
-    license_plate = generate_license_plate()
+    license_plate = _generate_license_plate()
     vehicle_payload = {
         "licensePlate": license_plate,
         "vehicleType": "PassengerCar",
@@ -85,7 +85,7 @@ def test_complete_payment_success_via_session_flow(user_session, admin_session):
 
     # STAP 0: Setup Resources (ParkingLot & Vehicle)
     # Dit zorgt dat de test altijd werkt, ongeacht de staat van de database.
-    test_data = create_setup_data(
+    test_data = _create_setup_data(
         base_url, admin_session["session_token"], user_session["session_token"])
 
     parking_lot_id = test_data["parkingLotId"]
@@ -156,7 +156,7 @@ def test_complete_payment_validation_failed(user_session, admin_session):
     headers = {"Authorization": user_session["session_token"]}
 
     # Setup en start/stop flow om een geldig transactie ID te krijgen
-    test_data = create_setup_data(
+    test_data = _create_setup_data(
         base_url, admin_session["session_token"], user_session["session_token"])
 
     # Start
