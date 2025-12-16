@@ -40,7 +40,7 @@ def test_create_parking_lot_success(login_as_admin):
     headers = {"Authorization": login_as_admin["session_token"]}
     r = requests.post(url, headers=headers, json=payload, verify=False)
 
-    assert r.status_code == 200
+    assert r.status_code == 201
     assert r.json()["name"] == "LotA"
 
 

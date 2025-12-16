@@ -10,20 +10,17 @@ namespace MobyPark.Services
 {
     public class ParkingLotService(UserDbContext db, IEncryptionService encryption) : IParkingLotService
     {
-        private static ParkingLotReadDto ToDto(ParkingLot lot)
+        private static ParkingLotReadDto ToDto(ParkingLot lot) => new()
         {
-            return new ParkingLotReadDto
-            {
-                Id = lot.Id,
-                Name = lot.Name,
-                Location = lot.Location,
-                Address = lot.Address,
-                Capacity = lot.Capacity,
-                Tariff = lot.Tariff,
-                DayTariff = lot.DayTariff,
-                Coordinates = JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new()
-            };
-        }
+            Id = lot.Id,
+            Name = lot.Name,
+            Location = lot.Location,
+            Address = lot.Address,
+            Capacity = lot.Capacity,
+            Tariff = lot.Tariff,
+            DayTariff = lot.DayTariff,
+            Coordinates = JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new()
+        };
 
         private SessionReadDto ToSessionDto(Session s)
         {
@@ -46,79 +43,49 @@ namespace MobyPark.Services
             };
         }
 
-        public async Task<ParkingLotReadDto> CreateParkingLotAsync(ParkingLotRequestDto parkinglot)
+        // POST
+        public async Task<(ParkingLotReadDto?, string?, int?)> CreateAsync(ParkingLotRequestDto dto, bool isAdmin)
         {
+            if (!isAdmin)
+                return (null, "Access denied", 403);
+            
             var lot = new ParkingLot
             {
                 Id = 0,
-                Name = parkinglot.Name,
-                Location = parkinglot.Location,
-                Address = parkinglot.Address,
-                Capacity = parkinglot.Capacity,
-                Tariff = parkinglot.Tariff,
-                DayTariff = parkinglot.DayTariff,
-                Coordinates = JsonSerializer.Serialize(parkinglot.Coordinates)
+                Name = dto.Name,
+                Location = dto.Location,
+                Address = dto.Address,
+                Capacity = dto.Capacity,
+                Tariff = dto.Tariff,
+                DayTariff = dto.DayTariff,
+                Coordinates = JsonSerializer.Serialize(dto.Coordinates)
             };
 
             db.ParkingLots.Add(lot);
             await db.SaveChangesAsync();
-            return ToDto(lot);
+
+            return (ToDto(lot), $"Parking lot saved under ID: {lot.Id}", 201);
         }
 
+        // GET ALL
         public async Task<List<ParkingLotReadDto>> GetAllAsync()
-        {
-            var lots = await db.ParkingLots.ToListAsync();
-            return lots.Select(ToDto).ToList();
-        }
+            => (await db.ParkingLots.ToListAsync()).Select(ToDto).ToList();
 
+        // GET BY ID
         public async Task<ParkingLotReadDto?> GetByIdAsync(int lid)
         {
             var lot = await db.ParkingLots.FindAsync(lid);
             return lot is null ? null : ToDto(lot);
         }
 
-        public async Task<List<SessionReadDto>> GetSessionsAsync(int lid, string? username = null, bool isAdmin = false)
+        // PUT
+        public async Task<(ParkingLotReadDto?, string?, int?)> UpdateAsync(int lid, ParkingLotUpdateDto dto, bool isAdmin)
         {
-            var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
-            if (!exists) return new List<SessionReadDto>();
-
-            var sessions = db.Sessions.Where(s => s.ParkingLotId == lid);
-            if (!isAdmin && username is not null)
-                sessions = sessions.Where(s => s.User.Username == username);
-
-            return (await sessions.ToListAsync()).Select(ToSessionDto).ToList();
-        }
-
-        public async Task<SessionReadDto?> GetSessionByIdAsync(int lid, Guid sid, string? username = null, bool isAdmin = false)
-        {
-            var session = await db.Sessions.FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
-            if (session is null) return null;
-            if (!isAdmin && session.User.Username != username) return null;
-            return ToSessionDto(session);
-        }
-
-        public async Task<bool> DeleteParkingLotAsync(int lid)
-        {
+            if (!isAdmin)
+                return (null, "Access denied", 403);
+            
             var lot = await db.ParkingLots.FindAsync(lid);
-            if (lot is null) return false;
-            db.ParkingLots.Remove(lot);
-            await db.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<bool> DeleteParkingLotSessionAsync(int lid, Guid sid)
-        {
-            var session = await db.Sessions.FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
-            if (session is null) return false;
-            db.Sessions.Remove(session);
-            await db.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<ParkingLotReadDto?> UpdateParkingLotAsync(int lid, ParkingLotUpdateDto dto)
-        {
-            var lot = await db.ParkingLots.FindAsync(lid);
-            if (lot is null) return null;
+            if (lot is null) return (null, "Parking lot not found", 404);
 
             if (!string.IsNullOrWhiteSpace(dto.Name)) lot.Name = dto.Name;
             if (!string.IsNullOrWhiteSpace(dto.Location)) lot.Location = dto.Location;
@@ -126,10 +93,67 @@ namespace MobyPark.Services
             if (dto.Capacity.HasValue) lot.Capacity = dto.Capacity.Value;
             if (dto.Tariff.HasValue) lot.Tariff = dto.Tariff.Value;
             if (dto.DayTariff.HasValue) lot.DayTariff = dto.DayTariff.Value;
-            if (dto.Coordinates is not null) lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);
+            if (dto.Coordinates is not null)
+                lot.Coordinates = JsonSerializer.Serialize(dto.Coordinates);
 
             await db.SaveChangesAsync();
-            return ToDto(lot);
+            return (ToDto(lot), "Parking lot modified", 200);
+        }
+
+        // DELETE
+        public async Task<(bool, string?, int?)> DeleteAsync(int lid, bool isAdmin)
+        {
+            if (!isAdmin)
+                return (false, "Access denied", 403);
+
+            var lot = await db.ParkingLots.FindAsync(lid);
+            if (lot is null) return (false, "Parking lot not found", 404);
+
+            db.ParkingLots.Remove(lot);
+            await db.SaveChangesAsync();
+            return (true, "Parking lot deleted", 200);
+        }
+
+        // SESSIONS
+        public async Task<(List<SessionReadDto>?, string?, int?)> GetSessionsAsync(int lid, string? username, bool isAdmin)
+        {
+            var exists = await db.ParkingLots.AnyAsync(p => p.Id == lid);
+            if (!exists) return (null, null, 404);
+
+            var query = db.Sessions.Where(s => s.ParkingLotId == lid);
+
+            if (!isAdmin && username is not null)
+                query = query.Where(s => s.User.Username == username);
+
+            var result = (await query.ToListAsync()).Select(ToSessionDto).ToList();
+            return (result, null, null);
+        }
+
+        public async Task<(SessionReadDto?, string?, int?)> GetSessionByIdAsync(int lid, Guid sid, string? username, bool isAdmin)
+        {
+            var session = await db.Sessions
+                .FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
+
+            if (session is null) return (null, null, 404);
+            if (!isAdmin && session.User.Username != username)
+                return (null, null, 404);
+
+            return (ToSessionDto(session), null, null);
+        }
+
+        public async Task<(bool, string?, int?)> DeleteSessionAsync(int lid, Guid sid, bool isAdmin)
+        {
+            if (!isAdmin)
+                return (false, "Access denied", 403);
+
+            var session = await db.Sessions
+                .FirstOrDefaultAsync(s => s.ParkingLotId == lid && s.Id == sid);
+
+            if (session is null) return (false, "Session not found", 404);
+
+            db.Sessions.Remove(session);
+            await db.SaveChangesAsync();
+            return (true, "Sessions deleted", 200);
         }
     }
 }

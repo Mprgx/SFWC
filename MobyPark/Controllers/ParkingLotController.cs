@@ -10,56 +10,76 @@ using MobyPark.Services;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("parkinglots")]
+    [Route("parking-lots")]
     [Authorize]
     public class ParkingLotController(IParkingLotService service) : ControllerBase
     {
         [Authorize(Roles = Roles.Admin)]
         [HttpPost]
-        public async Task<ActionResult<ParkingLotReadDto>> Create([FromBody] ParkingLotRequestDto dto)
+        public async Task<ActionResult<ParkingLotReadDto>> Create(ParkingLotRequestDto dto)
         {
-            var lot = await service.CreateParkingLotAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { lid = lot.Id }, lot);
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (created, error, status) = await service.CreateAsync(dto, true);
+            if (status == 201)
+                return CreatedAtAction(nameof(GetById), new { lid = created!.Id }, created);
+
+            return StatusCode(status ?? 500, error);
         }
 
         [HttpGet]
         public async Task<ActionResult<List<ParkingLotReadDto>>> GetAll()
         {
-            var lots = await service.GetAllAsync();
-            return Ok(lots);
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            return Ok(await service.GetAllAsync());
         }
 
         [HttpGet("{lid:int}")]
         public async Task<ActionResult<ParkingLotReadDto>> GetById(int lid)
         {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
             var lot = await service.GetByIdAsync(lid);
-            if (lot is null) return NotFound();
-            return Ok(lot);
+            return lot is null ? NotFound() : Ok(lot);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPut("{lid:int}")]
-        public async Task<ActionResult<ParkingLotReadDto>> Update(int lid, [FromBody] ParkingLotUpdateDto dto)
+        public async Task<ActionResult<ParkingLotReadDto>> Update(int lid, ParkingLotUpdateDto dto)
         {
-            var updated = await service.UpdateParkingLotAsync(lid, dto);
-            if (updated is null) return NotFound();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (updated, error, status) = await service.UpdateAsync(lid, dto, true);
+            if (status == 404) return NotFound();
             return Ok(updated);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpDelete("{lid:int}")]
-        public async Task<ActionResult> Delete(int lid)
+        public async Task<IActionResult> Delete(int lid)
         {
-            var deleted = await service.DeleteParkingLotAsync(lid);
-            if (!deleted) return NotFound();
-            return NoContent();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (_, error, status) = await service.DeleteAsync(lid, true);
+            if (status == 404) return NotFound();
+            if (status == 204) return NoContent();
+            return StatusCode(status ?? 500, error);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpGet("{lid:int}/sessions")]
         public async Task<ActionResult<List<SessionReadDto>>> GetSessions(int lid)
         {
-            var sessions = await service.GetSessionsAsync(lid, User.FindFirstValue(ClaimTypes.Name), User.IsInRole(Roles.Admin));
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (sessions, error, status) = await service.GetSessionsAsync(
+                lid,
+                User.FindFirstValue(ClaimTypes.Name),
+                User.IsInRole(Roles.Admin)
+            );
+
+            if (status == 404) return NotFound();
             return Ok(sessions);
         }
 
@@ -67,18 +87,34 @@ namespace MobyPark.Controllers
         [HttpGet("{lid:int}/sessions/{sid:guid}")]
         public async Task<ActionResult<SessionReadDto>> GetSessionById(int lid, Guid sid)
         {
-            var session = await service.GetSessionByIdAsync(lid, sid, User.FindFirstValue(ClaimTypes.Name), User.IsInRole(Roles.Admin));
-            if (session is null) return NotFound();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (session, error, status) = await service.GetSessionByIdAsync(
+                lid, sid,
+                User.FindFirstValue(ClaimTypes.Name),
+                User.IsInRole(Roles.Admin)
+            );
+
+            if (status == 404) return NotFound();
             return Ok(session);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpDelete("{lid:int}/sessions/{sid:guid}")]
-        public async Task<ActionResult> DeleteSession(int lid, Guid sid)
+        public async Task<IActionResult> DeleteSession(int lid, Guid sid)
         {
-            var deleted = await service.DeleteParkingLotSessionAsync(lid, sid);
-            if (!deleted) return NotFound();
-            return NoContent();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+
+            var (_, error, status) = await service.DeleteSessionAsync(lid, sid, true);
+            if (status == 404) return NotFound();
+            if (status == 204) return NoContent();
+            return StatusCode(status ?? 500, error);
+        }
+
+        private bool TryGetUserId(out Guid id)
+        {
+            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(s, out id);
         }
     }
 }
