@@ -68,4 +68,4 @@ jobs:
 
       - name: Run unit tests
         run: |
-          echo "Unit testing...."
+          dotnet test ./MobyParkxUnitTest/MobyParkxUnitTest.csproj --logger "trx;LogFileName=unit_test_results.trx"
