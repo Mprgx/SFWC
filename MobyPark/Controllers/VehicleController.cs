@@ -83,5 +83,20 @@ namespace MobyPark.Controllers
 
             return Ok(vehicles);
         }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpGet("vehicle/{vehicleId}/history")]
+        public async Task<IActionResult> GetVehicleHistory(int vehicleId)
+        {
+            try
+            {
+                var history = await vehicleService.GetVehicleHistoryAsync(vehicleId);
+                return Ok(history);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+        }
     }
 }

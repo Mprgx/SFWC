@@ -99,6 +99,31 @@ namespace MobyPark.Services
             return MapToReadDto(vehicle);
         }
 
+        public async Task<List<VehicleHistoryDto>> GetVehicleHistoryAsync(int vehicleId)
+        {
+            var vehicleExists = await context.Vehicles
+                .AnyAsync(v => v.Id == vehicleId);
+
+            if (!vehicleExists)
+                throw new KeyNotFoundException("Vehicle not found");
+
+            return await context.Sessions
+                .Where(s => s.VehicleId == vehicleId)
+                .Include(s => s.ParkingLot)
+                .OrderByDescending(s => s.Started)
+                .Select(s => new VehicleHistoryDto
+                {
+                    SessionId = s.Id,
+                    ParkingLotId = s.ParkingLotId,
+                    ParkingLotName = s.ParkingLot!.Name,
+                    Started = s.Started,
+                    Stopped = s.Stopped,
+                    Cost = s.Cost
+                })
+                .ToListAsync();
+        }
+
+
         public async Task<bool> DeleteVehicleAsync(Guid userId, int vehicleId)
         {
             var vehicle = await context.Vehicles
