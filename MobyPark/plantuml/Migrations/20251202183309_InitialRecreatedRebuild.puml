@@ -1,0 +1,5 @@
+@startuml
+class InitialRecreatedRebuild <<partial>> {
+}
+Migration <|-- InitialRecreatedRebuild
+@enduml

@@ -1,0 +1,4 @@
+@startuml
+class RemoveReservedSpotsFromParkingLots <<partial>> {
+}
+@enduml

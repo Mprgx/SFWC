@@ -1,0 +1,24 @@
+@startuml
+class User {
+    + Username : string <<get>> <<set>>
+    + Name : string <<get>> <<set>>
+    + Email : string <<get>> <<set>>
+    + PhoneNumber : string <<get>> <<set>>
+    + <<required>> BirthYear : int <<get>> <<set>>
+    + <<required>> PasswordHash : string <<get>> <<set>>
+    + RefreshToken : string? <<get>> <<set>>
+}
+class "ICollection`1"<T> {
+}
+User o-> "Id" Guid
+User o-> "CreatedAt" DateTimeOffset
+User o-> "Role" UserRole
+User --> "CompanyId" Guid
+User --> "Company" Company
+User --> "RefreshTokenExpiryTime" DateTimeOffset
+User o-> "ParkingSessions<Session>" "ICollection`1"
+User o-> "UserVehicles<UserVehicle>" "ICollection`1"
+User o-> "CompanyUsers<CompanyUser>" "ICollection`1"
+User o-> "Payments<Payment>" "ICollection`1"
+User o-> "Reservations<Reservation>" "ICollection`1"
+@enduml

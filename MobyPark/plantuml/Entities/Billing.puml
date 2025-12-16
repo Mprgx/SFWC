@@ -1,0 +1,14 @@
+@startuml
+class Billing {
+    + ParkingLotId : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + Username : string <<get>> <<set>>
+    + DurationMinutes : int <<get>> <<set>>
+    + Cost : decimal <<get>> <<set>>
+    + PaymentStatus : string <<get>> <<set>>
+}
+Billing --> "Id" Guid
+Billing --> "ParkingLot" ParkingLot
+Billing --> "Started" DateTimeOffset
+Billing --> "Stopped" DateTimeOffset
+@enduml

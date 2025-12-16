@@ -1,0 +1,7 @@
+@startuml
+class BillingController {
+    + <<async>> GetMyReceipts() : Task<IActionResult>
+    + <<async>> GetById(id:Guid) : Task<IActionResult>
+}
+ControllerBase <|-- BillingController
+@enduml

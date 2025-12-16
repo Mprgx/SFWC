@@ -1,0 +1,12 @@
+@startuml
+class SessionController {
+    + <<async>> StartSession(dto:SessionStartDto) : Task<IActionResult>
+    + <<async>> StopSessionByPlate(dto:SessionStopDto) : Task<IActionResult>
+    + <<async>> StopSession(id:Guid) : Task<IActionResult>
+    + <<async>> GetSession(id:Guid) : Task<IActionResult>
+    + <<async>> CancelSession(id:Guid, dto:CancelSessionDto) : Task<IActionResult>
+    + <<async>> RefundSession(id:Guid, dto:RefundRequestDto) : Task<IActionResult>
+    + <<async>> DeleteSession(lid:int, sid:Guid) : Task<IActionResult>
+}
+ControllerBase <|-- SessionController
+@enduml

@@ -1,0 +1,21 @@
+@startuml
+class Session {
+    + ParkingLotId : int <<get>> <<set>>
+    + VehicleId : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + DurationMinutes : int <<get>> <<set>>
+    + Cost : decimal <<get>> <<set>>
+    + PaymentStatus : string <<get>> <<set>> = "unpaid"
+    + IsCancelled : bool <<get>> <<set>>
+    + IsRefunded : bool <<get>> <<set>>
+}
+Session --> "Id" Guid
+Session --> "ParkingLot" ParkingLot
+Session --> "UserId" Guid
+Session --> "User" User
+Session --> "Vehicle" Vehicle
+Session --> "Started" DateTimeOffset
+Session --> "Stopped" DateTimeOffset
+Session --> "CancelledAt" DateTimeOffset
+Session --> "RefundDate" DateTimeOffset
+@enduml

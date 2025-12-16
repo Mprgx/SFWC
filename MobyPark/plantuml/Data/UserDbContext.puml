@@ -1,0 +1,18 @@
+@startuml
+class UserDbContext {
+}
+class "DbContextOptions`1"<T> {
+}
+class "DbSet`1"<T> {
+}
+DbContext <|-- UserDbContext
+UserDbContext --> "Users<User>" "DbSet`1"
+UserDbContext --> "Vehicles<Vehicle>" "DbSet`1"
+UserDbContext --> "Sessions<Session>" "DbSet`1"
+UserDbContext --> "ParkingLots<ParkingLot>" "DbSet`1"
+UserDbContext --> "Payments<Payment>" "DbSet`1"
+UserDbContext --> "Reservations<Reservation>" "DbSet`1"
+UserDbContext --> "UserVehicles<UserVehicle>" "DbSet`1"
+UserDbContext --> "CompanyUsers<CompanyUser>" "DbSet`1"
+UserDbContext --> "Billings<Billing>" "DbSet`1"
+@enduml

@@ -1,0 +1,8 @@
+@startuml
+class AesGcmEncryptionService {
+    + AesGcmEncryptionService(configuration:IConfiguration)
+    + Encrypt(plaintext:string?) : string?
+    + Decrypt(ciphertext:string?) : string?
+}
+IEncryptionService <|-- AesGcmEncryptionService
+@enduml

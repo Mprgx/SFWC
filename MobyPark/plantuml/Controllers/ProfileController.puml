@@ -1,0 +1,9 @@
+@startuml
+class ProfileController {
+    + <<async>> GetMe() : Task<ActionResult<UserReadDto>>
+    + <<async>> Update(dto:UpdateProfileDto) : Task<ActionResult<UserReadDto>>
+    + <<async>> ChangePassword(req:UpdatePasswordRequestDto) : Task<IActionResult>
+    + <<async>> DeleteMe() : Task<IActionResult>
+}
+ControllerBase <|-- ProfileController
+@enduml

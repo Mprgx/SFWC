@@ -1,0 +1,7 @@
+@startuml
+
+!path C:/Users/samla/OneDrive/Bureaublad/HR-1048748/software\ construction/Mobypark/SFWC/MobyPark/plantuml
+
+!include C:/Users/samla/OneDrive/Bureaublad/HR-1048748/software\ construction/Mobypark/SFWC/MobyPark/plantuml/**/*.puml
+
+@enduml

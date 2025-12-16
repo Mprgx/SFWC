@@ -1,0 +1,23 @@
+@startuml
+class ParkingLotRequestDto {
+    + ParkingLotRequestDto(name:string, location:string, address:string, capacity:int, tariff:double, dayTariff:double, coordinates:Dictionary<string, double>)
+    + Name : string <<get>> <<set>>
+    + Location : string <<get>> <<set>>
+    + Address : string <<get>> <<set>>
+    + Capacity : int <<get>> <<set>>
+    + Tariff : double <<get>> <<set>>
+    + DayTariff : double <<get>> <<set>>
+}
+class ParkingLotUpdateDto {
+    + Name : string? <<get>> <<set>>
+    + Location : string? <<get>> <<set>>
+    + Address : string? <<get>> <<set>>
+    + Capacity : int? <<get>> <<set>>
+    + Tariff : double? <<get>> <<set>>
+    + DayTariff : double? <<get>> <<set>>
+}
+class "Dictionary`2"<T1,T2> {
+}
+ParkingLotRequestDto o-> "Coordinates<string,double>" "Dictionary`2"
+ParkingLotUpdateDto --> "Coordinates<string,double>" "Dictionary`2"
+@enduml

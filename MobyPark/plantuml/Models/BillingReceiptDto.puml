@@ -1,0 +1,13 @@
+@startuml
+class BillingReceiptDto {
+    + LicensePlate : string <<get>> <<set>>
+    + ParkingLotId : int <<get>> <<set>>
+    + ParkingLotName : string <<get>> <<set>>
+    + DurationMinutes : int <<get>> <<set>>
+    + Cost : decimal <<get>> <<set>>
+    + PaymentStatus : string <<get>> <<set>>
+}
+BillingReceiptDto --> "Id" Guid
+BillingReceiptDto --> "Started" DateTimeOffset
+BillingReceiptDto --> "Stopped" DateTimeOffset
+@enduml

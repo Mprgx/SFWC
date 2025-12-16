@@ -1,0 +1,10 @@
+@startuml
+class VehicleService {
+    + <<async>> CreateVehicleAsync(userId:Guid, request:VehicleCreateDto) : Task<VehicleReadDto?>
+    + <<async>> GetVehiclesForUserAsync(userId:Guid) : Task<List<VehicleReadDto>>
+    + <<async>> GetVehiclesByUsernameAsync(username:string) : Task<List<VehicleReadDto>>
+    + <<async>> UpdateVehicleAsync(userId:Guid, vehicleId:int, request:VehicleUpdateDto) : Task<VehicleReadDto?>
+    + <<async>> DeleteVehicleAsync(userId:Guid, vehicleId:int) : Task<bool>
+}
+IVehicleService <|-- VehicleService
+@enduml

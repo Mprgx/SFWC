@@ -1,0 +1,6 @@
+@startuml
+class RefundRequestDto {
+    + IBAN : string <<get>> <<set>> = "NL91ABNA0417164300"
+    + Reason : string? <<get>> <<set>>
+}
+@enduml

@@ -1,0 +1,6 @@
+@startuml
+class PaymentValidationDto {
+    + Validation : string <<get>> <<set>>
+}
+PaymentValidationDto --> "T_Data" JsonElement
+@enduml

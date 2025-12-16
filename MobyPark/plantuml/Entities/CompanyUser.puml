@@ -1,0 +1,8 @@
+@startuml
+class CompanyUser {
+}
+CompanyUser --> "UserId" Guid
+CompanyUser --> "User" User
+CompanyUser --> "CompanyId" Guid
+CompanyUser --> "Company" Company
+@enduml

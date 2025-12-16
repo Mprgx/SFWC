@@ -1,0 +1,10 @@
+@startuml
+class PaymentService {
+    + <<async>> CompletePaymentAsync(userId:Guid, transactionId:string, request:PaymentValidationDto) : Task<PaymentResponseDto?>
+    + <<async>> GetPaymentsForAnyUserAsync(username:string) : Task<List<PaymentResponseDto?>>
+    + <<async>> GetPaymentsForUserAsync(userId:Guid) : Task<List<PaymentResponseDto?>>
+    + <<async>> DeletePaymentByTransactionId(transactionId:string) : Task<bool>
+    + <<async>> FulfillPaymentAsync(userId:string, paymentRequest:PaymentsDto) : Task<PaymentResponseDto>
+}
+IPaymentService <|-- PaymentService
+@enduml

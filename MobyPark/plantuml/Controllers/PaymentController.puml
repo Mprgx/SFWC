@@ -1,0 +1,11 @@
+@startuml
+class PaymentsController {
+    + PaymentsController(context:UserDbContext, paymentService:IPaymentService)
+    + <<async>> FulfillPayment(paymentRequest:PaymentsDto) : Task<ActionResult>
+    + <<async>> UpdatePayment(transactionId:string, request:PaymentValidationDto) : Task<ActionResult<Payment>>
+    + <<async>> GetMyPayments() : Task<ActionResult>
+    + <<async>> GetPaymentsForUser(username:string) : Task<ActionResult>
+    + <<async>> DeletePaymentBytransactionId(transactionId:string) : Task<ActionResult>
+}
+ControllerBase <|-- PaymentsController
+@enduml

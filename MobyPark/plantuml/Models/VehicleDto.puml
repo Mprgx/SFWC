@@ -1,0 +1,25 @@
+@startuml
+class VehicleCreateDto {
+    + LicensePlate : string <<get>> <<set>>
+    + Make : string <<get>> <<set>>
+    + Model : string <<get>> <<set>>
+    + Color : string <<get>> <<set>>
+    + Year : int <<get>> <<set>>
+}
+class VehicleReadDto {
+    + Id : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + Make : string <<get>> <<set>>
+    + Model : string <<get>> <<set>>
+    + Color : string <<get>> <<set>>
+    + Year : int <<get>> <<set>>
+}
+class VehicleUpdateDto {
+    + Make : string? <<get>> <<set>>
+    + Model : string? <<get>> <<set>>
+    + Color : string? <<get>> <<set>>
+    + Year : int? <<get>> <<set>>
+}
+VehicleReadDto --> "UserId" Guid
+VehicleReadDto --> "CreatedAt" DateTimeOffset
+@enduml

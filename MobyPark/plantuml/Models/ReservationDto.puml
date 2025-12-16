@@ -1,0 +1,27 @@
+@startuml
+class PostReservationDto {
+    + ParkingLotId : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + Validate(_:ValidationContext) : IEnumerable<ValidationResult>
+}
+class PutReservationDto {
+    + LicensePlate : string? <<get>> <<set>>
+    + Validate(_:ValidationContext) : IEnumerable<ValidationResult>
+}
+class GetReservationDto {
+    + Id : int <<get>> <<set>>
+    + ParkingLotId : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + IsActive : bool <<get>> <<set>>
+}
+IValidatableObject <|-- PostReservationDto
+PostReservationDto --> "UserId" Guid
+PostReservationDto --> "StartTime" DateTimeOffset
+PostReservationDto --> "EndTime" DateTimeOffset
+IValidatableObject <|-- PutReservationDto
+PutReservationDto --> "StartTime" DateTimeOffset
+PutReservationDto --> "EndTime" DateTimeOffset
+GetReservationDto --> "UserId" Guid
+GetReservationDto --> "StartTime" DateTimeOffset
+GetReservationDto --> "EndTime" DateTimeOffset
+@enduml

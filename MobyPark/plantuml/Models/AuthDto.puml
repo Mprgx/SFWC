@@ -1,0 +1,14 @@
+@startuml
+class LoginRequestDto {
+    + Username : string <<get>> <<set>>
+    + Password : string <<get>> <<set>>
+}
+class RegisterRequestDto {
+    + Username : string <<get>> <<set>>
+    + Password : string <<get>> <<set>>
+    + Name : string <<get>> <<set>>
+    + Email : string? <<get>> <<set>>
+    + PhoneNumber : string? <<get>> <<set>>
+    + BirthYear : int? <<get>> <<set>>
+}
+@enduml
