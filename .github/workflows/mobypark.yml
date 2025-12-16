@@ -65,6 +65,7 @@ jobs:
         run: |
           curl --fail http://localhost:5280 || (echo "Server log:" && cat server.log && exit 1)
       
+      
       - name: Run pytest integration tests
         run: |
           pytest ./Integratietests/ --maxfail=10000 --disable-warnings -q --cov --cov-report xml:coverage.xml
