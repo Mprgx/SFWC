@@ -1,0 +1,8 @@
+@startuml
+class UserVehicle {
+    + VehicleId : int <<get>> <<set>>
+}
+UserVehicle --> "UserId" Guid
+UserVehicle --> "User" User
+UserVehicle --> "Vehicle" Vehicle
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+class ParkingLotService {
+    + <<async>> CreateParkingLotAsync(parkingLot:ParkingLot) : Task<ParkingLot>
+    + <<async>> GetAllAsync() : Task<List<ParkingLot>>
+    + <<async>> GetByIdAsync(lid:int) : Task<ParkingLot?>
+    + <<async>> GetSessionsAsync(lid:int, username:string?, isAdmin:bool) : Task<List<Session>>
+    + <<async>> GetSessionByIdAsync(lid:int, sid:string, username:string?, isAdmin:bool) : Task<Session?>
+    + <<async>> DeleteParkingLotAsync(id:int) : Task<bool>
+    + <<async>> DeleteParkingLotSessionAsync(parkingLotId:int, sessionId:Guid) : Task<bool>
+    + <<async>> StopSessionAsync(licensePlate:string, username:string, userid:Guid, encryption:IEncryptionService) : Task<Payment?>
+    + <<async>> UpdateParkingLotAsync(lid:int, dto:ParkingLotUpdateDto) : Task<ParkingLot?>
+}
+IParkingLotService <|-- ParkingLotService
+@enduml

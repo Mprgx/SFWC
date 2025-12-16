@@ -1,0 +1,5 @@
+@startuml
+class ReservationOptionalCompanyId <<partial>> {
+}
+Migration <|-- ReservationOptionalCompanyId
+@enduml

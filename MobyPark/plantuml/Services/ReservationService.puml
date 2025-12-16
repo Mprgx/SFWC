@@ -1,0 +1,14 @@
+@startuml
+class ReservationService {
+    + <<async>> CreateReservation(dto:PostReservationDto) : Task<GetReservationDto>
+    + <<async>> GetById(reservationId:int) : Task<GetReservationDto?>
+    + <<async>> GetByVehicleId(vehicleId:int) : Task<GetReservationDto?>
+    + <<async>> UpdateReservation(reservationId:int, dto:PutReservationDto) : Task<GetReservationDto?>
+    + <<async>> DeleteReservation(reservationId:int) : Task<bool>
+}
+class ParkingLotFullException {
+    + ParkingLotFullException(message:string)
+}
+IReservationService <|-- ReservationService
+Exception <|-- ParkingLotFullException
+@enduml

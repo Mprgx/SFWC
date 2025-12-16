@@ -1,0 +1,13 @@
+@startuml
+class ParkingLotController {
+    + <<async>> Create(body:ParkingLotRequestDto) : Task<ActionResult>
+    + <<async>> GetAll() : Task<ActionResult<List<ParkingLotRequestDto>>>
+    + <<async>> GetById(lid:int) : Task<ActionResult<ParkingLotRequestDto>>
+    + <<async>> GetSessions(lid:int) : Task<ActionResult<List<SessionReadDto>>>
+    + <<async>> GetSessionById(lid:int, sid:Guid) : Task<ActionResult<SessionReadDto>>
+    + <<async>> DeleteParkingLot(lid:int) : Task<ActionResult>
+    + <<async>> DeleteSession(lid:int, sid:Guid) : Task<ActionResult>
+    + <<async>> Update(lid:int, dto:ParkingLotUpdateDto) : Task<IActionResult>
+}
+ControllerBase <|-- ParkingLotController
+@enduml

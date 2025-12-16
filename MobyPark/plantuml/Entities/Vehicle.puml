@@ -1,0 +1,16 @@
+@startuml
+class Vehicle {
+    + Id : int <<get>> <<set>>
+    + LicensePlate : string <<get>> <<set>>
+    + Make : string <<get>> <<set>>
+    + Model : string <<get>> <<set>>
+    + Color : string <<get>> <<set>>
+    + Year : int <<get>> <<set>>
+}
+class "ICollection`1"<T> {
+}
+Vehicle --> "UserId" Guid
+Vehicle o-> "User" User
+Vehicle o-> "CreatedAt" DateTimeOffset
+Vehicle o-> "UserVehicles<UserVehicle>" "ICollection`1"
+@enduml

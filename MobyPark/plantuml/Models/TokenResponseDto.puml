@@ -1,0 +1,6 @@
+@startuml
+class TokenResponseDto {
+    + <<required>> AccessToken : string <<get>> <<set>>
+    + <<required>> RefreshToken : string <<get>> <<set>>
+}
+@enduml

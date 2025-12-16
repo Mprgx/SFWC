@@ -1,0 +1,31 @@
+@startuml
+class PaymentResponseDto {
+    + Transaction : string <<get>> <<set>> = ""
+    + Amount : decimal <<get>> <<set>>
+    + Initiator : string <<get>> <<set>> = ""
+    + Hash : string <<get>> <<set>> = ""
+    + T_Data : string <<get>> <<set>> = ""
+    + ParkingLotId : int <<get>> <<set>>
+}
+class ParkingLotSummaryDto {
+    + Id : int <<get>> <<set>>
+    + Name : string <<get>> <<set>> = ""
+    + Location : string <<get>> <<set>> = ""
+    + Address : string <<get>> <<set>> = ""
+    + Capacity : int <<get>> <<set>>
+    + ReservedSpots : int <<get>> <<set>>
+    + Tariff : double <<get>> <<set>>
+    + DayTariff : double <<get>> <<set>>
+}
+class PaymentsDto {
+    + Transaction : string <<get>> <<set>>
+    + Amount : decimal <<get>> <<set>> = 0m
+}
+PaymentResponseDto --> "UserId" Guid
+PaymentResponseDto --> "User" UserReadDto
+PaymentResponseDto --> "CreatedAt" DateTimeOffset
+PaymentResponseDto --> "Completed" DateTimeOffset
+PaymentResponseDto --> "SessionId" Guid
+PaymentResponseDto --> "Session" SessionReadDto
+PaymentResponseDto --> "ParkingLot" ParkingLotSummaryDto
+@enduml

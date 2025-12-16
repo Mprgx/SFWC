@@ -1,0 +1,6 @@
+@startuml
+class RefreshTokenRequestDto {
+    + <<required>> RefreshToken : string <<get>> <<set>>
+}
+RefreshTokenRequestDto --> "UserId" Guid
+@enduml

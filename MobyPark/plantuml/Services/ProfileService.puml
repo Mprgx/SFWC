@@ -1,0 +1,9 @@
+@startuml
+class ProfileService {
+    + <<async>> GetProfileAsync(userId:Guid) : Task<UserReadDto?>
+    + <<async>> UpdateProfileAsync(userId:Guid, dto:UpdateProfileDto) : Task<(UserReadDto? dto, string? error, int? status)>
+    + <<async>> ChangePasswordAsync(userId:Guid, currentPassword:string?, newPassword:string?) : Task<(bool changed, string? error, int? status)>
+    + <<async>> DeleteProfileAsync(userId:Guid) : Task<(bool deleted, string? error, int? status)>
+}
+IProfileService <|-- ProfileService
+@enduml

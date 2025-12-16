@@ -1,0 +1,18 @@
+@startuml
+class Reservation {
+    + Id : int <<get>> <<set>>
+    + ParkingLotId : int <<get>> <<set>>
+    + VehicleId : int <<get>> <<set>>
+    + <<required>> LicensePlate : string <<get>> <<set>>
+    + SpotsReserved : int <<get>> <<set>> = 1
+    + IsActive : bool <<get>> <<set>> = true
+}
+Reservation --> "ParkingLot" ParkingLot
+Reservation --> "CompanyId" Guid
+Reservation --> "Company" Company
+Reservation --> "UserId" Guid
+Reservation --> "User" User
+Reservation --> "Vehicle" Vehicle
+Reservation --> "StartTime" DateTimeOffset
+Reservation --> "EndTime" DateTimeOffset
+@enduml

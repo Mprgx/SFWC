@@ -1,0 +1,10 @@
+@startuml
+class VehicleController {
+    + <<async>> CreateVehicle(request:VehicleCreateDto) : Task<ActionResult<VehicleReadDto>>
+    + <<async>> GetMyVehicles() : Task<ActionResult<List<VehicleReadDto>>>
+    + <<async>> UpdateVehicle(id:int, request:VehicleUpdateDto) : Task<ActionResult<VehicleReadDto>>
+    + <<async>> DeleteVehicle(id:int) : Task<IActionResult>
+    + <<async>> GetVehicleByUser(username:string) : Task<ActionResult<List<VehicleReadDto>>>
+}
+ControllerBase <|-- VehicleController
+@enduml

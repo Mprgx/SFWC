@@ -1,0 +1,8 @@
+@startuml
+class BillingService {
+    + <<async>> GetReceiptsForUserAsync(username:string) : Task<List<BillingReceiptDto>>
+    + <<async>> GetAllReceiptsAsync() : Task<List<BillingReceiptDto>>
+    + <<async>> GetByIdAsync(billingId:Guid) : Task<BillingReceiptDto?>
+}
+IBillingService <|-- BillingService
+@enduml

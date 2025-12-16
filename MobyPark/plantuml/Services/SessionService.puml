@@ -1,0 +1,13 @@
+@startuml
+class SessionService {
+    + <<async>> StartSessionAsync(userId:Guid, dto:SessionStartDto) : Task<Session?>
+    + <<async>> GetSessionByIdAsync(userId:Guid, sessionId:Guid) : Task<Session?>
+    + <<async>> StopSessionByPlateAsync(username:string, userId:Guid, dto:SessionStopDto) : Task<Session?>
+    + <<async>> StopSessionByIdAsync(userId:Guid, sessionId:Guid) : Task<Session?>
+    + <<async>> CancelSessionAsync(userId:Guid, sessionId:Guid, dto:CancelSessionDto) : Task<Session?>
+    + <<async>> DeleteSessionAsync(parkingLotId:int, sessionId:Guid) : Task<bool>
+    + <<async>> RequestRefundAsync(userId:Guid, sessionId:Guid, dto:RefundRequestDto?) : Task<object?>
+    + <<async>> GetAllForUserAsync(userId:Guid, onlyActive:bool) : Task<List<Session>>
+}
+ISessionService <|-- SessionService
+@enduml

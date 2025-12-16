@@ -1,0 +1,13 @@
+@startuml
+!include .\\Entities\Billing.puml
+!include .\\Entities\Company.puml
+!include .\\Entities\CompanyUser.puml
+!include .\\Entities\ParkingLot.puml
+!include .\\Entities\Payment.puml
+!include .\\Entities\Reservation.puml
+!include .\\Entities\Session.puml
+!include .\\Entities\User.puml
+!include .\\Entities\UserRole.puml
+!include .\\Entities\UserVehicle.puml
+!include .\\Entities\Vehicle.puml
+@enduml
