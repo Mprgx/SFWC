@@ -1,177 +1,173 @@
-//using Microsoft.EntityFrameworkCore;
-//using MobyPark.Data;
-//using MobyPark.Entities;
-//using MobyPark.Models;
-//using MobyPark.Services;
+using Microsoft.EntityFrameworkCore;
+using MobyPark.Data;
+using MobyPark.Entities;
+using MobyPark.Models;
+using MobyPark.Services;
+using Xunit;
 
-//namespace MobyParkxUnitTest
-//{
-//    public class CancelSessionServiceTests
-//    {
-//        private static UserDbContext CreateDb(string name)
-//        {
-//            var opts = new DbContextOptionsBuilder<UserDbContext>()
-//                .UseInMemoryDatabase(name)
-//                .Options;
+namespace MobyParkxUnitTest
+{
+    public class CancelSessionServiceTests
+    {
+        // --------------------------------------------------------
+        // Helpers
+        // --------------------------------------------------------
 
-//            return new UserDbContext(opts);
-//        }
+        private static UserDbContext CreateDbContext(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(dbName)
+                .Options;
 
-//        private class FakeEncryptionService : IEncryptionService
-//        {
-//            public string? Encrypt(string? plaintext)
-//            {
-//                return plaintext is null ? null : $"ENC:{plaintext}";
-//            }
+            return new UserDbContext(options);
+        }
 
-//            public string? Decrypt(string? ciphertext)
-//            {
-//                if (ciphertext is null)
-//                    return null;
+        private class FakeEncryptionService : IEncryptionService
+        {
+            public string? Encrypt(string? plaintext) => plaintext;
+            public string? Decrypt(string? ciphertext) => ciphertext;
+        }
 
-//                const string prefix = "ENC:";
-//                if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
-//                    return ciphertext[prefix.Length..];
 
-//                return ciphertext;
-//            }
-//        }
+        private static SessionService CreateService(UserDbContext context)
+        {
+            return new SessionService(context, new FakeEncryptionService());
+        }
 
-//        private static SessionService CreateService(UserDbContext db)
-//        {
-//            return new SessionService(db, new FakeEncryptionService());
-//        }
 
-//        // -------------------------------------------------------------------
-//        // 1. Returns null when session does not exist
-//        // -------------------------------------------------------------------
-//        [Fact]
-//        public async Task CancelSessionAsync_ReturnsNull_WhenSessionDoesNotExist()
-//        {
-//            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsNull_WhenSessionDoesNotExist));
-//            var service = CreateService(db);
+        private static Session CreateSession(Guid userId)
+        {
+            return new Session
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                VehicleId = 1,
+                ParkingLotId = 1,
+                LicensePlate = "AA-123-B",
+                Started = DateTimeOffset.UtcNow.AddHours(1),
+                PaymentStatus = "unpaid",
+                IsCancelled = false
+            };
+        }
 
-//            var result = await service.CancelSessionAsync(Guid.NewGuid(), Guid.NewGuid(), new CancelSessionDto());
+        // --------------------------------------------------------
+        // Tests
+        // --------------------------------------------------------
 
-//            Assert.Null(result);
-//        }
+        [Fact]
+        public async Task CancelSessionAsync_ReturnsNotFound_WhenSessionDoesNotExist()
+        {
+            using var context = CreateDbContext(nameof(CancelSessionAsync_ReturnsNotFound_WhenSessionDoesNotExist));
+            var service = CreateService(context);
 
-//        // -------------------------------------------------------------------
-//        // 2. Returns null when already cancelled
-//        // -------------------------------------------------------------------
-//        [Fact]
-//        public async Task CancelSessionAsync_ReturnsNull_WhenSessionAlreadyCancelled()
-//        {
-//            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsNull_WhenSessionAlreadyCancelled));
-//            var service = CreateService(db);
+            var result = await service.CancelSessionAsync(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                new CancelSessionDto()
+            );
 
-//            var s = new Session
-//            {
-//                Id = Guid.NewGuid(),
-//                UserId = Guid.NewGuid(),
-//                Started = DateTimeOffset.UtcNow.AddMinutes(-5),
-//                Stopped = DateTimeOffset.UtcNow,
-//                IsCancelled = true,
-//                ParkingLotId = 1,
-//                LicensePlate = "TESTPLATE"
-//            };
+            Assert.Null(result.dto);
+            Assert.Equal(404, result.status);
+            Assert.NotNull(result.error);
+        }
 
-//            db.Sessions.Add(s);
-//            await db.SaveChangesAsync();
+        [Fact]
+        public async Task CancelSessionAsync_ReturnsConflict_WhenSessionAlreadyCancelled()
+        {
+            using var context = CreateDbContext(nameof(CancelSessionAsync_ReturnsConflict_WhenSessionAlreadyCancelled));
+            var service = CreateService(context);
 
-//            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
+            var userId = Guid.NewGuid();
+            var session = CreateSession(userId);
+            session.IsCancelled = true;
 
-//            Assert.Null(result);
-//        }
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
 
-//        // -------------------------------------------------------------------
-//        // 3. Cancelling automatically sets Stopped when null
-//        // -------------------------------------------------------------------
-//        [Fact]
-//        public async Task CancelSessionAsync_SetsStoppedTimestamp_WhenStoppedIsNull()
-//        {
-//            using var db = CreateDb(nameof(CancelSessionAsync_SetsStoppedTimestamp_WhenStoppedIsNull));
-//            var service = CreateService(db);
+            var result = await service.CancelSessionAsync(
+                userId,
+                session.Id,
+                new CancelSessionDto()
+            );
 
-//            var before = DateTimeOffset.UtcNow.AddMinutes(-20);
+            Assert.Null(result.dto);
+            Assert.Equal(409, result.status);
+            Assert.NotNull(result.error);
+        }
 
-//            var s = new Session
-//            {
-//                Id = Guid.NewGuid(),
-//                UserId = Guid.NewGuid(),
-//                Started = before,
-//                Stopped = null,
-//                IsCancelled = false,
-//                ParkingLotId = 1,
-//                LicensePlate = "TEST"
-//            };
+        [Fact]
+        public async Task CancelSessionAsync_SetsIsCancelledAndCancelledAt_WhenSuccessful()
+        {
+            using var context = CreateDbContext(nameof(CancelSessionAsync_SetsIsCancelledAndCancelledAt_WhenSuccessful));
+            var service = CreateService(context);
 
-//            db.Sessions.Add(s);
-//            await db.SaveChangesAsync();
+            var userId = Guid.NewGuid();
+            var session = CreateSession(userId);
 
-//            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
 
-//            Assert.NotNull(result);
-//            Assert.NotNull(result!.Stopped);
-//            Assert.True(result!.Stopped >= s.Started);
-//        }
+            var result = await service.CancelSessionAsync(
+                userId,
+                session.Id,
+                new CancelSessionDto()
+            );
 
-//        // -------------------------------------------------------------------
-//        // 4. Cancel sets IsCancelled + CancelledAt
-//        // -------------------------------------------------------------------
-//        [Fact]
-//        public async Task CancelSessionAsync_MarksSessionCancelledAndSetsCancelledAt()
-//        {
-//            using var db = CreateDb(nameof(CancelSessionAsync_MarksSessionCancelledAndSetsCancelledAt));
-//            var service = CreateService(db);
+            Assert.NotNull(result.dto);
+            Assert.Null(result.error);
+            Assert.Null(result.status);
 
-//            var s = new Session
-//            {
-//                Id = Guid.NewGuid(),
-//                UserId = Guid.NewGuid(),
-//                Started = DateTimeOffset.UtcNow.AddMinutes(-5),
-//                ParkingLotId = 1,
-//                LicensePlate = "TEST"
-//            };
+            var updated = await context.Sessions.FindAsync(session.Id);
+            Assert.True(updated!.IsCancelled);
+            Assert.NotNull(updated.CancelledAt);
+        }
 
-//            db.Sessions.Add(s);
-//            await db.SaveChangesAsync();
+        [Fact]
+        public async Task CancelSessionAsync_PersistsChangesInDatabase()
+        {
+            using var context = CreateDbContext(nameof(CancelSessionAsync_PersistsChangesInDatabase));
+            var service = CreateService(context);
 
-//            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
+            var userId = Guid.NewGuid();
+            var session = CreateSession(userId);
 
-//            Assert.NotNull(result);
-//            Assert.True(result!.IsCancelled);
-//            Assert.NotNull(result!.CancelledAt);
-//        }
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
 
-//        // -------------------------------------------------------------------
-//        // 5. Cancel persists DB state
-//        // -------------------------------------------------------------------
-//        [Fact]
-//        public async Task CancelSessionAsync_SavesChangesToDatabase()
-//        {
-//            using var db = CreateDb(nameof(CancelSessionAsync_SavesChangesToDatabase));
-//            var service = CreateService(db);
+            await service.CancelSessionAsync(
+                userId,
+                session.Id,
+                new CancelSessionDto()
+            );
 
-//            var s = new Session
-//            {
-//                Id = Guid.NewGuid(),
-//                UserId = Guid.NewGuid(),
-//                Started = DateTimeOffset.UtcNow.AddMinutes(-10),
-//                ParkingLotId = 1,
-//                LicensePlate = "TEST"
-//            };
+            using var verifyContext = CreateDbContext(nameof(CancelSessionAsync_PersistsChangesInDatabase));
+            var persisted = await verifyContext.Sessions.FindAsync(session.Id);
 
-//            db.Sessions.Add(s);
-//            await db.SaveChangesAsync();
+            Assert.NotNull(persisted);
+            Assert.True(persisted!.IsCancelled);
+        }
 
-//            var result = await service.CancelSessionAsync(s.UserId, s.Id, new CancelSessionDto());
-//            Assert.NotNull(result);
+        [Fact]
+        public async Task CancelSessionAsync_ReturnsSessionReadDto_OnSuccess()
+        {
+            using var context = CreateDbContext(nameof(CancelSessionAsync_ReturnsSessionReadDto_OnSuccess));
+            var service = CreateService(context);
 
-//            var dbSession = await db.Sessions.FindAsync(s.Id);
+            var userId = Guid.NewGuid();
+            var session = CreateSession(userId);
 
-//            Assert.True(dbSession!.IsCancelled);
-//            Assert.NotNull(dbSession.CancelledAt);
-//        }
-//    }
-//}
+            context.Sessions.Add(session);
+            await context.SaveChangesAsync();
+
+            var result = await service.CancelSessionAsync(
+                userId,
+                session.Id,
+                new CancelSessionDto()
+            );
+
+            Assert.NotNull(result.dto);
+            Assert.Equal(session.Id, result.dto!.Id);
+            Assert.True(result.dto.IsCancelled);
+        }
+    }
+}

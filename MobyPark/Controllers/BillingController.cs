@@ -35,7 +35,7 @@ namespace MobyPark.Controllers
             return Ok(dto ?? new List<BillingReceiptDto>());
         }
 
-        [HttpGet]
+        [HttpGet("all")]
         [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<List<BillingReceiptDto>>> GetAll()
         {
@@ -85,5 +85,13 @@ namespace MobyPark.Controllers
 
             return Ok(dto ?? new List<BillingReceiptDto>());
         }
+
+        // Reroutes
+        [HttpGet("")]
+        public IActionResult RedirectToReceipts()
+        {
+            return RedirectToAction(nameof(GetMyReceipts));
+        }
+
     }
 }
