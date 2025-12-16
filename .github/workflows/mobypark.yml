@@ -58,9 +58,9 @@ jobs:
 
       - name: Start C# server
         run: |
-          nohup dotnet run --project ./MobyPark/MobyPark.csproj --urls "http://localhost:5280" > server.log 2>&1 &
+          nohup dotnet run --project ./MobyPark/MobyPark.csproj --urls "https://localhost:7197" > server.log 2>&1 &
           sleep 10
-          curl --fail http://localhost:5280/scalar
+          curl --fail https://localhost:7197/scalar
 
       - name: Run pytest integration tests
         run: |
