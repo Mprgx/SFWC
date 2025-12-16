@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251202194316_AddBilling")]
-    partial class AddBilling
+    [Migration("20251215001525_RebuildAfterMassiveOverhaul")]
+    partial class RebuildAfterMassiveOverhaul
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,7 +39,8 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("LicensePlate")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<int>("ParkingLotId")
                         .HasColumnType("int");
@@ -141,9 +142,6 @@ namespace MobyPark.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("ReservedSpots")
-                        .HasColumnType("int");
-
                     b.Property<double>("Tariff")
                         .HasColumnType("float");
 
@@ -155,7 +153,8 @@ namespace MobyPark.Migrations
             modelBuilder.Entity("MobyPark.Entities.Payment", b =>
                 {
                     b.Property<string>("Transaction")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
@@ -168,20 +167,21 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("Hash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("Initiator")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<int>("ParkingLotId")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("SessionId")
+                    b.Property<Guid?>("SessionId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("T_Data")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
@@ -206,7 +206,7 @@ namespace MobyPark.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<Guid>("CompanyId")
+                    b.Property<Guid?>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("EndTime")
@@ -217,12 +217,10 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("LicensePlate")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<int>("ParkingLotId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SpotsReserved")
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("StartTime")
@@ -271,8 +269,8 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("LicensePlate")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<int>("ParkingLotId")
                         .HasColumnType("int");
@@ -284,6 +282,9 @@ namespace MobyPark.Migrations
 
                     b.Property<DateTimeOffset?>("RefundDate")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("ReservationId")
+                        .HasColumnType("int");
 
                     b.Property<DateTimeOffset>("Started")
                         .HasColumnType("datetimeoffset");
@@ -300,6 +301,8 @@ namespace MobyPark.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ParkingLotId");
+
+                    b.HasIndex("ReservationId");
 
                     b.HasIndex("UserId");
 
@@ -394,8 +397,8 @@ namespace MobyPark.Migrations
 
                     b.Property<string>("LicensePlate")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<string>("Make")
                         .IsRequired()
@@ -461,9 +464,7 @@ namespace MobyPark.Migrations
 
                     b.HasOne("MobyPark.Entities.Session", "Session")
                         .WithMany()
-                        .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("SessionId");
 
                     b.HasOne("MobyPark.Entities.User", "User")
                         .WithMany("Payments")
@@ -483,8 +484,7 @@ namespace MobyPark.Migrations
                     b.HasOne("MobyPark.Entities.Company", "Company")
                         .WithMany("Reservations")
                         .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
                         .WithMany("Reservations")
@@ -521,6 +521,10 @@ namespace MobyPark.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MobyPark.Entities.Reservation", "Reservation")
+                        .WithMany()
+                        .HasForeignKey("ReservationId");
+
                     b.HasOne("MobyPark.Entities.User", "User")
                         .WithMany("ParkingSessions")
                         .HasForeignKey("UserId")
@@ -534,6 +538,8 @@ namespace MobyPark.Migrations
                         .IsRequired();
 
                     b.Navigation("ParkingLot");
+
+                    b.Navigation("Reservation");
 
                     b.Navigation("User");
 

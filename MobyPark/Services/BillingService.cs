@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 
 using MobyPark.Data;
+using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
 using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class BillingService(UserDbContext db) : IBillingService
+    public class BillingService(UserDbContext db, IEncryptionService encryption) : IBillingService
     {
         public async Task<(List<BillingReceiptDto>? dto, string? error, int? status)> GetReceiptsForUserAsync(string username)
         {
@@ -62,17 +63,20 @@ namespace MobyPark.Services
             return (dto, null, null);
         }
 
-        private static BillingReceiptDto ToDto(Billing billing) => new()
+        private BillingReceiptDto ToDto(Billing billing)
         {
-            Id = billing.Id,
-            LicensePlate = billing.LicensePlate,
-            ParkingLotId = billing.ParkingLotId,
-            ParkingLotName = billing.ParkingLot?.Name ?? string.Empty,
-            Started = billing.Started,
-            Stopped = billing.Stopped,
-            DurationMinutes = billing.DurationMinutes,
-            Cost = Math.Round(billing.Cost, 2),
-            PaymentStatus = billing.PaymentStatus
-        };
+            return new()
+            {
+                Id = billing.Id,
+                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, billing.LicensePlate),
+                ParkingLotId = billing.ParkingLotId,
+                ParkingLotName = billing.ParkingLot?.Name ?? string.Empty,
+                Started = billing.Started,
+                Stopped = billing.Stopped,
+                DurationMinutes = billing.DurationMinutes,
+                Cost = Math.Round(billing.Cost, 2),
+                PaymentStatus = billing.PaymentStatus
+            };
+        }
     }
 }

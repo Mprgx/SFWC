@@ -5,12 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
-using System.Text.Json;
-using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ParkingLotService(UserDbContext db) : IParkingLotService
+    public class ParkingLotService(UserDbContext db, IEncryptionService encryption) : IParkingLotService
     {
         private static ParkingLotReadDto ToDto(ParkingLot lot) => new()
         {
@@ -24,12 +22,26 @@ namespace MobyPark.Services
             Coordinates = JsonSerializer.Deserialize<Dictionary<string, double>>(lot.Coordinates) ?? new()
         };
 
-        private static SessionReadDto ToSessionDto(Session s) => new(
-            s.Id, s.UserId, s.VehicleId, s.ParkingLotId,
-            s.LicensePlate, s.Started, s.Stopped, s.DurationMinutes,
-            s.Cost, s.PaymentStatus, s.IsCancelled, s.CancelledAt,
-            s.IsRefunded, s.RefundDate
-        );
+        private SessionReadDto ToSessionDto(Session s)
+        {
+            return new SessionReadDto
+            {
+                Id = s.Id,
+                UserId = s.UserId,
+                VehicleId = s.VehicleId,
+                ParkingLotId = s.ParkingLotId,
+                LicensePlate = encryption.Decrypt(s.LicensePlate) ?? string.Empty,
+                Started = s.Started,
+                Stopped = s.Stopped,
+                DurationMinutes = s.DurationMinutes,
+                Cost = s.Cost,
+                PaymentStatus = s.PaymentStatus,
+                IsCancelled = s.IsCancelled,
+                CancelledAt = s.CancelledAt,
+                IsRefunded = s.IsRefunded,
+                RefundDate = s.RefundDate
+            };
+        }
 
         // POST
         public async Task<(ParkingLotReadDto?, string?, int?)> CreateAsync(ParkingLotRequestDto dto, bool isAdmin)

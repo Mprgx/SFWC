@@ -70,7 +70,7 @@ namespace MobyPark.Controllers
             return Ok(dto);
         }
 
-        [HttpGet("{username}")]
+        [HttpGet("user/{username}")]
         [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<List<BillingReceiptDto>>> GetForUser(string username)
         {

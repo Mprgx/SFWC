@@ -2,271 +2,197 @@ using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
 
+using MobyPark.Constants;
 using MobyPark.Data;
+using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
 using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class PaymentService(UserDbContext context) : IPaymentService
+    public class PaymentService(UserDbContext context, IEncryptionService encryption) : IPaymentService
     {
-        public async Task<PaymentResponseDto?> CompletePaymentAsync(
-            Guid userId,
-            string transactionId,
-            PaymentValidationDto request)
+        public async Task<(PaymentReadDto? dto, string? error, int? status)> CompletePaymentAsync(Guid userId, string transactionId, PaymentValidationDto request)
         {
-            if (request is null)
-                throw new ArgumentNullException(nameof(request));
+            if (userId == Guid.Empty)
+                return (null, "User ID is required.", 400);
 
-            // Basic request validation
-            if (request.T_Data.ValueKind == JsonValueKind.Undefined ||
-                string.IsNullOrWhiteSpace(request.Validation))
-            {
-                throw new UnauthorizedAccessException("Required field missing");
-            }
+            if (string.IsNullOrWhiteSpace(transactionId))
+                return (null, "Transaction ID is required.", 400);
+
+            if (request is null)
+                return (null, "Request body is required.", 400);
+
+            if (string.IsNullOrWhiteSpace(request.Validation))
+                return (null, "Validation field is missing.", 400);
+
+            if (request.T_Data.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+                return (null, "t_data field is missing.", 400);
 
             var payment = await context.Payments
-                .Include(p => p.User)
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
                 .FirstOrDefaultAsync(p => p.Transaction == transactionId);
 
-            if (payment is null)
-                throw new KeyNotFoundException("Payment not found");
+            if (payment is null || payment.UserId != userId)
+                return (null, "Payment not found.", 404);
 
-            if (payment.UserId != userId)
-                throw new UnauthorizedAccessException("You may only complete your own payments");
+            if (payment.Completed is not null)
+                return (null, "Payment is already completed.", 409);
 
-            var expectedHash = GeneratePaymentHash(payment.Transaction, payment.Amount);
-            if (!string.Equals(expectedHash, request.Validation, StringComparison.Ordinal))
-                throw new UnauthorizedAccessException("Validation failed");
+            if (string.IsNullOrWhiteSpace(payment.Hash) ||
+                !string.Equals(payment.Hash, request.Validation, StringComparison.Ordinal))
+            {
+                return (null, "Validation failed.", 401);
+            }
 
             payment.Completed = DateTimeOffset.UtcNow;
-            payment.Hash = expectedHash;
             payment.T_Data = request.T_Data.GetRawText();
 
-            // Update session payment status if there is a linked session
-            if (payment.SessionId != Guid.Empty)
+            if (payment.SessionId.HasValue)
             {
                 var session = payment.Session
-                              ?? await context.Sessions.FirstOrDefaultAsync(s => s.Id == payment.SessionId);
+                              ?? await context.Sessions.FirstOrDefaultAsync(s => s.Id == payment.SessionId.Value);
 
                 if (session is not null)
-                {
-                    session.PaymentStatus = "paid";
-                    // EF is tracking, no need for Update()
-                }
+                    session.PaymentStatus = PaymentStatuses.Paid;
             }
 
             await context.SaveChangesAsync();
 
-            // Ensure nav properties are loaded
-            await context.Entry(payment).Reference(p => p.User).LoadAsync();
-            await context.Entry(payment).Reference(p => p.Session).LoadAsync();
-            await context.Entry(payment).Reference(p => p.ParkingLot).LoadAsync();
-
-            return ToPaymentResponseDto(payment);
+            return (MapToReadDto(payment), null, null);
         }
 
-        private static string GeneratePaymentHash(string transaction, decimal amount)
+        public async Task<(PaymentReadDto? dto, string? error, int? status)> FulfillPaymentAsync(Guid userId, PaymentsDto paymentRequest)
         {
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var input = $"{transaction}:{amount}:{DateTimeOffset.UtcNow.Ticks}";
-            var bytes = System.Text.Encoding.UTF8.GetBytes(input);
-            var hash = sha.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
-        }
+            if (userId == Guid.Empty)
+                return (null, "User ID is required.", 400);
 
-        public async Task<List<PaymentResponseDto?>> GetPaymentsForAnyUserAsync(string username)
-        {
-            var user = await context.Users
-                .FirstOrDefaultAsync(u => u.Username == username);
+            if (paymentRequest is null)
+                return (null, "Request body is required.", 400);
 
-            if (user is null)
-                return new List<PaymentResponseDto?>();
+            if (string.IsNullOrWhiteSpace(paymentRequest.Transaction))
+                return (null, "Transaction number is required.", 400);
 
-            var payments = await context.Payments
-                .Include(p => p.User)
+            if (paymentRequest.Amount <= 0)
+                return (null, "Amount must be a positive number.", 400);
+
+            var payment = await context.Payments
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
-                .Where(p => p.Initiator == user.Username)
-                .ToListAsync();
+                .FirstOrDefaultAsync(p =>
+                    p.Transaction == paymentRequest.Transaction &&
+                    p.Completed == null &&
+                    p.UserId == userId);
 
-            return payments
-                .Select(p => (PaymentResponseDto?)ToPaymentResponseDto(p))
-                .ToList();
+            if (payment is null)
+                return (null, "Payment not found.", 404);
+
+            if (payment.Amount != paymentRequest.Amount)
+                return (null, "Amount mismatch.", 409);
+
+            payment.Completed = DateTimeOffset.UtcNow;
+
+            if (payment.SessionId.HasValue)
+            {
+                var session = payment.Session
+                              ?? await context.Sessions.FirstOrDefaultAsync(s => s.Id == payment.SessionId.Value);
+
+                if (session is not null)
+                    session.PaymentStatus = PaymentStatuses.Paid;
+            }
+
+            await context.SaveChangesAsync();
+
+            return (MapToReadDto(payment), null, null);
         }
 
-        public async Task<List<PaymentResponseDto?>> GetPaymentsForUserAsync(Guid userId)
+        public async Task<(List<PaymentReadDto>? dto, string? error, int? status)> GetPaymentsForUserAsync(Guid userId)
         {
-            var user = await context.Users
-                .FirstOrDefaultAsync(u => u.Id == userId);
-
-            if (user is null)
-                return new List<PaymentResponseDto?>();
+            if (userId == Guid.Empty)
+                return (null, "User ID is required.", 400);
 
             var payments = await context.Payments
-                .Include(p => p.User)
+                .AsNoTracking()
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
                 .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.Created_At)
                 .ToListAsync();
 
-            return payments
-                .Select(p => (PaymentResponseDto?)ToPaymentResponseDto(p))
-                .ToList();
+            return (payments.Select(MapToReadDto).ToList(), null, null);
         }
 
-        public async Task<bool> DeletePaymentByTransactionId(string transactionId)
+        public async Task<(List<PaymentReadDto>? dto, string? error, int? status)> GetPaymentsForAnyUserAsync(string username)
         {
-            var payment = await context.Payments.FindAsync(transactionId);
+            if (string.IsNullOrWhiteSpace(username))
+                return (null, "Username is required.", 400);
+
+            var user = await context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user is null)
+                return (null, "User not found.", 404);
+
+            var payments = await context.Payments
+                .AsNoTracking()
+                .Include(p => p.Session)
+                .Include(p => p.ParkingLot)
+                .Where(p => p.UserId == user.Id) 
+                .OrderByDescending(p => p.Created_At)
+                .ToListAsync();
+
+            return (payments.Select(MapToReadDto).ToList(), null, null);
+        }
+
+        public async Task<(bool dto, string? error, int? status)> DeletePaymentByTransactionId(string transactionId)
+        {
+            if (string.IsNullOrWhiteSpace(transactionId))
+                return (false, "Transaction ID is required.", 400);
+
+            var payment = await context.Payments.FirstOrDefaultAsync(p => p.Transaction == transactionId);
             if (payment is null)
-                return false;
+                return (false, "Payment not found.", 404);
 
             context.Payments.Remove(payment);
             await context.SaveChangesAsync();
-            return true;
+
+            return (true, null, null);
         }
 
-        public async Task<PaymentResponseDto> FulfillPaymentAsync(string userId, PaymentsDto paymentRequest)
+        private PaymentReadDto MapToReadDto(Payment p)
         {
-            var payment = await context.Payments
-            .FirstOrDefaultAsync(p => p.Transaction == paymentRequest.Transaction
-                                && p.Completed == null);
-            if (payment is null)
-                return null;
+            var status = p.Completed is null ? PaymentStatuses.Pending : PaymentStatuses.Paid;
 
-            payment.Completed = DateTime.UtcNow;
-            await context.SaveChangesAsync();
-            return new PaymentResponseDto
+            PaymentSessionSummaryDto? sessionDto = null;
+            if (p.Session is not null)
             {
-                Transaction = payment.Transaction,
-                Amount = payment.Amount,
-                Initiator = payment.Initiator,
+                sessionDto = new PaymentSessionSummaryDto
+                {
+                    Id = p.Session.Id,
+                    LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, p.Session.LicensePlate),
+                    Started = p.Session.Started,
+                    Stopped = p.Session.Stopped,
+                    DurationMinutes = p.Session.DurationMinutes,
+                    Cost = p.Session.Cost,
+                    PaymentStatus = p.Session.PaymentStatus
+                };
+            }
 
-                UserId = payment.UserId,
-                User = payment.User == null
-                    ? null
-                    : new UserReadDto
-                    {
-                        Id = payment.User.Id,
-                        Username = payment.User.Username,
-                        Name = payment.User.Name,
-                        Email = payment.User.Email,
-                        PhoneNumber = payment.User.PhoneNumber,
-                        BirthYear = payment.User.BirthYear,
-                        Role = payment.User.Role,
-                        CreatedAt = payment.User.CreatedAt
-                    },
-
-                CreatedAt = payment.Created_At,
-                Completed = payment.Completed,
-
-                Hash = payment.Hash,
-                T_Data = payment.T_Data,
-
-                SessionId = payment.SessionId,
-                Session = payment.Session == null
-                    ? null
-                    : new SessionReadDto(
-                        payment.Session.Id,
-                        payment.Session.UserId,
-                        payment.Session.VehicleId,
-                        payment.Session.ParkingLotId,
-                        payment.Session.LicensePlate,
-                        payment.Session.Started,
-                        payment.Session.Stopped,
-                        payment.Session.DurationMinutes,
-                        payment.Session.Cost,
-                        payment.Session.PaymentStatus,
-                        payment.Session.IsCancelled,
-                        payment.Session.CancelledAt,
-                        payment.Session.IsRefunded,
-                        payment.Session.RefundDate
-                    ),
-
-                ParkingLotId = payment.ParkingLotId,
-                ParkingLot = payment.ParkingLot == null
-                    ? null
-                    : new ParkingLotSummaryDto
-                    {
-                        Id = payment.ParkingLot.Id,
-                        Name = payment.ParkingLot.Name,
-                        Location = payment.ParkingLot.Location,
-                        Address = payment.ParkingLot.Address,
-                        Capacity = payment.ParkingLot.Capacity,
-                        Tariff = payment.ParkingLot.Tariff,
-                        DayTariff = payment.ParkingLot.DayTariff
-                    }
-            };
-
-
-
-
-        }
-
-        private static PaymentResponseDto ToPaymentResponseDto(Payment p)
-        {
-            return new PaymentResponseDto
+            return new PaymentReadDto
             {
                 Transaction = p.Transaction,
                 Amount = p.Amount,
-                Initiator = p.Initiator,
-
-                UserId = p.UserId,
-                User = p.User == null
-                    ? null
-                    : new UserReadDto
-                    {
-                        Id = p.User.Id,
-                        Username = p.User.Username,
-                        Name = p.User.Name,
-                        Email = p.User.Email,
-                        PhoneNumber = p.User.PhoneNumber,
-                        BirthYear = p.User.BirthYear,
-                        Role = p.User.Role,
-                        CreatedAt = p.User.CreatedAt
-                    },
-
-                CreatedAt = p.Created_At,
+                CreatedAt = p.Created_At, 
                 Completed = p.Completed,
+                Status = status,
 
-                Hash = p.Hash,
-                T_Data = p.T_Data,
-
-                SessionId = p.SessionId,
-                Session = p.Session == null
-                    ? null
-                    : new SessionReadDto(
-                        p.Session.Id,
-                        p.Session.UserId,
-                        p.Session.VehicleId,
-                        p.Session.ParkingLotId,
-                        p.Session.LicensePlate,
-                        p.Session.Started,
-                        p.Session.Stopped,
-                        p.Session.DurationMinutes,
-                        p.Session.Cost,
-                        p.Session.PaymentStatus,
-                        p.Session.IsCancelled,
-                        p.Session.CancelledAt,
-                        p.Session.IsRefunded,
-                        p.Session.RefundDate
-                    ),
-
+                SessionId = p.SessionId ?? Guid.Empty,
                 ParkingLotId = p.ParkingLotId,
-                ParkingLot = p.ParkingLot == null
-                    ? null
-                    : new ParkingLotSummaryDto
-                    {
-                        Id = p.ParkingLot.Id,
-                        Name = p.ParkingLot.Name,
-                        Location = p.ParkingLot.Location,
-                        Address = p.ParkingLot.Address,
-                        Capacity = p.ParkingLot.Capacity,
-                        Tariff = p.ParkingLot.Tariff,
-                        DayTariff = p.ParkingLot.DayTariff
-                    }
+                ParkingLotName = p.ParkingLot?.Name ?? string.Empty,
+
+                Session = sessionDto
             };
         }
     }

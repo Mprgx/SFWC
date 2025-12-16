@@ -17,7 +17,10 @@ namespace MobyPark.Entities
         public int VehicleId { get; set; }
         public Vehicle? Vehicle { get; set; }
 
-        [Required, MaxLength(20)]
+        public int? ReservationId { get; set; }
+        public Reservation? Reservation { get; set; }
+
+        [Required, MaxLength(128)]
         public string LicensePlate { get; set; } = string.Empty;
 
         public DateTimeOffset Started { get; set; }

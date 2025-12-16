@@ -2,7 +2,9 @@ using System.Text.RegularExpressions;
 
 using Microsoft.EntityFrameworkCore;
 
+using MobyPark.Constants;
 using MobyPark.Data;
+using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
 using MobyPark.Models;
 
@@ -15,18 +17,24 @@ namespace MobyPark.Services
         private const string PlatePattern =
             @"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$";
 
-        public async Task<Session?> StartSessionAsync(Guid userId, SessionStartDto dto)
+        public async Task<(SessionReadDto? dto, string? error, int? status)> StartSessionAsync(Guid userId, SessionStartDto dto)
         {
             var vehicle = await db.Vehicles
                 .AsNoTracking()
                 .FirstOrDefaultAsync(v => v.Id == dto.VehicleId && v.UserId == userId);
 
-            if (vehicle is null) return null;
+            if (vehicle is null)
+            {
+                return (null, "Vehicle not found for this user.", 404);
+            }
 
             var existsActive = await db.Sessions
-                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null);
+                .AnyAsync(s => s.VehicleId == vehicle.Id && s.Stopped == null && !s.IsCancelled);
 
-            if (existsActive) return null;
+            if (existsActive)
+            {
+                return (null, "There is already an active session for this vehicle.", 409);
+            }
 
             var session = new Session
             {
@@ -38,62 +46,62 @@ namespace MobyPark.Services
                 Started = DateTimeOffset.UtcNow,
                 DurationMinutes = 0,
                 Cost = 0,
-                PaymentStatus = "unpaid"
+                PaymentStatus = PaymentStatuses.Unpaid
             };
 
             await db.Sessions.AddAsync(session);
             await db.SaveChangesAsync();
 
-            return session;
+            var readDto = ToSessionDto(session);
+            return (readDto, null, null);
         }
 
-        public async Task<Session?> GetSessionByIdAsync(Guid userId, Guid sessionId)
+        public async Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByPlateAsync(Guid userId, SessionStopDto dto)
         {
-            return await db.Sessions
-                .Where(s => s.Id == sessionId && s.UserId == userId)
-                .FirstOrDefaultAsync();
-        }
+            if (userId == Guid.Empty)
+                return (null, "User ID is required.", 400);
 
-        public async Task<Session?> StopSessionByPlateAsync(string username, Guid userId, SessionStopDto dto)
-        {
-            var plate = dto.LicensePlate?.Trim().ToUpperInvariant();
-            if (string.IsNullOrWhiteSpace(plate)) return null;
-            if (!Regex.IsMatch(plate, PlatePattern)) return null;
+            if (dto is null)
+                return (null, "Request body is required.", 400);
+
+            var plate = LicensePlateProtector.Normalize(dto.LicensePlate);
+
+            if (string.IsNullOrWhiteSpace(plate))
+                return (null, "License plate is required.", 400);
+
+            if (!Regex.IsMatch(plate, PlatePattern))
+                return (null, "License plate format is invalid.", 400);
 
             var sessions = await db.Sessions
-                .Where(s => s.Stopped == null)
+                .Include(s => s.User)
+                .Where(s => s.UserId == userId && s.Stopped == null && !s.IsCancelled)
                 .ToListAsync();
 
             var session = sessions.FirstOrDefault(s =>
             {
-                if (string.IsNullOrEmpty(s.LicensePlate)) return false;
+                if (string.IsNullOrEmpty(s.LicensePlate))
+                    return false;
 
-                var plain = s.LicensePlate; // encryption removed for now
-                if (string.IsNullOrWhiteSpace(plain)) return false;
-
-                return string.Equals(
-                    plain.Trim().ToUpperInvariant(),
-                    plate,
-                    StringComparison.Ordinal
-                );
+                var stored = LicensePlateProtector.DecryptNormalized(encryption, s.LicensePlate);
+                return string.Equals(stored, plate, StringComparison.Ordinal);
             });
 
-            if (session is null) return null;
-            if (session.UserId != userId) return null;
+            if (session is null)
+                return (null, "Active session for this license plate was not found.", 404);
 
-            // Stop session
+            var username = session.User?.Username ?? userId.ToString();
+
+           
             session.Stopped = DateTimeOffset.UtcNow;
-
-            session.DurationMinutes = (int)Math.Ceiling(
-                (session.Stopped.Value - session.Started).TotalMinutes
-            );
+            session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
 
             const decimal Rate = 2.00m;
             var hours = Math.Ceiling(session.DurationMinutes / 60m);
             session.Cost = hours * Rate;
-            session.PaymentStatus = "unpaid";
 
-            // ----- CREATE BILLING SNAPSHOT -----
+            session.PaymentStatus = PaymentStatuses.Unpaid;
+
+          
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
@@ -104,10 +112,9 @@ namespace MobyPark.Services
                 Username = username,
                 DurationMinutes = session.DurationMinutes,
                 Cost = session.Cost,
-                PaymentStatus = "unpaid"
+                PaymentStatus = PaymentStatuses.Unpaid
             };
 
-            // ----- CREATE PAYMENT ENTRY -----
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
@@ -118,148 +125,176 @@ namespace MobyPark.Services
                 SessionId = session.Id,
                 Completed = null,
                 Hash = GeneratePaymentHash(),
-                T_Data = ""
+                T_Data = null
             };
 
-            // Save everything
             db.Sessions.Update(session);
             await db.Billings.AddAsync(billing);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
-            return session;
+            return (ToStopSessionResponse(session, payment), null, null);
         }
 
-
-        public async Task<Session?> StopSessionByIdAsync(Guid userId, Guid sessionId)
+        public async Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId)
         {
-            var s = await db.Sessions.FindAsync(sessionId);
-            if (s is null) return null;
-            if (s.Stopped is not null) return null;
-            if (s.IsCancelled) return null;
+            if (sessionId == Guid.Empty)
+                return (null, "Session ID is required.", 400);
 
-            // Stop the session
-            s.Stopped = DateTimeOffset.UtcNow;
-            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
-            s.Cost = Math.Round((decimal)s.DurationMinutes * 0.05m, 2);
+            var session = await db.Sessions
+                .Include(x => x.User)
+                .FirstOrDefaultAsync(x => x.Id == sessionId);
 
-            // Session is not paid yet
-            s.PaymentStatus = "awaiting_payment";
+            if (session is null)
+                return (null, "Session not found.", 404);
 
-            // Create a billing snapshot
+            if (session.Stopped is not null)
+                return (null, "Session is already stopped.", 409);
+
+            if (session.IsCancelled)
+                return (null, "Cancelled sessions cannot be stopped.", 409);
+
+            session.Stopped = DateTimeOffset.UtcNow;
+            session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
+
+            const decimal Rate = 2.00m;
+            var hours = Math.Ceiling(session.DurationMinutes / 60m);
+            session.Cost = hours * Rate;
+
+            session.PaymentStatus = PaymentStatuses.AwaitingPayment;
+
+            var username = session.User?.Username ?? session.UserId.ToString();
+
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
-                ParkingLotId = s.ParkingLotId,
-                LicensePlate = s.LicensePlate,
-                Started = s.Started,
-                Stopped = s.Stopped!.Value,
-                Username = s.User.Username,
-                DurationMinutes = s.DurationMinutes,
-                Cost = s.Cost,
-                PaymentStatus = "awaiting_payment"
+                ParkingLotId = session.ParkingLotId,
+                LicensePlate = session.LicensePlate,
+                Started = session.Started,
+                Stopped = session.Stopped.Value,
+                Username = username,
+                DurationMinutes = session.DurationMinutes,
+                Cost = session.Cost,
+                PaymentStatus = PaymentStatuses.AwaitingPayment
             };
 
-            db.Billings.Add(billing);
+      
+            var payment = new Payment
+            {
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                Initiator = username,
+                UserId = session.UserId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
+            };
 
+            db.Sessions.Update(session);
+            await db.Billings.AddAsync(billing);
+            await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
-            return s;
+
+            return (ToStopSessionResponse(session, payment), null, null);
         }
 
-
-        public async Task<Session?> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto)
+        public async Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(Guid userId, Guid sessionId)
         {
-            var s = await db.Sessions.FindAsync(sessionId);
-            if (s is null) return null;
+            if (sessionId == Guid.Empty)
+            {
+                return (null, "Session ID is required.", 400);
+            }
 
-            if (s.IsCancelled)
-                return null;
+            var session = await db.Sessions
+                .Include(s => s.Vehicle)
+                .Include(s => s.ParkingLot)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
 
-            if (s.Stopped is null)
-                s.Stopped = DateTimeOffset.UtcNow;
+            if (session is null)
+            {
+                return (null, "Session not found.", 404);
+            }
 
-            s.IsCancelled = true;
-            s.CancelledAt = DateTimeOffset.UtcNow;
-
-            await db.SaveChangesAsync();
-            return s;
+            var dto = ToSessionDto(session);
+            return (dto, null, null);
         }
 
-        //DELETE /sessions
-        public async Task<bool> DeleteSessionAsync(int parkingLotId, Guid sessionId)
+        public async Task<(SessionReadDto? dto, string? error, int? status)> CancelSessionAsync(Guid userId, Guid sessionId, CancelSessionDto dto)
         {
-            // Check of parking lot bestaat
+            if (sessionId == Guid.Empty)
+            {
+                return (null, "Session ID is required.", 400);
+            }
+
+            var session = await db.Sessions.FindAsync(sessionId);
+
+            if (session is null)
+            {
+                return (null, "Session not found.", 404);
+            }
+
+            if (session.IsCancelled)
+            {
+                return (null, "Session is already cancelled.", 409);
+            }
+
+            if (session.Stopped is null)
+            {
+                session.Stopped = DateTimeOffset.UtcNow;
+            }
+
+            session.IsCancelled = true;
+            session.CancelledAt = DateTimeOffset.UtcNow;
+
+            await db.SaveChangesAsync();
+
+            var readDto = ToSessionDto(session);
+            return (readDto, null, null);
+        }
+
+        public async Task<(bool dto, string? error, int? status)> DeleteSessionAsync(int parkingLotId, Guid sessionId)
+        {
+            if (parkingLotId <= 0)
+            {
+                return (false, "Parking lot ID must be a positive integer.", 400);
+            }
+
+            if (sessionId == Guid.Empty)
+            {
+                return (false, "Session ID is required.", 400);
+            }
+
             var parkingLotExists = await db.ParkingLots
                 .AnyAsync(p => p.Id == parkingLotId);
 
             if (!parkingLotExists)
-                return false;
+            {
+                return (false, "Parking lot not found.", 404);
+            }
 
-            // Zoek de session
             var session = await db.Sessions
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.ParkingLotId == parkingLotId);
 
             if (session is null)
-                return false;
+            {
+                return (false, "Session not found for this parking lot.", 404);
+            }
 
             db.Sessions.Remove(session);
             await db.SaveChangesAsync();
 
-            return true;
+            return (true, null, null);
         }
 
-
-        public async Task<RefundResponseDto?> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
+        public async Task<(List<SessionReadDto>? dto, string? error, int? status)> GetAllForUserAsync(Guid userId, bool onlyActive)
         {
-            var s = await db.Sessions.FindAsync(sessionId);
-            if (s is null) return null;
-
-            if (!s.IsCancelled) return null;
-            if (s.Stopped is null) return null;
-            if (s.IsRefunded) return null;
-
-            if (!RefundAttempts.ContainsKey(userId))
-                RefundAttempts[userId] = 0;
-
-            if (RefundAttempts[userId] >= 3)
-                return null;
-
-            RefundAttempts[userId]++;
-
-            const decimal Rate = 0.05m;
-            s.DurationMinutes = (int)(s.Stopped.Value - s.Started).TotalMinutes;
-            s.Cost = Math.Max(Math.Round(s.DurationMinutes * Rate, 2), 0.50m);
-
-            decimal pct =
-                s.DurationMinutes <= 10 ? 1.0m :
-                s.DurationMinutes <= 30 ? 0.5m :
-                0.0m;
-
-            var refundAmount = Math.Round(s.Cost * pct, 2);
-            if (refundAmount <= 0) return null;
-
-            if (string.IsNullOrWhiteSpace(dto?.IBAN)) return null;
-
-            s.IsRefunded = true;
-            s.RefundDate = DateTimeOffset.UtcNow;
-            s.PaymentStatus = "refunded";
-
-            await db.SaveChangesAsync();
-
-            return new RefundResponseDto
+            if (userId == Guid.Empty)
             {
-                SessionId = s.Id,
-                Refunded = refundAmount,
-                Percentage = pct * 100,
-                DurationMinutes = s.DurationMinutes,
-                Cost = s.Cost,
-                RefundDate = s.RefundDate!.Value
-            };
-        }
+                return (null, "User ID is required.", 400);
+            }
 
-
-        public async Task<List<Session>> GetAllForUserAsync(Guid userId, bool onlyActive)
-        {
             var query = db.Sessions
                 .Include(s => s.Vehicle)
                 .Include(s => s.ParkingLot)
@@ -270,9 +305,94 @@ namespace MobyPark.Services
                 query = query.Where(s => s.Stopped == null && !s.IsCancelled);
             }
 
-            return await query
+            var sessions = await query
                 .OrderByDescending(s => s.Started)
                 .ToListAsync();
+
+            var dtos = sessions
+                .Select(ToSessionDto)
+                .ToList();
+
+            return (dtos, null, null);
+        }
+
+        public async Task<(RefundResponseDto? dto, string? error, int? status)> RequestRefundAsync(Guid userId, Guid sessionId, RefundRequestDto? dto)
+        {
+            if (sessionId == Guid.Empty)
+            {
+                return (null, "Session ID is required.", 400);
+            }
+
+            var session = await db.Sessions.FindAsync(sessionId);
+            if (session is null)
+            {
+                return (null, "Session not found.", 404);
+            }
+
+            if (!session.IsCancelled)
+            {
+                return (null, "Only cancelled sessions can be refunded.", 409);
+            }
+
+            if (session.Stopped is null)
+            {
+                return (null, "Session must be stopped before refund.", 409);
+            }
+
+            if (session.IsRefunded)
+            {
+                return (null, "Session has already been refunded.", 409);
+            }
+
+            var attemptKey = session.UserId;
+
+            if (!RefundAttempts.ContainsKey(attemptKey))
+                RefundAttempts[attemptKey] = 0;
+
+            if (RefundAttempts[attemptKey] >= 3)
+            {
+                return (null, "Maximum number of refund attempts reached.", 429);
+            }
+
+            RefundAttempts[attemptKey]++;
+
+            const decimal Rate = 0.05m;
+            session.DurationMinutes = (int)(session.Stopped.Value - session.Started).TotalMinutes;
+            session.Cost = Math.Max(Math.Round(session.DurationMinutes * Rate, 2), 0.50m);
+
+            decimal pct =
+                session.DurationMinutes <= 10 ? 1.0m :
+                session.DurationMinutes <= 30 ? 0.5m :
+                0.0m;
+
+            var refundAmount = Math.Round(session.Cost * pct, 2);
+            if (refundAmount <= 0)
+            {
+                return (null, "No refundable amount for this session.", 400);
+            }
+
+            if (string.IsNullOrWhiteSpace(dto?.IBAN))
+            {
+                return (null, "IBAN is required.", 400);
+            }
+
+            session.IsRefunded = true;
+            session.RefundDate = DateTimeOffset.UtcNow;
+            session.PaymentStatus = PaymentStatuses.Refunded;
+
+            await db.SaveChangesAsync();
+
+            var response = new RefundResponseDto
+            {
+                SessionId = session.Id,
+                Refunded = refundAmount,
+                Percentage = pct * 100,
+                DurationMinutes = session.DurationMinutes,
+                Cost = session.Cost,
+                RefundDate = session.RefundDate!.Value
+            };
+
+            return (response, null, null);
         }
 
         private static string GeneratePaymentHash()
@@ -284,5 +404,37 @@ namespace MobyPark.Services
         {
             return Random.Shared.NextInt64(100000000, 999999999).ToString("D12");
         }
+
+        private StopSessionResponseDto ToStopSessionResponse(Session session, Payment payment)
+        {
+            return new StopSessionResponseDto
+            {
+                Session = ToSessionDto(session),
+                Payment = new PaymentInitiationDto
+                {
+                    Transaction = payment.Transaction,
+                    Amount = payment.Amount,                 
+                    Validation = payment.Hash
+                }
+            };
+        }
+
+        private SessionReadDto ToSessionDto(Session s) => new SessionReadDto
+        {
+            Id = s.Id,
+            UserId = s.UserId,
+            VehicleId = s.VehicleId,
+            ParkingLotId = s.ParkingLotId,
+            LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, s.LicensePlate),
+            Started = s.Started,
+            Stopped = s.Stopped,
+            DurationMinutes = s.DurationMinutes,
+            Cost = s.Cost,
+            PaymentStatus = s.PaymentStatus,
+            IsCancelled = s.IsCancelled,
+            CancelledAt = s.CancelledAt,
+            IsRefunded = s.IsRefunded,
+            RefundDate = s.RefundDate
+        };
     }
 }

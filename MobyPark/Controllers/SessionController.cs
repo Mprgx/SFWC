@@ -12,143 +12,168 @@ namespace MobyPark.Controllers
 {
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
-    public class SessionController(ISessionService service, IEncryptionService encryption) : ControllerBase
+    [Route("parkinglots")]
+    public class SessionController(ISessionService service) : ControllerBase
     {
-
-        private SessionReadDto ToDto(Session s)
-        {
-            // var platePlain = string.IsNullOrEmpty(s.LicensePlate); // HERE FOR THE ENCRYPTION
-
-            return new SessionReadDto(
-                s.Id,
-                s.UserId,
-                s.VehicleId,
-                s.ParkingLotId,
-                s.LicensePlate,
-                s.Started,
-                s.Stopped,
-                s.DurationMinutes,
-                s.Cost,
-                s.PaymentStatus,
-                s.IsCancelled,
-                s.CancelledAt,
-                s.IsRefunded,
-                s.RefundDate
-            );
-        }
-
-        [HttpPost("/start-session")]
-        public async Task<IActionResult> StartSession(SessionStartDto dto)
+        [HttpPost("start-session")]
+        public async Task<ActionResult<SessionReadDto>> StartSession(SessionStartDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await service.StartSessionAsync(userId, dto);
+            var (session, error, status) = await service.StartSessionAsync(userId, dto);
 
-            if (result is null)
-                return BadRequest("Vehicle not found or session already active.");
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+            if (status == 400) return BadRequest(error);
 
-            return Ok(ToDto(result));
-        }
-
-        [HttpPost("/stop-session")]
-        public async Task<IActionResult> StopSessionByPlate(SessionStopDto dto)
-        {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var result = await service.StopSessionByPlateAsync(User.Identity.Name, userId, dto);
-
-            if (result is null)
-                return BadRequest("Could not stop session. Check licensePlate.");
-
-            return Ok(ToDto(result));
-        }
-
-        [Authorize(Roles = Roles.Admin)]
-        [HttpPut("/stop-session/{id:guid}")]
-        public async Task<IActionResult> StopSession(Guid id)
-        {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var result = await service.StopSessionByIdAsync(userId, id);
-
-            if (result is null)
-                return BadRequest("Could not stop this session.");
-
-            return Ok(ToDto(result));
-        }
-
-        [Authorize(Roles = Roles.Admin)]
-        [HttpGet("/get-session-by-id")]
-        public async Task<IActionResult> GetSession(Guid id)
-        {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
-
-            var session = await service.GetSessionByIdAsync(userId, id);
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
 
             if (session is null)
-                return NotFound("Parking session not found.");
+                return StatusCode(500, "Unexpected null session.");
 
-            return Ok(ToDto(session));
+            return Ok(session);
         }
 
-        [Authorize(Roles = Roles.Admin)]
-        [HttpPut("/cancel-session/{id:guid}")]
-        public async Task<IActionResult> CancelSession(Guid id, CancelSessionDto dto)
+        [HttpPost("stop-session")]
+        public async Task<ActionResult<StopSessionResponseDto>> StopSessionByPlate(SessionStopDto dto)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await service.CancelSessionAsync(userId, id, dto);
+            var (result, error, status) = await service.StopSessionByPlateAsync(userId, dto);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
 
             if (result is null)
-                return BadRequest("Could not cancel session.");
+                return StatusCode(500, "Unexpected null stop-session result.");
 
-            return Ok(ToDto(result));
+            return Ok(result);
         }
 
-        [Authorize(Roles = Roles.Admin)]
-        [HttpPost("/refund-session/{id:guid}")]
-        public async Task<IActionResult> RefundSession(Guid id, RefundRequestDto dto)
+        [HttpGet("sessions")]
+        public async Task<ActionResult<List<SessionReadDto>>> GetMySessions([FromQuery] bool onlyActive = false)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var result = await service.RequestRefundAsync(userId, id, dto);
+            var (sessions, error, status) = await service.GetAllForUserAsync(userId, onlyActive);
+
+            if (status == 400) return BadRequest(error);
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            return Ok(sessions ?? new List<SessionReadDto>());
+        }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpPut("stop-session/{id:guid}")]
+        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var (result, error, status) = await service.StopSessionByIdAsync(userId, id);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
 
             if (result is null)
-                return BadRequest("Refund not applicable.");
+                return StatusCode(500, "Unexpected null stop-session result.");
 
             return Ok(result);
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpDelete("/parking-lots/{lid:guid}/sessions/{sid:guid}")]
-        public async Task<IActionResult> DeleteSession(int lid, Guid sid)
+        [HttpGet("get-session-by-id")]
+        public async Task<ActionResult<SessionReadDto>> GetSession(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
 
-            var deleted = await service.DeleteSessionAsync(lid, sid);
+            var (session, error, status) = await service.GetSessionByIdAsync(userId, id);
 
-            if (!deleted)
-                return NotFound("Parking lot or session not found.");
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
 
-            return Ok("Session deleted.");
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (session is null)
+                return StatusCode(500, "Unexpected null session.");
+
+            return Ok(session);
         }
 
-        //// GET /my-sessions?onlyActive=true|false
-        //[HttpGet("/my-sessions")]
-        //public async Task<IActionResult> GetMySessions([FromQuery] bool onlyActive = false)
-        //{
-        //    var sessions = await service.GetAllForUserAsync(userId, onlyActive);
-        //    var dtos = sessions.Select(ToDto).ToList();
+        [Authorize(Roles = Roles.Admin)]
+        [HttpPut("cancel-session/{id:guid}")]
+        public async Task<ActionResult<SessionReadDto>> CancelSession(Guid id, CancelSessionDto dto)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
 
-        //    return Ok(dtos);
-        //}
+            var (session, error, status) = await service.CancelSessionAsync(userId, id, dto);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error); 
+            if (status == 409) return Conflict(error);
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (session is null)
+                return StatusCode(500, "Unexpected null session.");
+
+            return Ok(session);
+        }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpDelete("parking-lots/{parkingLotId:int}/sessions/{sessionId:guid}")]
+        public async Task<IActionResult> DeleteSession(int parkingLotId, Guid sessionId)
+        {
+            var (deleted, error, status) = await service.DeleteSessionAsync(parkingLotId, sessionId);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (!deleted)
+                return StatusCode(500, "Failed to delete session.");
+
+            return NoContent();
+        }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpPost("refund-session/{id:guid}")]
+        public async Task<ActionResult<RefundResponseDto>> RefundSession(Guid id, RefundRequestDto dto)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Unauthorized();
+
+            var (refund, error, status) = await service.RequestRefundAsync(userId, id, dto);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 409) return Conflict(error);
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (refund is null)
+                return StatusCode(500, "Unexpected null refund response.");
+
+            return Ok(refund);
+        }
     }
 }
