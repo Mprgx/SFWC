@@ -15,17 +15,21 @@ def generate_license_plate():
     return f"{chars}-{nums}-{chars2}"
 
 
-def create_setup_data(base_url, session_token):
+def create_setup_data(base_url, admin_token, user_token=None):
     """
     Maakt een ParkingLot en een Vehicle aan via de API en returnt de ID's.
-    LET OP: Voor het aanmaken van een ParkingLot is een ADMIN token nodig.
-    We nemen hier aan dat 'session_token' voldoende rechten heeft, 
-    of je moet hier een apart admin-token gebruiken.
+    admin_token: Voor het aanmaken van een ParkingLot (vereist Admin)
+    user_token: Optioneel, voor het aanmaken van Vehicle en Sessions
     """
-    headers = {"Authorization": session_token,
-               "Content-Type": "application/json"}
+    admin_headers = {"Authorization": admin_token,
+                     "Content-Type": "application/json"}
 
-    # 1. Maak unieke ParkingLot aan
+    # Use user_token if provided, otherwise use admin_token
+    working_token = user_token or admin_token
+    working_headers = {"Authorization": working_token,
+                       "Content-Type": "application/json"}
+
+    # 1. Maak unieke ParkingLot aan (ADMIN)
     # Payload gebaseerd op ParkingLotRequestDto
     lot_name = f"TestLot_{uuid.uuid4().hex[:8]}"
     lot_payload = {
@@ -40,7 +44,7 @@ def create_setup_data(base_url, session_token):
 
     # POST /parkinglots (Vereist Admin rol in jouw C# controller)
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=headers, verify=False)
+        f"{base_url}parkinglots", json=lot_payload, headers=admin_headers, verify=False)
 
     if lot_resp.status_code == 403:
         pytest.fail(
@@ -48,18 +52,18 @@ def create_setup_data(base_url, session_token):
     lot_resp.raise_for_status()
     parking_lot_id = lot_resp.json()["id"]
 
-    # 2. Maak uniek Vehicle aan
+    # 2. Maak uniek Vehicle aan (USER)
     license_plate = generate_license_plate()
     vehicle_payload = {
         "licensePlate": license_plate,
-        "vehicleType": "PassengerCar",  # Pas aan naar jouw enum/string values
+        "vehicleType": "PassengerCar",
         "brand": "TestBrand",
         "model": "TestModel"
     }
 
     # POST /vehicle (Controller route is [HttpPost("vehicle")])
     veh_resp = requests.post(
-        f"{base_url}vehicle", json=vehicle_payload, headers=headers, verify=False)
+        f"{base_url}vehicle", json=vehicle_payload, headers=working_headers, verify=False)
     veh_resp.raise_for_status()
     vehicle_data = veh_resp.json()
 
@@ -81,7 +85,8 @@ def test_complete_payment_success_via_session_flow(user_session, admin_session):
 
     # STAP 0: Setup Resources (ParkingLot & Vehicle)
     # Dit zorgt dat de test altijd werkt, ongeacht de staat van de database.
-    test_data = create_setup_data(base_url, admin_session["session_token"])
+    test_data = create_setup_data(
+        base_url, admin_session["session_token"], user_session["session_token"])
 
     parking_lot_id = test_data["parkingLotId"]
     vehicle_id = test_data["vehicleId"]
@@ -113,18 +118,20 @@ def test_complete_payment_success_via_session_flow(user_session, admin_session):
 
     # Check of de structuur klopt (debugging)
     assert "payment" in stop_body, "Response mist 'payment' object"
-    transaction_id = stop_body["payment"]["transaction"]
+    payment_obj = stop_body["payment"]
+    transaction_id = payment_obj["transaction"]
 
-    # Hier simuleren we de hash validatie.
-    # In een echte integratietest zou je hier de werkelijke logica moeten nabootsen
-    # of een backdoor/mock gebruiken als je de hash niet client-side kunt berekenen.
-    CORRECT_VALIDATION_HASH = "mocked-hash-uit-database"
+    # Get the hash from the payment response
+    validation_hash = payment_obj.get("validation", None)
+    if not validation_hash:
+        pytest.fail(
+            f"Payment object missing 'validation' field. Payment: {payment_obj}")
 
     # STAP 3: Complete de Betaling
     complete_url = base_url + f"payments/{transaction_id}"
 
     complete_payload = {
-        "validation": CORRECT_VALIDATION_HASH,
+        "validation": validation_hash,
         "t_data": {
             "processorId": f"test_proc_{uuid.uuid4()}",  # Unieke processor ID
             "status": "success"
@@ -135,7 +142,7 @@ def test_complete_payment_success_via_session_flow(user_session, admin_session):
         complete_url, json=complete_payload, headers=headers, verify=False)
 
     assert complete_resp.status_code == 200
-    assert complete_resp.json().get("status") == "Paid"
+    assert complete_resp.json().get("status") == "paid"
 
 
 def test_complete_payment_validation_failed(user_session, admin_session):
@@ -149,7 +156,8 @@ def test_complete_payment_validation_failed(user_session, admin_session):
     headers = {"Authorization": user_session["session_token"]}
 
     # Setup en start/stop flow om een geldig transactie ID te krijgen
-    test_data = create_setup_data(base_url, admin_session["session_token"])
+    test_data = create_setup_data(
+        base_url, admin_session["session_token"], user_session["session_token"])
 
     # Start
     requests.post(base_url + "parkinglots/start-session", json={

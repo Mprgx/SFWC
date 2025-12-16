@@ -7,15 +7,19 @@ import string
 # --- SETUP HELPER ---
 
 
-def setup_payment_scenario(base_url, setup_token):
+def setup_payment_scenario(base_url, admin_token, user_token):
     """
     Maakt resources aan en stopt de sessie.
+    admin_token: voor het aanmaken van ParkingLot
+    user_token: voor het starten/stoppen van sessie (payment owner)
     Returnt: { "transactionId": guid, "amount": float }
     """
-    headers = {"Authorization": setup_token,
-               "Content-Type": "application/json"}
+    admin_headers = {"Authorization": admin_token,
+                     "Content-Type": "application/json"}
+    user_headers = {"Authorization": user_token,
+                    "Content-Type": "application/json"}
 
-    # 1. ParkingLot
+    # 1. ParkingLot (Admin)
     lot_payload = {
         "name": f"PayTest_{uuid.uuid4().hex[:6]}",
         "location": "Payment Test Location",
@@ -26,11 +30,11 @@ def setup_payment_scenario(base_url, setup_token):
         "coordinates": {"latitude": 52.0, "longitude": 5.0}
     }
     lot_resp = requests.post(
-        f"{base_url}parkinglots", json=lot_payload, headers=headers, verify=False)
+        f"{base_url}parkinglots", json=lot_payload, headers=admin_headers, verify=False)
     lot_resp.raise_for_status()
     lot_id = lot_resp.json()["id"]
 
-    # 2. Vehicle
+    # 2. Vehicle (User)
     # Dutch license plate format: XX-NN-XX (2 letters, 2 numbers, 2 letters)
     chars = "".join(random.choices(string.ascii_uppercase, k=2))
     nums = "".join(random.choices(string.digits, k=2))
@@ -38,20 +42,20 @@ def setup_payment_scenario(base_url, setup_token):
     license_plate = f"{chars}-{nums}-{chars2}"
     veh_resp = requests.post(f"{base_url}vehicle", json={
         "licensePlate": license_plate, "vehicleType": "PassengerCar", "brand": "X", "model": "Y"
-    }, headers=headers, verify=False)
+    }, headers=user_headers, verify=False)
     veh_resp.raise_for_status()
     vehicle_id = veh_resp.json()["id"]
 
-    # 3. Start
+    # 3. Start (User)
     requests.post(f"{base_url}parkinglots/start-session", json={
         "vehicleId": vehicle_id, "parkingLotId": lot_id
-    }, headers=headers, verify=False).raise_for_status()
+    }, headers=user_headers, verify=False).raise_for_status()
 
-    # 4. Stop
+    # 4. Stop (User)
     # (Optioneel: voeg hier een time.sleep(1) toe als je systeem seconden telt voor prijs)
     stop_resp = requests.post(f"{base_url}parkinglots/stop-session", json={
         "licensePlate": license_plate
-    }, headers=headers, verify=False)
+    }, headers=user_headers, verify=False)
     stop_resp.raise_for_status()
 
     data = stop_resp.json()
@@ -77,9 +81,9 @@ def test_fulfill_payment_success(user_session, admin_session):
     Happy Path: Haalt echte amount op uit setup en betaalt deze.
     """
     base_url = user_session["url"]
-    # We gebruiken admin_session token voor setup (parkingLot creatie vereist Admin)
+    # Setup uses admin token for parking lot creation, user token for session/payment
     payment_data = setup_payment_scenario(
-        base_url, admin_session["session_token"])
+        base_url, admin_session["session_token"], user_session["session_token"])
 
     url = base_url + "payments/fulfill"
     headers = {"Authorization": user_session["session_token"]}
@@ -94,14 +98,14 @@ def test_fulfill_payment_success(user_session, admin_session):
 
     assert response.status_code == 200
     assert_is_json(response)
-    assert response.json().get("status") == "Paid"
+    assert response.json().get("status") == "paid"
 
 
-def test_fulfill_payment_amount_mismatch(user_session):
+def test_fulfill_payment_amount_mismatch(user_session, admin_session):
     """Test conflict (409) als het bedrag niet klopt."""
     base_url = user_session["url"]
     payment_data = setup_payment_scenario(
-        base_url, user_session["session_token"])
+        base_url, admin_session["session_token"], user_session["session_token"])
 
     url = base_url + "payments/fulfill"
     headers = {"Authorization": user_session["session_token"]}
