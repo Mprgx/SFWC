@@ -68,7 +68,7 @@ jobs:
       
       - name: Run pytest integration tests
         run: |
-          pytest ./Integratietests/ --maxfail=10000 --disable-warnings -q --cov --cov-report xml:coverage.xml
+          pytest ./Integratietests/ --maxfail=1 --disable-warnings -q --cov --cov-report xml:coverage.xml
 
       - name: Run unit tests
         run: |
