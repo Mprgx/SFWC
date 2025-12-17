@@ -42,6 +42,7 @@ jobs:
           dotnet test ./MobyParkxUnitTest/MobyParkxUnitTest.csproj \
             --configuration Release \
             --logger "trx;LogFileName=unit_test_results.trx"
+            --collect:"XPlat Code Coverage"
 
   integration-tests:
     runs-on: ubuntu-latest
