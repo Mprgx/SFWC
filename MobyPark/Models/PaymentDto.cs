@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace MobyPark.Models
 {
-    public sealed class PaymentInitiationDto
+    public class PaymentInitiationDto
     {
         public string Transaction { get; init; } = "";
         public decimal Amount { get; init; }
