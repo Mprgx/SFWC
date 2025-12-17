@@ -29,6 +29,8 @@ namespace MobyPark.Services
 
             if (dto.Value <= 0) return (400, "The Value can not be 0 or less.", null);
 
+            if (dto.Type == DiscountType.Percentage && dto.Value > 100m) return (400, "Discount value can not be more than 100%", null);
+
             // Check if a newly posted discount is active at the time of posting, since it is uneccesary to post an expired discount.
             // The ValidFrom doesn't matter since time won't go backwards (I hope)
             if (dto.ValidUntil < DateTimeOffset.UtcNow) return (400, "The ValidUntil date is in the past.", null);
@@ -102,6 +104,7 @@ namespace MobyPark.Services
                 TimeWindowStart = dto.TimeWindowStart,
                 TimeWindowEnd = dto.TimeWindowEnd,
                 MaxUsage = dto.MaxUsage,
+                CurrentUsage = dto.MaxUsage is null ? null : 0,
                 ValidForUsers = dto.ValidForUsers?
                     .Select(id => new DiscountUser { UserId = id, Code = dto.Code })
                     .ToList() ?? new List<DiscountUser>(),

@@ -34,6 +34,7 @@ namespace MobyPark.Entities
         public TimeSpan? TimeWindowStart { get; set; } = null;
         public TimeSpan? TimeWindowEnd { get; set; } = null;
         public int? MaxUsage { get; set; } = null;
+        public int? CurrentUsage { get; set; } = null;
 
         public ICollection<DiscountLocation> allowedLocations { get; set; } = new List<DiscountLocation>();
         public ICollection<DiscountUser> ValidForUsers { get; set; } = new List<DiscountUser>();

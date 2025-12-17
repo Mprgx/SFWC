@@ -12,7 +12,7 @@ namespace MobyPark.Models
         [Required]
         public DiscountType Type { get; set; }
 
-        [Required]
+        [Required, Range(0.01, double.MaxValue)]
         public decimal Value { get; set; }
 
         [Required]
@@ -44,7 +44,7 @@ namespace MobyPark.Models
         public DiscountType Type { get; set; }
 
         [Required]
-        public decimal Value { get; set; }
+        public decimal Value { get; set; } // Should be 90.0 for 90%
 
         [Required]
         public DateTimeOffset ValidFrom { get; set; }

@@ -91,7 +91,7 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? userId.ToString();
 
-           
+
             session.Stopped = DateTimeOffset.UtcNow;
             session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
 
@@ -101,7 +101,7 @@ namespace MobyPark.Services
 
             session.PaymentStatus = PaymentStatuses.Unpaid;
 
-          
+
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
@@ -119,6 +119,7 @@ namespace MobyPark.Services
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
+                DiscountCode = dto.DiscountCode,
                 Initiator = username,
                 UserId = userId,
                 ParkingLotId = session.ParkingLotId,
@@ -133,7 +134,12 @@ namespace MobyPark.Services
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
-            return (ToStopSessionResponse(session, payment), null, null);
+            var refreshedPayment = await db.Payments
+                .Where(p => p.Transaction == payment.Transaction)
+                .Include(p => p.Discount)
+                .FirstAsync();
+
+            return (ToStopSessionResponse(session, refreshedPayment), null, null);
         }
 
         public async Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId)
@@ -178,7 +184,7 @@ namespace MobyPark.Services
                 PaymentStatus = PaymentStatuses.AwaitingPayment
             };
 
-      
+
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
@@ -197,7 +203,12 @@ namespace MobyPark.Services
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
-            return (ToStopSessionResponse(session, payment), null, null);
+            var refreshedPayment = await db.Payments
+                .Where(p => p.Transaction == payment.Transaction)
+                .Include(p => p.Discount)
+                .FirstAsync();
+
+            return (ToStopSessionResponse(session, refreshedPayment), null, null);
         }
 
         public async Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(Guid userId, Guid sessionId)
@@ -395,6 +406,21 @@ namespace MobyPark.Services
             return (response, null, null);
         }
 
+        public async Task<bool> CheckIfDiscountCodeIsUsable(string code)
+        {
+            var discount = await db.Discounts
+                .Where(d => d.Code == code.Trim())
+                .FirstOrDefaultAsync();
+
+            if (discount is null)
+                return false;
+
+            if (discount.MaxUsage is not null && discount.CurrentUsage >= discount.MaxUsage)
+                return false;
+
+            return true;
+        }
+
         private static string GeneratePaymentHash()
         {
             return Guid.NewGuid().ToString("N");
@@ -413,7 +439,7 @@ namespace MobyPark.Services
                 Payment = new PaymentInitiationDto
                 {
                     Transaction = payment.Transaction,
-                    Amount = payment.Amount,                 
+                    Amount = payment.AmountWithDiscount,
                     Validation = payment.Hash
                 }
             };
