@@ -15,6 +15,7 @@ namespace MobyPark.Data
         public DbSet<UserVehicle> UserVehicles => Set<UserVehicle>();
         public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
         public DbSet<Billing> Billings { get; set; }
+        public DbSet<Discount> Discounts => Set<Discount>();
 
 
 
@@ -104,6 +105,47 @@ namespace MobyPark.Data
                 .WithMany(u => u.Payments)
                 .HasForeignKey(p => p.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Discounts
+            modelBuilder.Entity<Discount>()
+                .HasKey(d => d.Code);
+
+            modelBuilder.Entity<Discount>()
+                .HasOne(d => d.User)
+                .WithMany(u => u.Discounts)
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // DiscountUsers
+            modelBuilder.Entity<DiscountUser>()
+                .HasKey(du => new { du.Code, du.UserId });
+
+            modelBuilder.Entity<DiscountUser>()
+                .HasOne(du => du.Discount)
+                .WithMany(d => d.ValidForUsers)
+                .HasForeignKey(du => du.Code)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // DiscountCompanies
+            modelBuilder.Entity<DiscountCompany>()
+                .HasKey(dc => new { dc.Code, dc.CompanyId });
+
+            modelBuilder.Entity<DiscountCompany>()
+                .HasOne(dc => dc.Discount)
+                .WithMany(d => d.ValidForCompanies)
+                .HasForeignKey(dc => dc.Code)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // DiscountLocations
+            modelBuilder.Entity<DiscountLocation>()
+                .HasKey(dl => new { dl.Code, dl.ParkingLotId });
+
+            modelBuilder.Entity<DiscountLocation>()
+                .HasOne(dl => dl.Discount)
+                .WithMany(d => d.allowedLocations)
+                .HasForeignKey(dl => dl.Code)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
 
     }

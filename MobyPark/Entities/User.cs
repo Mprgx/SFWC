@@ -36,6 +36,7 @@ namespace MobyPark.Entities
         [JsonIgnore] public ICollection<CompanyUser> CompanyUsers { get; set; } = new List<CompanyUser>();
         [JsonIgnore] public ICollection<Payment> Payments { get; set; } = new List<Payment>();
         [JsonIgnore] public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+        [JsonIgnore] public ICollection<Discount> Discounts { get; set; } = new List<Discount>();
 
     }
 }
