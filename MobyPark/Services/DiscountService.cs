@@ -17,6 +17,12 @@ namespace MobyPark.Services
     {
         public async Task<(int statusCode, string message, DiscountReadDto?)> CreateDiscountAsync(DiscountPostDto dto, Guid userId)
         {
+            // Normalize
+
+            var allowedLocations = dto.AllowedLocations ?? [];
+            var validForUsers = dto.ValidForUsers ?? [];
+            var validForCompanies = dto.ValidForCompanies ?? [];
+
             // Validation
             var checkExisting = await context.Discounts.AnyAsync(d => d.Code == dto.Code);
             if (checkExisting) return (409, $"The code {dto.Code} already exists. If inactive, consider reactivating or deleting it.", null);
@@ -29,27 +35,54 @@ namespace MobyPark.Services
 
             if (dto.ValidFrom >= dto.ValidUntil) return (400, "The ValidUntil date is before the ValidFrom date.", null);
 
-            foreach (int lotId in dto.allowedLocations)
+            if (allowedLocations.Any())
             {
-                var checkExistance = await context.ParkingLots.AnyAsync(pl => pl.Id == lotId);
-                if (!checkExistance) return (404, $"The parking lot with id {lotId} was not found", null);
+                var existingLotIds = await context.ParkingLots
+                    .Where(p => allowedLocations.Contains(p.Id))
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                var missingLotIds = allowedLocations.Except(existingLotIds).ToList();
+
+                if (missingLotIds.Any())
+                {
+                    return (404, $"Parking lot(s) not found: {string.Join(", ", missingLotIds)}", null);
+                }
             }
 
             if (dto.MaxUsage < 1) return (400, $"The MaxUsage should be 1 or higher", null);
 
-            foreach (Guid userid in dto.ValidForUsers)
+            if (validForUsers.Any())
             {
-                var checkExistance = await context.Users.AnyAsync(u => u.Id == userid);
-                if (!checkExistance) return (404, $"The user with id {userid} was not found", null);
+                var existingUserIds = await context.Users
+                    .Where(u => validForUsers.Contains(u.Id))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                var missingUserIds = validForUsers.Except(existingUserIds).ToList();
+
+                if (missingUserIds.Any())
+                {
+                    return (404, $"User(s) not found: {string.Join(", ", missingUserIds)}", null);
+                }
             }
 
             // For when companies are implemented 
             // UNCOMMENT AT THAT POINT PRETTY PLEASE WITH CHEESE ON TOP
 
-            // foreach (Guid companyId in dto.ValidForCompanies)
+            // if (validForCompanies.Any())
             // {
-            //     var checkExistance = await context.Companies.AnyAsync(c => c.Id == companyId);
-            //     if (!checkExistance) return (404, $"The company with id {companyId} was not found", null);
+            //     var existingCompanyIds = await context.Companies
+            //         .Where(c => validForCompanies.Contains(c.Id))
+            //         .Select(c => c.Id)
+            //         .ToListAsync();
+
+            //     var missingCompanyIds = validForCompanies.Except(existingCompanyIds).ToList();
+
+            //     if (missingCompanyIds.Any())
+            //     {
+            //         return (404, $"Companies not found: {string.Join(", ", missingCompanyIds)}", null);
+            //     }
             // }
 
             // Writing to db
@@ -63,7 +96,7 @@ namespace MobyPark.Services
                 ValidFrom = dto.ValidFrom,
                 ValidUntil = dto.ValidUntil,
                 Active = true,
-                allowedLocations = dto.allowedLocations?
+                allowedLocations = dto.AllowedLocations?
                     .Select(id => new DiscountLocation { ParkingLotId = id, Code = dto.Code })
                     .ToList() ?? new List<DiscountLocation>(),
                 TimeWindowStart = dto.TimeWindowStart,
@@ -98,7 +131,7 @@ namespace MobyPark.Services
                 TimeWindowEnd = discount.TimeWindowEnd,
                 MaxUsage = discount.MaxUsage,
 
-                allowedLocations = discount.allowedLocations?.Select(dl => dl.ParkingLotId).ToList() ?? new List<int>(),
+                AllowedLocations = discount.allowedLocations?.Select(dl => dl.ParkingLotId).ToList() ?? new List<int>(),
                 ValidForUsers = discount.ValidForUsers?.Select(du => du.UserId).ToList() ?? new List<Guid>(),
                 ValidForCompanies = discount.ValidForCompanies?.Select(dc => dc.CompanyId).ToList() ?? new List<Guid>()
             };

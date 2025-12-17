@@ -21,7 +21,7 @@ namespace MobyPark.Models
         [Required]
         public DateTimeOffset ValidUntil { get; set; }
 
-        public List<int>? allowedLocations { get; set; } = null;
+        public List<int>? AllowedLocations { get; set; } = null;
         public TimeSpan? TimeWindowStart { get; set; } = null;
         public TimeSpan? TimeWindowEnd { get; set; } = null;
         public int? MaxUsage { get; set; } = null;
@@ -52,7 +52,7 @@ namespace MobyPark.Models
         [Required]
         public DateTimeOffset ValidUntil { get; set; }
 
-        public List<int>? allowedLocations { get; set; } = null;
+        public List<int>? AllowedLocations { get; set; } = null;
         public TimeSpan? TimeWindowStart { get; set; } = null;
         public TimeSpan? TimeWindowEnd { get; set; } = null;
         public int? MaxUsage { get; set; } = null;
