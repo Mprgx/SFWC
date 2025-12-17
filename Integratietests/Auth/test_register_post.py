@@ -63,7 +63,7 @@ def test_register_duplicate_username_returns_409(user_session):
     username = _unique_username()
     base_payload = {
         "username": username,
-        "password": "abc12345",
+        "password": "abc12345!",
         "name": "Duplicate",
     }
 
