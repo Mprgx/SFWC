@@ -73,7 +73,7 @@ namespace MobyPark.Controllers
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPut("stop-session/{id:guid}")]
-        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id, [FromQuery] string? discountcode)
+        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();

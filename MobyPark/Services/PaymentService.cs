@@ -74,6 +74,9 @@ namespace MobyPark.Services
             if (string.IsNullOrWhiteSpace(paymentRequest.Transaction))
                 return (null, "Transaction number is required.", 400);
 
+            if (paymentRequest.Amount <= 0)
+                return (null, "Amount must be a positive number.", 400);
+
             var payment = await context.Payments
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
