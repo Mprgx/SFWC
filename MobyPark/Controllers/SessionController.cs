@@ -73,7 +73,7 @@ namespace MobyPark.Controllers
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPut("stop-session/{id:guid}")]
-        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id)
+        public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id, [FromQuery] string? discountcode)
         {
             if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Unauthorized();
@@ -124,7 +124,7 @@ namespace MobyPark.Controllers
             var (session, error, status) = await service.CancelSessionAsync(userId, id, dto);
 
             if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error); 
+            if (status == 404) return NotFound(error);
             if (status == 409) return Conflict(error);
 
             if (status.HasValue)

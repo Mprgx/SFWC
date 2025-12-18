@@ -17,7 +17,6 @@ namespace MobyPark.Models
         ErrorMessage = "Invalid Dutch license plate format.")]
         public string LicensePlate { get; set; } = string.Empty;
 
-        public string? DiscountCode { get; set; } = null;
     }
 
     public class StopSessionResponseDto

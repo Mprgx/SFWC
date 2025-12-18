@@ -101,6 +101,20 @@ namespace MobyPark.Services
 
             session.PaymentStatus = PaymentStatuses.Unpaid;
 
+            var payment = new Payment
+            {
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
+                Initiator = username,
+                UserId = userId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
+            };
 
             var billing = new Billing
             {
@@ -111,22 +125,8 @@ namespace MobyPark.Services
                 Stopped = session.Stopped.Value,
                 Username = username,
                 DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
+                Cost = payment.AmountWithDiscount,
                 PaymentStatus = PaymentStatuses.Unpaid
-            };
-
-            var payment = new Payment
-            {
-                Transaction = GenerateTransactionNumber(),
-                Amount = session.Cost,
-                DiscountCode = dto.DiscountCode,
-                Initiator = username,
-                UserId = userId,
-                ParkingLotId = session.ParkingLotId,
-                SessionId = session.Id,
-                Completed = null,
-                Hash = GeneratePaymentHash(),
-                T_Data = null
             };
 
             db.Sessions.Update(session);
@@ -171,6 +171,21 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? session.UserId.ToString();
 
+            var payment = new Payment
+            {
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
+                Initiator = username,
+                UserId = session.UserId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
+            };
+
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
@@ -180,22 +195,8 @@ namespace MobyPark.Services
                 Stopped = session.Stopped.Value,
                 Username = username,
                 DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
+                Cost = payment.AmountWithDiscount,
                 PaymentStatus = PaymentStatuses.AwaitingPayment
-            };
-
-
-            var payment = new Payment
-            {
-                Transaction = GenerateTransactionNumber(),
-                Amount = session.Cost,
-                Initiator = username,
-                UserId = session.UserId,
-                ParkingLotId = session.ParkingLotId,
-                SessionId = session.Id,
-                Completed = null,
-                Hash = GeneratePaymentHash(),
-                T_Data = null
             };
 
             db.Sessions.Update(session);
@@ -404,21 +405,6 @@ namespace MobyPark.Services
             };
 
             return (response, null, null);
-        }
-
-        public async Task<bool> CheckIfDiscountCodeIsUsable(string code)
-        {
-            var discount = await db.Discounts
-                .Where(d => d.Code == code.Trim())
-                .FirstOrDefaultAsync();
-
-            if (discount is null)
-                return false;
-
-            if (discount.MaxUsage is not null && discount.CurrentUsage >= discount.MaxUsage)
-                return false;
-
-            return true;
         }
 
         private static string GeneratePaymentHash()
