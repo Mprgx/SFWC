@@ -4,6 +4,14 @@ using MobyPark.Entities;
 
 namespace MobyPark.Models
 {
+    public class ApplyDiscountDto
+    {
+        [Required]
+        public string Transaction { get; set; } = string.Empty;
+        [Required]
+        public string DiscountCode { get; set; } = string.Empty;
+    }
+
     public class DiscountPostDto
     {
         [Required]

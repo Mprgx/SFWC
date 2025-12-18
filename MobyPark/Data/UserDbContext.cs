@@ -142,7 +142,7 @@ namespace MobyPark.Data
 
             modelBuilder.Entity<DiscountLocation>()
                 .HasOne(dl => dl.Discount)
-                .WithMany(d => d.allowedLocations)
+                .WithMany(d => d.AllowedLocations)
                 .HasForeignKey(dl => dl.Code)
                 .OnDelete(DeleteBehavior.Restrict);
 

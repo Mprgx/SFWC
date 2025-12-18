@@ -63,55 +63,8 @@ namespace MobyPark.Services
             return (MapToReadDto(payment), null, null);
         }
 
-        private async Task<(PaymentReadDto? dto, string? error, int? status)> ApplyDiscount(PaymentsDto payment)
-        {
-            var paymentInDb = await context.Payments.FirstOrDefaultAsync(p => p.Transaction == payment.Transaction);
-
-            if (paymentInDb is null)
-                return (null, "Payment not found", 404);
-
-            if (string.IsNullOrWhiteSpace(payment.DiscountCode))
-            {
-                paymentInDb.AmountWithDiscount = paymentInDb.Amount;
-                await context.SaveChangesAsync();
-
-                return (MapToReadDto(paymentInDb), "No discount applied", 200);
-            }
-
-            var discount = await context.Discounts
-                .Where(d => d.Code == payment.DiscountCode.Trim())
-                .FirstOrDefaultAsync();
-
-            if (discount is null)
-                return (null, $"Discount code {payment.DiscountCode} not found", 404);
-
-            if (discount.MaxUsage is not null && discount.CurrentUsage >= discount.MaxUsage)
-                return (null, $"Discount code {payment.DiscountCode} has reached its maximum usage", 422);
-
-            decimal discountedCost;
-            if (discount.Type == DiscountType.FixedAmount)
-                discountedCost = Math.Max(0, paymentInDb.Amount - discount.Value);
-            else
-            {
-                var percentage = Math.Clamp(discount.Value, 0, 100);
-                discountedCost = Math.Max(0, paymentInDb.Amount - (paymentInDb.Amount * percentage / 100m));
-            }
-
-            paymentInDb.AmountWithDiscount = discountedCost;
-            if (discount.MaxUsage != null)
-                discount.CurrentUsage++;
-
-            await context.SaveChangesAsync();
-            return (MapToReadDto(paymentInDb), "Discount succesfully applied", 200);
-        }
-
         public async Task<(PaymentReadDto? dto, string? error, int? status)> FulfillPaymentAsync(Guid userId, PaymentsDto paymentRequest)
         {
-            var discountResponse = await ApplyDiscount(paymentRequest);
-
-            if (discountResponse.status != 200)
-                return discountResponse;
-
             if (userId == Guid.Empty)
                 return (null, "User ID is required.", 400);
 
@@ -223,6 +176,7 @@ namespace MobyPark.Services
                     Stopped = p.Session.Stopped,
                     DurationMinutes = p.Session.DurationMinutes,
                     Cost = p.Session.Cost,
+                    DiscountedCost = p.AmountWithDiscount,
                     PaymentStatus = p.Session.PaymentStatus
                 };
             }
@@ -232,7 +186,7 @@ namespace MobyPark.Services
                 Transaction = p.Transaction,
                 Amount = p.Amount,
 
-                DiscountCode = p.DiscountCode ?? "",
+                DiscountCode = p.DiscountCode,
                 AmountWithDiscount = p.AmountWithDiscount,
 
                 CreatedAt = p.Created_At,

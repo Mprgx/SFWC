@@ -108,7 +108,7 @@ namespace MobyPark.Services
                 DiscountCode = null,
                 AmountWithDiscount = session.Cost,
                 Initiator = username,
-                UserId = userId,
+                UserId = session.UserId,
                 ParkingLotId = session.ParkingLotId,
                 SessionId = session.Id,
                 Completed = null,

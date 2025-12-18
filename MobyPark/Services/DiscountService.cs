@@ -98,7 +98,7 @@ namespace MobyPark.Services
                 ValidFrom = dto.ValidFrom,
                 ValidUntil = dto.ValidUntil,
                 Active = true,
-                allowedLocations = dto.AllowedLocations?
+                AllowedLocations = dto.AllowedLocations?
                     .Select(id => new DiscountLocation { ParkingLotId = id, Code = dto.Code })
                     .ToList() ?? new List<DiscountLocation>(),
                 TimeWindowStart = dto.TimeWindowStart,
@@ -119,6 +119,108 @@ namespace MobyPark.Services
             return (201, "Success", ToDto(discount));
         }
 
+        public async Task<(int statusCode, string message)> ApplyDiscountAsync(string discountCode, string transaction, Guid userId)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            var paymentInDb = await context.Payments.FirstOrDefaultAsync(p => p.Transaction == transaction);
+
+            if (paymentInDb is null)
+                return (404, "Payment not found");
+
+            if (paymentInDb.DiscountCode != null)
+                return (403, "A discount has already been applied");
+
+            if (string.IsNullOrWhiteSpace(discountCode))
+                return (200, "No discount applied");
+
+            var discount = await context.Discounts
+                .Include(d => d.ValidForUsers)
+                .Include(d => d.ValidForCompanies)
+                .Include(d => d.AllowedLocations)
+                .Where(d => d.Code == discountCode.Trim())
+                .FirstOrDefaultAsync();
+
+            if (discount is null)
+                return (404, $"Discount code {discountCode} not found");
+
+            if (discount.MaxUsage is not null && discount.CurrentUsage >= discount.MaxUsage)
+                return (422, $"Discount code {discountCode} has reached its maximum usage");
+
+            if (discount.ValidForUsers.Any())
+            {
+                bool isUserAuthorized = discount.ValidForUsers.Any(vu => vu.UserId == userId);
+
+                if (!isUserAuthorized)
+                {
+                    return (403, "This discount code is not valid for your account.");
+                }
+            }
+
+            if (discount.ValidForCompanies.Any())
+            {
+                bool isUserInAuthorizedCompany = discount.ValidForCompanies
+                    .Any(vc => context.CompanyUsers.Any(cu => cu.UserId == userId && cu.CompanyId == vc.CompanyId));
+
+                if (!isUserInAuthorizedCompany)
+                {
+                    return (403, "This discount code is only valid for specific companies you are not a part of.");
+                }
+            }
+
+            if (discount.AllowedLocations.Any())
+            {
+                bool isLocationValid = discount.AllowedLocations
+                    .Any(al => al.ParkingLotId == paymentInDb.ParkingLotId);
+
+                if (!isLocationValid)
+                {
+                    return (403, "This discount is not valid for this parking lot.");
+                }
+            }
+
+            if (now > discount.ValidUntil)
+                return (410, "This discount has expired");
+
+            if (now < discount.ValidFrom)
+                return (403, "This discount is not yet active");
+
+            if (discount.TimeWindowStart.HasValue && discount.TimeWindowEnd.HasValue)
+            {
+                var currentTime = now.TimeOfDay;
+                var start = discount.TimeWindowStart.Value;
+                var end = discount.TimeWindowEnd.Value;
+
+                bool isInsideWindow;
+
+                if (start <= end)
+                    isInsideWindow = currentTime >= start && currentTime <= end;
+                else
+                    isInsideWindow = currentTime >= start || currentTime <= end;
+
+                if (!isInsideWindow)
+                    return (403, $"This discount is only valid between {start:hh\\:mm} and {end:hh\\:mm} UTC.");
+            }
+
+            decimal discountedCost;
+            if (discount.Type == DiscountType.FixedAmount)
+                discountedCost = Math.Max(0, paymentInDb.Amount - discount.Value);
+            else
+            {
+                var percentage = Math.Clamp(discount.Value, 0, 100);
+                discountedCost = Math.Max(0, paymentInDb.Amount - (paymentInDb.Amount * percentage / 100m));
+            }
+
+            paymentInDb.AmountWithDiscount = discountedCost;
+            paymentInDb.DiscountCode = discount.Code;
+
+            if (discount.MaxUsage != null)
+                discount.CurrentUsage++;
+
+            await context.SaveChangesAsync();
+            return (200, "Discount succesfully applied");
+        }
+
         private DiscountReadDto ToDto(Discount discount)
         {
             return new DiscountReadDto
@@ -134,7 +236,7 @@ namespace MobyPark.Services
                 TimeWindowEnd = discount.TimeWindowEnd,
                 MaxUsage = discount.MaxUsage,
 
-                AllowedLocations = discount.allowedLocations?.Select(dl => dl.ParkingLotId).ToList() ?? new List<int>(),
+                AllowedLocations = discount.AllowedLocations?.Select(dl => dl.ParkingLotId).ToList() ?? new List<int>(),
                 ValidForUsers = discount.ValidForUsers?.Select(du => du.UserId).ToList() ?? new List<Guid>(),
                 ValidForCompanies = discount.ValidForCompanies?.Select(dc => dc.CompanyId).ToList() ?? new List<Guid>()
             };

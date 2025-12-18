@@ -582,7 +582,7 @@ namespace MobyPark.Migrations
             modelBuilder.Entity("MobyPark.Entities.DiscountLocation", b =>
                 {
                     b.HasOne("MobyPark.Entities.Discount", "Discount")
-                        .WithMany("allowedLocations")
+                        .WithMany("AllowedLocations")
                         .HasForeignKey("Code")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -763,11 +763,11 @@ namespace MobyPark.Migrations
 
             modelBuilder.Entity("MobyPark.Entities.Discount", b =>
                 {
+                    b.Navigation("AllowedLocations");
+
                     b.Navigation("ValidForCompanies");
 
                     b.Navigation("ValidForUsers");
-
-                    b.Navigation("allowedLocations");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>
