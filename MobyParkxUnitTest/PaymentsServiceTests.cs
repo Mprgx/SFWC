@@ -317,5 +317,81 @@ namespace MobyParkxUnitTest
             Assert.False(result.dto);
             Assert.Equal(404, result.status);
         }
+
+        [Fact]
+        public async Task DeletePayment_ReturnsError_WhenTransactionIdIsEmpty()
+        {
+            using var db = CreateDb(nameof(DeletePayment_ReturnsError_WhenTransactionIdIsEmpty));
+            var service = CreateService(db);
+
+            var result = await service.DeletePaymentByTransactionId("");
+
+            Assert.False(result.dto);
+            Assert.Equal(400, result.status);
+            Assert.Equal("Transaction ID is required.", result.error);
+        }
+
+        [Fact]
+        public async Task DeletePayment_RemovesOnlyTargetPayment_WhenMultipleExist()
+        {
+            using var db = CreateDb(nameof(DeletePayment_RemovesOnlyTargetPayment_WhenMultipleExist));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            db.ParkingLots.Add(new ParkingLot { Id = 1, Name = "Test Lot", Location = "Test Location", Address = "123 Main St", Capacity = 50, Tariff = 5.0, DayTariff = 25.0, Coordinates = "{}" });
+            db.Payments.Add(CreateBasePayment(userId, "TX_KEEP_1", 10m));
+            db.Payments.Add(CreateBasePayment(userId, "TX_DELETE", 20m));
+            db.Payments.Add(CreateBasePayment(userId, "TX_KEEP_2", 15m));
+            await db.SaveChangesAsync();
+
+            var result = await service.DeletePaymentByTransactionId("TX_DELETE");
+
+            Assert.True(result.dto);
+            var remainingPayments = await db.Payments.ToListAsync();
+            Assert.Equal(2, remainingPayments.Count);
+            Assert.DoesNotContain(remainingPayments, p => p.Transaction == "TX_DELETE");
+        }
+
+        [Fact]
+        public async Task FulfillPaymentAsync_ReturnsError_WhenAmountIsNegativeOrZero()
+        {
+            using var db = CreateDb(nameof(FulfillPaymentAsync_ReturnsError_WhenAmountIsNegativeOrZero));
+            var service = CreateService(db);
+
+            var request1 = new PaymentsDto { Transaction = "TX1", Amount = 0 };
+            var request2 = new PaymentsDto { Transaction = "TX2", Amount = -5.00m };
+
+            var result1 = await service.FulfillPaymentAsync(Guid.NewGuid(), request1);
+            var result2 = await service.FulfillPaymentAsync(Guid.NewGuid(), request2);
+
+            Assert.Equal(400, result1.status);
+            Assert.Equal(400, result2.status);
+            Assert.Equal("Amount must be a positive number.", result1.error);
+            Assert.Equal("Amount must be a positive number.", result2.error);
+        }
+
+        [Fact]
+        public async Task FulfillPaymentAsync_UpdatesSessionPaymentStatus_WhenSuccessful()
+        {
+            using var db = CreateDb(nameof(FulfillPaymentAsync_UpdatesSessionPaymentStatus_WhenSuccessful));
+            var service = CreateService(db);
+
+            var userId = Guid.NewGuid();
+            var sessionId = Guid.NewGuid();
+            var session = CreateBaseSession(userId, sessionId);
+            var payment = CreateBasePayment(userId, "TX_SESSION", 5.00m, sessionId: sessionId);
+
+            db.ParkingLots.Add(new ParkingLot { Id = 1, Name = "Test Lot", Location = "Test Location", Address = "123 Main St", Capacity = 50, Tariff = 5.0, DayTariff = 25.0, Coordinates = "{}" });
+            db.Sessions.Add(session);
+            db.Payments.Add(payment);
+            await db.SaveChangesAsync();
+
+            var request = new PaymentsDto { Transaction = "TX_SESSION", Amount = 5.00m };
+            var result = await service.FulfillPaymentAsync(userId, request);
+
+            Assert.NotNull(result.dto);
+            var updatedSession = await db.Sessions.FindAsync(sessionId);
+            Assert.Equal(PaymentStatuses.Paid, updatedSession!.PaymentStatus);
+        }
     }
 }

@@ -10,9 +10,6 @@ namespace MobyParkxUnitTest
 {
     public class SessionServiceTests
     {
-        // ------------------------------------------------------------
-        // Helpers
-        // ------------------------------------------------------------
         private static UserDbContext CreateDb(string name)
         {
             var options = new DbContextOptionsBuilder<UserDbContext>()
@@ -25,7 +22,6 @@ namespace MobyParkxUnitTest
         private class FakeEncryption : IEncryptionService
         {
             public string? Encrypt(string? plaintext) => plaintext;
-            // The service code expects DecryptNormalized to return the raw string for matching logic
             public string? Decrypt(string? ciphertext) => ciphertext;
         }
 
@@ -34,7 +30,6 @@ namespace MobyParkxUnitTest
             return new SessionService(db, new FakeEncryption());
         }
 
-        // Updated to use int Id and "Make" instead of "Brand"
         private static Vehicle CreateVehicle(Guid userId, int vehicleId = 1, string plate = "TEST-123")
         {
             return new Vehicle
@@ -49,7 +44,6 @@ namespace MobyParkxUnitTest
             };
         }
 
-        // Updated vehicleId to int
         private static Session CreateSession(Guid userId, int vehicleId, string plate = "TEST-123",
             DateTimeOffset? stopped = null, bool isCancelled = false, bool isRefunded = false)
         {
@@ -84,9 +78,6 @@ namespace MobyParkxUnitTest
             };
         }
 
-        // ------------------------------------------------------------
-        // 1. StartSessionAsync
-        // ------------------------------------------------------------
         [Fact]
         public async Task StartSessionAsync_ReturnsNotFound_WhenVehicleDoesNotExist()
         {
@@ -147,9 +138,6 @@ namespace MobyParkxUnitTest
             Assert.Null(inDb.Stopped);
         }
 
-        // ------------------------------------------------------------
-        // 2. StopSessionByPlateAsync
-        // ------------------------------------------------------------
         [Fact]
         public async Task StopSessionByPlateAsync_ReturnsError_WhenPlateInvalid()
         {
@@ -186,36 +174,26 @@ namespace MobyParkxUnitTest
             var userId = Guid.NewGuid();
             var plate = "XX-99-YY";
 
-            // 1. Create and Add the User
             var user = CreateUser(userId);
             db.Users.Add(user);
 
-            // 2. Create Vehicle and Session
             var vehicle = CreateVehicle(userId, 20, plate);
             var session = CreateSession(userId, vehicle.Id, plate, stopped: null);
 
             db.Vehicles.Add(vehicle);
             db.Sessions.Add(session);
-
-            // 3. Save everything at once
             await db.SaveChangesAsync();
 
-            // Act
             var result = await service.StopSessionByPlateAsync(userId, new SessionStopDto { LicensePlate = plate });
 
-            // Assert
             Assert.NotNull(result.dto);
             Assert.NotNull(result.dto.Payment);
 
-            // Check DB updates
             var dbSession = await db.Sessions.FindAsync(session.Id);
             Assert.NotNull(dbSession!.Stopped);
             Assert.NotEqual(0, dbSession.Cost);
         }
 
-        // ------------------------------------------------------------
-        // 3. StopSessionByIdAsync
-        // ------------------------------------------------------------
         [Fact]
         public async Task StopSessionByIdAsync_ReturnsConflict_WhenAlreadyStopped()
         {
@@ -223,20 +201,14 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
             var userId = Guid.NewGuid();
 
-            // 1. Create and Add the User
             var user = CreateUser(userId);
             db.Users.Add(user);
 
-            // 2. Create Session
             var session = CreateSession(userId, 1, stopped: DateTimeOffset.UtcNow);
             db.Sessions.Add(session);
-
             await db.SaveChangesAsync();
 
-            // Act
             var result = await service.StopSessionByIdAsync(userId, session.Id);
-
-            // Assert
             Assert.Null(result.dto);
             Assert.Equal(409, result.status);
             Assert.Equal("Session is already stopped.", result.error);
@@ -248,28 +220,19 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
             var userId = Guid.NewGuid();
 
-            // 1. Create and Add the User
             var user = CreateUser(userId);
             db.Users.Add(user);
-
-            // 2. Create Session
             var session = CreateSession(userId, 1, stopped: null, isCancelled: true);
             db.Sessions.Add(session);
-
             await db.SaveChangesAsync();
 
-            // Act
             var result = await service.StopSessionByIdAsync(userId, session.Id);
 
-            // Assert
             Assert.Null(result.dto);
             Assert.Equal(409, result.status);
             Assert.Equal("Cancelled sessions cannot be stopped.", result.error);
         }
 
-        // ------------------------------------------------------------
-        // 4. CancelSessionAsync
-        // ------------------------------------------------------------
         [Fact]
         public async Task CancelSessionAsync_ReturnsSuccess_AndMarksStopped()
         {
@@ -291,9 +254,37 @@ namespace MobyParkxUnitTest
             Assert.NotNull(dbSession.Stopped); // Should stop the session upon cancellation
         }
 
-        // ------------------------------------------------------------
-        // 5. DeleteSessionAsync
-        // ------------------------------------------------------------
+        [Fact]
+        public async Task CancelSessionAsync_ReturnsConflict_WhenAlreadyCancelled()
+        {
+            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsConflict_WhenAlreadyCancelled));
+            var service = CreateService(db);
+            var userId = Guid.NewGuid();
+
+            var session = CreateSession(userId, 1, stopped: DateTimeOffset.UtcNow, isCancelled: true);
+            db.Sessions.Add(session);
+            await db.SaveChangesAsync();
+
+            var result = await service.CancelSessionAsync(userId, session.Id, new CancelSessionDto());
+
+            Assert.Null(result.dto);
+            Assert.Equal(409, result.status);
+            Assert.Equal("Session is already cancelled.", result.error);
+        }
+
+        [Fact]
+        public async Task CancelSessionAsync_ReturnsNotFound_WhenSessionDoesNotExist()
+        {
+            using var db = CreateDb(nameof(CancelSessionAsync_ReturnsNotFound_WhenSessionDoesNotExist));
+            var service = CreateService(db);
+
+            var result = await service.CancelSessionAsync(Guid.NewGuid(), Guid.NewGuid(), new CancelSessionDto());
+
+            Assert.Null(result.dto);
+            Assert.Equal(404, result.status);
+            Assert.Equal("Session not found.", result.error);
+        }
+
         [Fact]
         public async Task DeleteSessionAsync_Deletes_WhenValid()
         {
@@ -301,7 +292,6 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
             var userId = Guid.NewGuid();
 
-            // Ensure parking lot exists
             db.ParkingLots.Add(new ParkingLot
             {
                 Id = 1,
@@ -312,7 +302,6 @@ namespace MobyParkxUnitTest
                 Tariff = 2.00,
                 DayTariff = 15.00,
                 Coordinates = "{}"
-                // CreatedAt has a default value
             });
 
             var session = CreateSession(userId, 1);
@@ -326,9 +315,32 @@ namespace MobyParkxUnitTest
             Assert.Null(await db.Sessions.FindAsync(session.Id));
         }
 
-        // ------------------------------------------------------------
-        // 6. RequestRefundAsync
-        // ------------------------------------------------------------
+        [Fact]
+        public async Task DeleteSessionAsync_ReturnsError_WhenParkingLotIdIsInvalid()
+        {
+            using var db = CreateDb(nameof(DeleteSessionAsync_ReturnsError_WhenParkingLotIdIsInvalid));
+            var service = CreateService(db);
+
+            var result = await service.DeleteSessionAsync(-1, Guid.NewGuid());
+
+            Assert.False(result.dto);
+            Assert.Equal(400, result.status);
+            Assert.Equal("Parking lot ID must be a positive integer.", result.error);
+        }
+
+        [Fact]
+        public async Task DeleteSessionAsync_ReturnsNotFound_WhenParkingLotDoesNotExist()
+        {
+            using var db = CreateDb(nameof(DeleteSessionAsync_ReturnsNotFound_WhenParkingLotDoesNotExist));
+            var service = CreateService(db);
+
+            var result = await service.DeleteSessionAsync(999, Guid.NewGuid());
+
+            Assert.False(result.dto);
+            Assert.Equal(404, result.status);
+            Assert.Equal("Parking lot not found.", result.error);
+        }
+
         [Fact]
         public async Task RequestRefundAsync_ReturnsNull_WhenSessionIsNotCancelled()
         {
@@ -354,7 +366,6 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
             var userId = Guid.NewGuid();
 
-            // 5 minutes duration
             var start = DateTimeOffset.UtcNow.AddMinutes(-5);
             var stop = DateTimeOffset.UtcNow;
 
@@ -377,8 +388,8 @@ namespace MobyParkxUnitTest
             var result = await service.RequestRefundAsync(userId, session.Id, new RefundRequestDto { IBAN = "NL01" });
 
             Assert.NotNull(result.dto);
-            Assert.Equal(100m, result.dto.Percentage); // 100% for <= 10 mins
-            Assert.Equal(0.50m, result.dto.Refunded); // Min cost 0.50 * 1.0
+            Assert.Equal(100m, result.dto.Percentage);
+            Assert.Equal(0.50m, result.dto.Refunded);
         }
 
         [Fact]
@@ -387,10 +398,7 @@ namespace MobyParkxUnitTest
             using var db = CreateDb(nameof(RequestRefundAsync_EnforcesMaxRefundAttempts));
             var service = CreateService(db);
 
-            // IMPORTANT: Use a unique User ID because RefundAttempts is a static dictionary
             var userId = Guid.NewGuid();
-
-            // Create 4 cancelled sessions
             for (int i = 0; i < 4; i++)
             {
                 db.Sessions.Add(new Session
@@ -411,12 +419,10 @@ namespace MobyParkxUnitTest
             var sessions = await db.Sessions.Where(s => s.UserId == userId).ToListAsync();
             var dto = new RefundRequestDto { IBAN = "NL01" };
 
-            // Act: 3 successes
             await service.RequestRefundAsync(userId, sessions[0].Id, dto);
             await service.RequestRefundAsync(userId, sessions[1].Id, dto);
             await service.RequestRefundAsync(userId, sessions[2].Id, dto);
 
-            // Act: 4th failure
             var result = await service.RequestRefundAsync(userId, sessions[3].Id, dto);
 
             Assert.Null(result.dto);
