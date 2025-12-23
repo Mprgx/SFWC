@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MobyPark.Data;
 
@@ -11,9 +12,11 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251217163617_CreateDiscounts")]
+    partial class CreateDiscounts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -119,9 +122,6 @@ namespace MobyPark.Migrations
 
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("CurrentUsage")
-                        .HasColumnType("int");
 
                     b.Property<int?>("MaxUsage")
                         .HasColumnType("int");
@@ -246,17 +246,11 @@ namespace MobyPark.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<decimal>("AmountWithDiscount")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<DateTimeOffset?>("Completed")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset>("Created_At")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("DiscountCode")
-                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Hash")
                         .IsRequired()
@@ -281,8 +275,6 @@ namespace MobyPark.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Transaction");
-
-                    b.HasIndex("DiscountCode");
 
                     b.HasIndex("ParkingLotId");
 
@@ -582,7 +574,7 @@ namespace MobyPark.Migrations
             modelBuilder.Entity("MobyPark.Entities.DiscountLocation", b =>
                 {
                     b.HasOne("MobyPark.Entities.Discount", "Discount")
-                        .WithMany("AllowedLocations")
+                        .WithMany("allowedLocations")
                         .HasForeignKey("Code")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -619,10 +611,6 @@ namespace MobyPark.Migrations
 
             modelBuilder.Entity("MobyPark.Entities.Payment", b =>
                 {
-                    b.HasOne("MobyPark.Entities.Discount", "Discount")
-                        .WithMany()
-                        .HasForeignKey("DiscountCode");
-
                     b.HasOne("MobyPark.Entities.ParkingLot", "ParkingLot")
                         .WithMany()
                         .HasForeignKey("ParkingLotId")
@@ -638,8 +626,6 @@ namespace MobyPark.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Discount");
 
                     b.Navigation("ParkingLot");
 
@@ -763,11 +749,11 @@ namespace MobyPark.Migrations
 
             modelBuilder.Entity("MobyPark.Entities.Discount", b =>
                 {
-                    b.Navigation("AllowedLocations");
-
                     b.Navigation("ValidForCompanies");
 
                     b.Navigation("ValidForUsers");
+
+                    b.Navigation("allowedLocations");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.ParkingLot", b =>

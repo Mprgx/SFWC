@@ -48,7 +48,7 @@ namespace MobyPark.Services
         {
             if (!isAdmin)
                 return (null, "Access denied", 403);
-            
+
             var lot = new ParkingLot
             {
                 Id = 0,
@@ -83,7 +83,7 @@ namespace MobyPark.Services
         {
             if (!isAdmin)
                 return (null, "Access denied", 403);
-            
+
             var lot = await db.ParkingLots.FindAsync(lid);
             if (lot is null) return (null, "Parking lot not found", 404);
 

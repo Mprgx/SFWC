@@ -16,6 +16,7 @@ namespace MobyPark.Models
         [RegularExpression(@"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$",
         ErrorMessage = "Invalid Dutch license plate format.")]
         public string LicensePlate { get; set; } = string.Empty;
+
     }
 
     public class StopSessionResponseDto

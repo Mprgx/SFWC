@@ -91,7 +91,7 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? userId.ToString();
 
-           
+
             session.Stopped = DateTimeOffset.UtcNow;
             session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
 
@@ -101,7 +101,21 @@ namespace MobyPark.Services
 
             session.PaymentStatus = PaymentStatuses.Unpaid;
 
-          
+            var payment = new Payment
+            {
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
+                Initiator = username,
+                UserId = session.UserId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
+            };
+
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
@@ -111,21 +125,8 @@ namespace MobyPark.Services
                 Stopped = session.Stopped.Value,
                 Username = username,
                 DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
+                Cost = payment.AmountWithDiscount,
                 PaymentStatus = PaymentStatuses.Unpaid
-            };
-
-            var payment = new Payment
-            {
-                Transaction = GenerateTransactionNumber(),
-                Amount = session.Cost,
-                Initiator = username,
-                UserId = userId,
-                ParkingLotId = session.ParkingLotId,
-                SessionId = session.Id,
-                Completed = null,
-                Hash = GeneratePaymentHash(),
-                T_Data = null
             };
 
             db.Sessions.Update(session);
@@ -133,7 +134,12 @@ namespace MobyPark.Services
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
-            return (ToStopSessionResponse(session, payment), null, null);
+            var refreshedPayment = await db.Payments
+                .Where(p => p.Transaction == payment.Transaction)
+                .Include(p => p.Discount)
+                .FirstAsync();
+
+            return (ToStopSessionResponse(session, refreshedPayment), null, null);
         }
 
         public async Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId)
@@ -165,24 +171,12 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? session.UserId.ToString();
 
-            var billing = new Billing
-            {
-                Id = Guid.NewGuid(),
-                ParkingLotId = session.ParkingLotId,
-                LicensePlate = session.LicensePlate,
-                Started = session.Started,
-                Stopped = session.Stopped.Value,
-                Username = username,
-                DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
-                PaymentStatus = PaymentStatuses.AwaitingPayment
-            };
-
-      
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
                 Initiator = username,
                 UserId = session.UserId,
                 ParkingLotId = session.ParkingLotId,
@@ -192,12 +186,30 @@ namespace MobyPark.Services
                 T_Data = null
             };
 
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = session.ParkingLotId,
+                LicensePlate = session.LicensePlate,
+                Started = session.Started,
+                Stopped = session.Stopped.Value,
+                Username = username,
+                DurationMinutes = session.DurationMinutes,
+                Cost = payment.AmountWithDiscount,
+                PaymentStatus = PaymentStatuses.AwaitingPayment
+            };
+
             db.Sessions.Update(session);
             await db.Billings.AddAsync(billing);
             await db.Payments.AddAsync(payment);
             await db.SaveChangesAsync();
 
-            return (ToStopSessionResponse(session, payment), null, null);
+            var refreshedPayment = await db.Payments
+                .Where(p => p.Transaction == payment.Transaction)
+                .Include(p => p.Discount)
+                .FirstAsync();
+
+            return (ToStopSessionResponse(session, refreshedPayment), null, null);
         }
 
         public async Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(Guid userId, Guid sessionId)
@@ -413,7 +425,7 @@ namespace MobyPark.Services
                 Payment = new PaymentInitiationDto
                 {
                     Transaction = payment.Transaction,
-                    Amount = payment.Amount,                 
+                    Amount = payment.AmountWithDiscount,
                     Validation = payment.Hash
                 }
             };

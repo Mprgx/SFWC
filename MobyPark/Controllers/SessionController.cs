@@ -124,7 +124,7 @@ namespace MobyPark.Controllers
             var (session, error, status) = await service.CancelSessionAsync(userId, id, dto);
 
             if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error); 
+            if (status == 404) return NotFound(error);
             if (status == 409) return Conflict(error);
 
             if (status.HasValue)

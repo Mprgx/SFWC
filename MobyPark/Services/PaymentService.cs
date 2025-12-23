@@ -80,6 +80,7 @@ namespace MobyPark.Services
             var payment = await context.Payments
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
+                .Include(p => p.Discount)
                 .FirstOrDefaultAsync(p =>
                     p.Transaction == paymentRequest.Transaction &&
                     p.Completed == null &&
@@ -88,7 +89,9 @@ namespace MobyPark.Services
             if (payment is null)
                 return (null, "Payment not found.", 404);
 
-            if (payment.Amount != paymentRequest.Amount)
+            // Compare AmountWithDiscount to actual amount sent. 
+            // AmountWithDiscount should be equal to amount without any discount.
+            if (payment.AmountWithDiscount != paymentRequest.Amount)
                 return (null, "Amount mismatch.", 409);
 
             payment.Completed = DateTimeOffset.UtcNow;
@@ -139,7 +142,7 @@ namespace MobyPark.Services
                 .AsNoTracking()
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
-                .Where(p => p.UserId == user.Id) 
+                .Where(p => p.UserId == user.Id)
                 .OrderByDescending(p => p.Created_At)
                 .ToListAsync();
 
@@ -176,6 +179,7 @@ namespace MobyPark.Services
                     Stopped = p.Session.Stopped,
                     DurationMinutes = p.Session.DurationMinutes,
                     Cost = p.Session.Cost,
+                    DiscountedCost = p.AmountWithDiscount,
                     PaymentStatus = p.Session.PaymentStatus
                 };
             }
@@ -184,7 +188,11 @@ namespace MobyPark.Services
             {
                 Transaction = p.Transaction,
                 Amount = p.Amount,
-                CreatedAt = p.Created_At, 
+
+                DiscountCode = p.DiscountCode,
+                AmountWithDiscount = p.AmountWithDiscount,
+
+                CreatedAt = p.Created_At,
                 Completed = p.Completed,
                 Status = status,
 
