@@ -17,11 +17,19 @@ namespace MobyPark.Entities
 
         public int VehicleId { get; set; }
         public Vehicle? Vehicle { get; set; }
+
         [Required, MaxLength(128)]
         public required string LicensePlate { get; set; }
+
         public DateTimeOffset StartTime { get; set; }
         public DateTimeOffset EndTime { get; set; }
+
+        [MaxLength(32)]
+        public string? DiscountCode { get; set; }
+        public Discount? Discount { get; set; }
+
         public bool IsActive { get; set; } = true;
+
 
     }
 }

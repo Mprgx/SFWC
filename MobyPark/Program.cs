@@ -14,9 +14,9 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
 builder.Services.AddOpenApi(opts =>
 {
-    // 1) Define the Bearer scheme
     opts.AddDocumentTransformer((doc, ctx, ct) =>
     {
         doc.Components ??= new();
@@ -60,12 +60,20 @@ builder.Services.AddOpenApi(opts =>
     });
 });
 
-var cs = builder.Configuration.GetConnectionString("UserDatabase") ?? throw new InvalidOperationException("Missing ConnectionStrings:UserDatabase");
+var cs = builder.Configuration.GetConnectionString("UserDatabase")
+         ?? throw new InvalidOperationException("Missing ConnectionStrings:UserDatabase");
 
-var tokenKey = builder.Configuration["AppSettings:Token"] ?? throw new InvalidOperationException("Missing AppSettings:Token");
+var issuer = builder.Configuration["AppSettings:Issuer"]
+            ?? throw new InvalidOperationException("Missing AppSettings:Issuer");
+
+var audience = builder.Configuration["AppSettings:Audience"]
+              ?? throw new InvalidOperationException("Missing AppSettings:Audience");
+
+var tokenKey = builder.Configuration["AppSettings:Token"]
+              ?? throw new InvalidOperationException("Missing AppSettings:Token");
 
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase")));
+    options.UseSqlServer(cs));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -73,18 +81,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["AppSettings:Issuer"],
+            ValidIssuer = issuer,
+
             ValidateAudience = true,
-            ValidAudience = builder.Configuration["AppSettings:Audience"],
+            ValidAudience = audience,
+
             ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["AppSettings:Token"]!)),
-            ValidateIssuerSigningKey = true
+            ClockSkew = TimeSpan.Zero, 
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
         };
     });
 
-
-// Register services 
 builder.Services.AddSingleton<IEncryptionService, AesGcmEncryptionService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -98,17 +107,9 @@ builder.Services.AddScoped<IDiscountService, DiscountService>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // HTTP (voor CI / integratietests)
     options.ListenLocalhost(5280);
-
-    // HTTPS (voor lokaal ontwikkelen)
-    options.ListenLocalhost(7197, listenOptions =>
-    {
-        listenOptions.UseHttps();
-    });
+    options.ListenLocalhost(7197, listenOptions => listenOptions.UseHttps());
 });
-
-//builder.Services.AddHttpsRedirection(o => o.HttpsPort = 7197);
 
 var app = builder.Build();
 
@@ -118,7 +119,6 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

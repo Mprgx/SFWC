@@ -6,8 +6,8 @@ namespace MobyPark.Entities
 {
     public class Discount
     {
-        [Required, Key]
-        public string Code { get; set; }
+        [Required, Key, MaxLength(32)]
+        public string Code { get; set; } = string.Empty;
 
         [Required]
         public Guid CreatedBy { get; set; }

@@ -16,43 +16,43 @@ namespace MobyPark.Controllers
     public class SessionController(ISessionService service) : ControllerBase
     {
         [HttpPost("start-session")]
-        public async Task<ActionResult<SessionReadDto>> StartSession(SessionStartDto dto)
+        public async Task<ActionResult<SessionReadDto>> StartSession(SessionStartDto request)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
-            var (session, error, status) = await service.StartSessionAsync(userId, dto);
+            var (session, error, status) = await service.StartSessionAsync(userId, request);
 
-            if (status == 404) return NotFound(error);
-            if (status == 409) return Conflict(error);
-            if (status == 400) return BadRequest(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
+            if (status == 409) return Conflict(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (session is null)
-                return StatusCode(500, "Unexpected null session.");
+                return StatusCode(500, new { message = "Unexpected null session." });
 
             return Ok(session);
         }
 
         [HttpPost("stop-session")]
-        public async Task<ActionResult<StopSessionResponseDto>> StopSessionByPlate(SessionStopDto dto)
+        public async Task<ActionResult<StopSessionResponseDto>> StopSessionByPlate(SessionStopDto request)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
-            var (result, error, status) = await service.StopSessionByPlateAsync(userId, dto);
+            var (result, error, status) = await service.StopSessionByPlateAsync(userId, request);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
-            if (status == 409) return Conflict(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
+            if (status == 409) return Conflict(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (result is null)
-                return StatusCode(500, "Unexpected null stop-session result.");
+                return StatusCode(500, new { message = "Unexpected null stop-session result." });
 
             return Ok(result);
         }
@@ -60,13 +60,14 @@ namespace MobyPark.Controllers
         [HttpGet("sessions")]
         public async Task<ActionResult<List<SessionReadDto>>> GetMySessions([FromQuery] bool onlyActive = false)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
             var (sessions, error, status) = await service.GetAllForUserAsync(userId, onlyActive);
 
-            if (status == 400) return BadRequest(error);
-            if (status.HasValue) return StatusCode(status.Value, error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status.HasValue) return StatusCode(status.Value, new { message = error });
+
 
             return Ok(sessions ?? new List<SessionReadDto>());
         }
@@ -75,63 +76,63 @@ namespace MobyPark.Controllers
         [HttpPut("stop-session/{id:guid}")]
         public async Task<ActionResult<StopSessionResponseDto>> StopSession(Guid id)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
             var (result, error, status) = await service.StopSessionByIdAsync(userId, id);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
-            if (status == 409) return Conflict(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
+            if (status == 409) return Conflict(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (result is null)
-                return StatusCode(500, "Unexpected null stop-session result.");
+                return StatusCode(500, new { message = "Unexpected null stop-session result." });
 
             return Ok(result);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpGet("get-session-by-id")]
-        public async Task<ActionResult<SessionReadDto>> GetSession(Guid id)
+        public async Task<ActionResult<SessionReadDto>> GetSession([FromQuery] Guid id)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
             var (session, error, status) = await service.GetSessionByIdAsync(userId, id);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (session is null)
-                return StatusCode(500, "Unexpected null session.");
+                return StatusCode(500, new { message = "Unexpected null session." });
 
             return Ok(session);
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPut("cancel-session/{id:guid}")]
-        public async Task<ActionResult<SessionReadDto>> CancelSession(Guid id, CancelSessionDto dto)
+        public async Task<ActionResult<SessionReadDto>> CancelSession(Guid id, CancelSessionDto request)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
-            var (session, error, status) = await service.CancelSessionAsync(userId, id, dto);
+            var (session, error, status) = await service.CancelSessionAsync(userId, id, request);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
-            if (status == 409) return Conflict(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
+            if (status == 409) return Conflict(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (session is null)
-                return StatusCode(500, "Unexpected null session.");
+                return StatusCode(500, new { message = "Unexpected null session." });
 
             return Ok(session);
         }
@@ -142,38 +143,44 @@ namespace MobyPark.Controllers
         {
             var (deleted, error, status) = await service.DeleteSessionAsync(parkingLotId, sessionId);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (!deleted)
-                return StatusCode(500, "Failed to delete session.");
+                return StatusCode(500, new { message = "Failed to delete session." });
 
             return NoContent();
         }
 
         [Authorize(Roles = Roles.Admin)]
         [HttpPost("refund-session/{id:guid}")]
-        public async Task<ActionResult<RefundResponseDto>> RefundSession(Guid id, RefundRequestDto dto)
+        public async Task<ActionResult<RefundResponseDto>> RefundSession(Guid id, RefundRequestDto request)
         {
-            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
 
-            var (refund, error, status) = await service.RequestRefundAsync(userId, id, dto);
+            var (refund, error, status) = await service.RequestRefundAsync(userId, id, request);
 
-            if (status == 400) return BadRequest(error);
-            if (status == 404) return NotFound(error);
-            if (status == 409) return Conflict(error);
+            if (status == 400) return BadRequest(new { message = error });
+            if (status == 404) return NotFound(new { message = error });
+            if (status == 409) return Conflict(new { message = error });
 
             if (status.HasValue)
-                return StatusCode(status.Value, error);
+                return StatusCode(status.Value, new { message = error });
 
             if (refund is null)
-                return StatusCode(500, "Unexpected null refund response.");
+                return StatusCode(500, new { message = "Unexpected null refund response." });
 
             return Ok(refund);
+        }
+
+        private bool TryGetUserId(out Guid id)
+        {
+            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return Guid.TryParse(s, out id);
         }
     }
 }

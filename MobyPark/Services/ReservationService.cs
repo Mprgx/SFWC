@@ -9,7 +9,7 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class ReservationService(UserDbContext _context, IEncryptionService encryption) : IReservationService
+    public class ReservationService(UserDbContext _context, IEncryptionService encryption, IDiscountService discountService) : IReservationService
     {
         //POST
         public async Task<GetReservationDto> CreateReservation(PostReservationDto dto, Guid userId)
@@ -21,10 +21,36 @@ namespace MobyPark.Services
                     .FirstOrDefaultAsync(p => p.Id == dto.ParkingLotId)
                     ?? throw new KeyNotFoundException("Parking lot not found");
 
+                if (dto.StartTime.Offset != TimeSpan.Zero || dto.EndTime.Offset != TimeSpan.Zero)
+                    throw new ValidationException("StartTime and EndTime must be UTC (offset +00:00).");
+
+                var estimatedCost = CalculateEstimatedCost(parkingLot, dto.StartTime, dto.EndTime);
+
+                decimal estimatedWithDiscount = estimatedCost;
+                string? normalizedDiscountCode = null;
+
+                if (!string.IsNullOrWhiteSpace(dto.DiscountCode))
+                {
+                    var preview = await discountService.PreviewDiscountAsync(
+                        dto.DiscountCode,
+                        userId,
+                        dto.ParkingLotId,
+                        dto.StartTime,  
+                        estimatedCost);
+
+                    if (preview.statusCode == 404)
+                        throw new KeyNotFoundException(preview.message);
+
+                    if (preview.statusCode != 200)
+                        throw new ValidationException(preview.message);
+
+                    normalizedDiscountCode = preview.normalizedCode;
+                    estimatedWithDiscount = preview.amountWithDiscount ?? estimatedCost;
+                }
+
                 var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
                 if (!userExists) throw new KeyNotFoundException("User not found");
 
-                // Resolve vehicle (VehicleId preferred; LicensePlate fallback)
                 Vehicle vehicle;
 
                 if (dto.VehicleId.HasValue)
@@ -40,7 +66,6 @@ namespace MobyPark.Services
 
                     var wanted = LicensePlateProtector.Normalize(dto.LicensePlate);
 
-                    // Only scan this user's vehicles (small set)
                     var userVehicles = await _context.Vehicles
                         .Where(v => v.UserId == userId)
                         .ToListAsync();
@@ -50,7 +75,6 @@ namespace MobyPark.Services
                         ?? throw new ValidationException($"Vehicle with license plate {dto.LicensePlate} does not exist for this user.");
                 }
 
-                // Availability check (count only active reservations in THIS parking lot)
                 var reservedCount = await _context.Reservations
                     .Where(r => r.IsActive)
                     .Where(r => r.ParkingLotId == dto.ParkingLotId)
@@ -59,8 +83,7 @@ namespace MobyPark.Services
 
                 if (reservedCount >= parkingLot.Capacity)
                     throw new ParkingLotFullException("No spots available for the selected time slot.");
-
-                // Overlap check for SAME user in SAME parking lot (recommended)
+         
                 var userOverlap = await _context.Reservations
                     .Where(r => r.IsActive)
                     .Where(r => r.UserId == userId)
@@ -71,16 +94,17 @@ namespace MobyPark.Services
                 if (userOverlap)
                     throw new ValidationException("There is already an overlapping reservation for this user at this time.");
 
-                // Create reservation with REQUIRED fields set
+             
                 var reservation = new Reservation
                 {
                     ParkingLotId = dto.ParkingLotId,
-                    UserId = userId,                 //  required
-                    VehicleId = vehicle.Id,          //  required
-                    LicensePlate = vehicle.LicensePlate, //  store encrypted plate from Vehicle (no double-encrypt)
+                    UserId = userId,                
+                    VehicleId = vehicle.Id,         
+                    LicensePlate = vehicle.LicensePlate, 
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
-                    IsActive = true
+                    IsActive = true,
+                    DiscountCode = normalizedDiscountCode
                 };
 
                 await _context.Reservations.AddAsync(reservation);
@@ -92,11 +116,14 @@ namespace MobyPark.Services
                     Id = reservation.Id,
                     ParkingLotId = reservation.ParkingLotId,
                     UserId = reservation.UserId,
-                    VehicleId = reservation.VehicleId, //  return it
+                    VehicleId = reservation.VehicleId,
                     LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, reservation.LicensePlate),
                     StartTime = reservation.StartTime,
                     EndTime = reservation.EndTime,
-                    IsActive = reservation.IsActive
+                    IsActive = reservation.IsActive,
+                    DiscountCode = reservation.DiscountCode,
+                    EstimatedCost = estimatedCost,
+                    EstimatedCostWithDiscount = estimatedWithDiscount
                 };
             }
             catch
@@ -109,40 +136,91 @@ namespace MobyPark.Services
         //GET
         public async Task<GetReservationDto?> GetById(int reservationId, Guid userId)
         {
-            var reservation = await _context.Reservations
+            var r = await _context.Reservations
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.Id == reservationId && r.UserId == userId);
+                .Where(r => r.Id == reservationId && r.UserId == userId)
+                .Select(r => new
+                {
+                    Reservation = r,
+                    Tariff = r.ParkingLot!.Tariff
+                })
+                .FirstOrDefaultAsync();
 
-            return reservation is null ? null : new GetReservationDto
+            if (r is null) return null;
+
+            var estimatedCost = CalculateEstimatedCostFromTariff(r.Tariff, r.Reservation.StartTime, r.Reservation.EndTime);
+            var estimatedWithDiscount = estimatedCost;
+
+            if (!string.IsNullOrWhiteSpace(r.Reservation.DiscountCode))
             {
-                Id = reservation.Id,
-                ParkingLotId = reservation.ParkingLotId,
-                UserId = reservation.UserId,
-                VehicleId = reservation.VehicleId, //  add this
-                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, reservation.LicensePlate),
-                StartTime = reservation.StartTime,
-                EndTime = reservation.EndTime,
-                IsActive = reservation.IsActive
+                var preview = await discountService.PreviewDiscountAsync(
+                    r.Reservation.DiscountCode,
+                    userId,
+                    r.Reservation.ParkingLotId,
+                    r.Reservation.StartTime,
+                    estimatedCost);
+
+                if (preview.statusCode == 200 && preview.amountWithDiscount.HasValue)
+                    estimatedWithDiscount = preview.amountWithDiscount.Value;
+            }
+
+            return new GetReservationDto
+            {
+                Id = r.Reservation.Id,
+                ParkingLotId = r.Reservation.ParkingLotId,
+                UserId = r.Reservation.UserId,
+                VehicleId = r.Reservation.VehicleId,
+                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, r.Reservation.LicensePlate),
+                StartTime = r.Reservation.StartTime,
+                EndTime = r.Reservation.EndTime,
+                IsActive = r.Reservation.IsActive,
+                DiscountCode = r.Reservation.DiscountCode,
+                EstimatedCost = estimatedCost,
+                EstimatedCostWithDiscount = estimatedWithDiscount
             };
         }
 
         //GET
         public async Task<GetReservationDto?> GetByVehicleId(int vehicleId, Guid userId)
         {
-            var reservation = await _context.Reservations
+            var r = await _context.Reservations
                 .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.VehicleId == vehicleId && r.UserId == userId);
+                .Where(r => r.VehicleId == vehicleId && r.UserId == userId)
+                .OrderByDescending(r => r.StartTime)
+                .Select(r => new { Reservation = r, Tariff = r.ParkingLot!.Tariff })
+                .FirstOrDefaultAsync();
 
-            return reservation is null ? null : new GetReservationDto
+            if (r is null) return null;
+
+            var estimatedCost = CalculateEstimatedCostFromTariff(r.Tariff, r.Reservation.StartTime, r.Reservation.EndTime);
+            var estimatedWithDiscount = estimatedCost;
+
+            if (!string.IsNullOrWhiteSpace(r.Reservation.DiscountCode))
             {
-                Id = reservation.Id,
-                ParkingLotId = reservation.ParkingLotId,
-                UserId = reservation.UserId,
-                VehicleId = reservation.VehicleId, //  add this
-                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, reservation.LicensePlate),
-                StartTime = reservation.StartTime,
-                EndTime = reservation.EndTime,
-                IsActive = reservation.IsActive
+                var preview = await discountService.PreviewDiscountAsync(
+                    r.Reservation.DiscountCode,
+                    userId,
+                    r.Reservation.ParkingLotId,
+                    r.Reservation.StartTime,
+                    estimatedCost);
+
+                if (preview.statusCode == 200 && preview.amountWithDiscount.HasValue)
+                    estimatedWithDiscount = preview.amountWithDiscount.Value;
+            }
+
+            return new GetReservationDto
+            {
+                Id = r.Reservation.Id,
+                ParkingLotId = r.Reservation.ParkingLotId,
+                UserId = r.Reservation.UserId,
+                VehicleId = r.Reservation.VehicleId,
+                LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, r.Reservation.LicensePlate),
+                StartTime = r.Reservation.StartTime,
+                EndTime = r.Reservation.EndTime,
+                IsActive = r.Reservation.IsActive,
+                DiscountCode = r.Reservation.DiscountCode,
+                EstimatedCost = estimatedCost,
+                EstimatedCostWithDiscount = estimatedWithDiscount
             };
         }
 
@@ -155,6 +233,9 @@ namespace MobyPark.Services
 
             var newStart = dto.StartTime ?? reservation.StartTime;
             var newEnd = dto.EndTime ?? reservation.EndTime;
+
+            if (newStart.Offset != TimeSpan.Zero || newEnd.Offset != TimeSpan.Zero)
+                throw new ValidationException("StartTime and EndTime must be UTC (offset +00:00).");
 
             var parkingLot = await _context.ParkingLots
                 .FirstOrDefaultAsync(pl => pl.Id == reservation.ParkingLotId)
@@ -171,7 +252,7 @@ namespace MobyPark.Services
                 var reservedCount = await _context.Reservations
                     .Where(r => r.IsActive)
                     .Where(r => r.Id != reservation.Id)
-                    .Where(r => r.ParkingLotId == reservation.ParkingLotId) //  important
+                    .Where(r => r.ParkingLotId == reservation.ParkingLotId)
                     .Where(r => r.StartTime < newEnd && r.EndTime > newStart)
                     .CountAsync();
 
@@ -199,18 +280,76 @@ namespace MobyPark.Services
                 reservation.LicensePlate = vehicle.LicensePlate;
             }
 
+            if (dto.DiscountCode is not null)
+            {
+                var est = CalculateEstimatedCost(parkingLot, newStart, newEnd);
+
+                if (string.IsNullOrWhiteSpace(dto.DiscountCode))
+                {
+                    reservation.DiscountCode = null;
+                }
+                else
+                {
+                    var preview = await discountService.PreviewDiscountAsync(
+                        dto.DiscountCode,
+                        userId,
+                        reservation.ParkingLotId,
+                        newStart,
+                        est);
+
+                    if (preview.statusCode == 404) throw new KeyNotFoundException(preview.message);
+                    if (preview.statusCode != 200) throw new ValidationException(preview.message);
+
+                    reservation.DiscountCode = preview.normalizedCode;
+                }
+            }
+
+            if (dto.DiscountCode is null && (dto.StartTime.HasValue || dto.EndTime.HasValue) && !string.IsNullOrWhiteSpace(reservation.DiscountCode))
+            {
+                var est = CalculateEstimatedCost(parkingLot, newStart, newEnd);
+
+                var preview = await discountService.PreviewDiscountAsync(
+                    reservation.DiscountCode,
+                    userId,
+                    reservation.ParkingLotId,
+                    newStart,
+                    est);
+
+                if (preview.statusCode != 200)
+                    throw new ValidationException($"Existing discount is no longer valid: {preview.message}");
+            }
+
             await _context.SaveChangesAsync();
+
+            var estimatedCost = CalculateEstimatedCostFromTariff(parkingLot.Tariff, reservation.StartTime, reservation.EndTime);
+            var estimatedWithDiscount = estimatedCost;
+
+            if (!string.IsNullOrWhiteSpace(reservation.DiscountCode))
+            {
+                var preview = await discountService.PreviewDiscountAsync(
+                    reservation.DiscountCode,
+                    userId,
+                    reservation.ParkingLotId,
+                    reservation.StartTime,
+                    estimatedCost);
+
+                if (preview.statusCode == 200 && preview.amountWithDiscount.HasValue)
+                    estimatedWithDiscount = preview.amountWithDiscount.Value;
+            }
 
             return new GetReservationDto
             {
                 Id = reservation.Id,
                 ParkingLotId = reservation.ParkingLotId,
                 UserId = reservation.UserId,
-                VehicleId = reservation.VehicleId, //  add this
+                VehicleId = reservation.VehicleId,
                 LicensePlate = LicensePlateProtector.DecryptNormalized(encryption, reservation.LicensePlate),
                 StartTime = reservation.StartTime,
                 EndTime = reservation.EndTime,
-                IsActive = reservation.IsActive
+                IsActive = reservation.IsActive,
+                DiscountCode = reservation.DiscountCode,
+                EstimatedCost = estimatedCost,
+                EstimatedCostWithDiscount = estimatedWithDiscount
             };
         }
 
@@ -226,6 +365,24 @@ namespace MobyPark.Services
             _context.Reservations.Remove(reservation);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private static decimal CalculateEstimatedCost(ParkingLot parkingLot, DateTimeOffset startUtc, DateTimeOffset endUtc)
+        {
+            var minutes = (endUtc - startUtc).TotalMinutes;
+            var hours = (decimal)Math.Ceiling(minutes / 60.0);
+
+            var hourlyRate = Convert.ToDecimal(parkingLot.Tariff);
+
+            return Math.Max(0, hours * hourlyRate);
+        }
+
+        private static decimal CalculateEstimatedCostFromTariff(double tariff, DateTimeOffset startUtc, DateTimeOffset endUtc)
+        {
+            var minutes = (endUtc - startUtc).TotalMinutes;
+            var hours = (decimal)Math.Ceiling(minutes / 60.0);
+            var hourlyRate = Convert.ToDecimal(tariff);
+            return Math.Max(0, hours * hourlyRate);
         }
     }
 

@@ -12,6 +12,7 @@ namespace MobyPark.Data
         public DbSet<ParkingLot> ParkingLots => Set<ParkingLot>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<Reservation> Reservations => Set<Reservation>();
+        public DbSet<Company> Companies => Set<Company>();
         public DbSet<UserVehicle> UserVehicles => Set<UserVehicle>();
         public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
         public DbSet<Billing> Billings { get; set; }
@@ -98,6 +99,12 @@ namespace MobyPark.Data
                 .WithMany(p => p.Reservations)
                 .HasForeignKey(r => r.ParkingLotId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.Discount)
+                .WithMany()
+                .HasForeignKey(r => r.DiscountCode)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Payments
             modelBuilder.Entity<Payment>()
