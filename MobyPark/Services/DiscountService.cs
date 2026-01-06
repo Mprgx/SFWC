@@ -259,6 +259,149 @@ namespace MobyPark.Services
             return (200, "Discount preview OK.", discounted, discount.Code);
         }
 
+        public async Task<(int statusCode, string message, List<DiscountCodeAnalyticsReadDto>? dto)>
+            GetDiscountCodesAllAnalyticsAsync(DiscountCodeStatus status)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            // 1) base query discounts
+            var q = context.Discounts.AsNoTracking().AsQueryable();
+
+            q = status switch
+            {
+                DiscountCodeStatus.Active => q.Where(d => d.Active && d.ValidUntil >= now),
+                DiscountCodeStatus.Inactive => q.Where(d => !d.Active),
+                DiscountCodeStatus.Expired => q.Where(d => d.ValidUntil < now),
+                DiscountCodeStatus.All => q,
+                _ => null!
+            };
+
+            if (q is null)
+                return (400, "Invalid status value.", null);
+
+            var discounts = await q.ToListAsync();
+
+            if (discounts.Count == 0)
+                return (200, "OK", new List<DiscountCodeAnalyticsReadDto>());
+
+            // 2) load stats from Payments in 1 go
+            var codes = discounts.Select(d => d.Code).Distinct().ToList();
+
+            // NOTE: if your Payment has a Completed field, include it as needed:
+            // .Where(p => p.Completed != null)
+            var paymentStats = await context.Payments
+                .AsNoTracking()
+                .Where(p => p.DiscountCode != null && codes.Contains(p.DiscountCode))
+                .Select(p => new
+                {
+                    Code = p.DiscountCode!,
+                    Original = p.Amount,
+                    Discounted = p.AmountWithDiscount
+                })
+                .ToListAsync();
+
+            var grouped = paymentStats
+                .GroupBy(x => x.Code)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        UsedCount = g.Count(),
+                        SavedTotal = g.Sum(x => x.Original - x.Discounted)
+                    }
+                );
+
+            // 3) map dto
+            var result = discounts
+                .Select(d =>
+                {
+                    grouped.TryGetValue(d.Code, out var s);
+
+                    var saved = s?.SavedTotal ?? 0m;
+                    if (saved < 0) saved = 0m;
+
+                    return new DiscountCodeAnalyticsReadDto
+                    {
+                        Code = d.Code, // already normalized in Create
+                        Type = d.Type,
+                        Value = d.Value,
+
+                        ValidFrom = d.ValidFrom,
+                        ValidUntil = d.ValidUntil,
+
+                        IsActive = d.Active,
+
+                        MaxUsageCount = d.MaxUsage,
+                        CurrentUsageCount = d.CurrentUsage,
+
+                        ReservationsUsedCount = s?.UsedCount ?? 0,
+
+                        // round 2 decimals (AC)
+                        TotalSavedAmount = Math.Round(saved, 2, MidpointRounding.AwayFromZero),
+                    };
+                })
+                // predictable ordering
+                .OrderBy(x => x.ValidUntil)
+                .ThenBy(x => x.Code)
+                .ToList();
+
+            return (200, "OK", result);
+        }
+
+        public async Task<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)>
+    GetDiscountCodeAnalyticsByCodeAsync(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return (400, "Discount code is required.", null);
+
+            var normalizedCode = NormalizeCode(code);
+            var now = DateTimeOffset.UtcNow;
+
+            var discount = await context.Discounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Code == normalizedCode);
+
+            if (discount is null)
+                return (404, $"Discount code '{normalizedCode}' not found.", null);
+
+            // Load payment stats
+            var payments = await context.Payments
+                .AsNoTracking()
+                .Where(p => p.DiscountCode == normalizedCode)
+                .Select(p => new
+                {
+                    Original = p.Amount,
+                    Discounted = p.AmountWithDiscount
+                })
+                .ToListAsync();
+
+            var usedCount = payments.Count;
+
+            var totalSaved = payments.Sum(p => p.Original - p.Discounted);
+            if (totalSaved < 0) totalSaved = 0;
+
+            var dto = new DiscountCodeAnalyticsReadDto
+            {
+                Code = discount.Code,
+                Type = discount.Type,
+                Value = discount.Value,
+
+                ValidFrom = discount.ValidFrom,
+                ValidUntil = discount.ValidUntil,
+
+                IsActive = discount.Active,
+
+                MaxUsageCount = discount.MaxUsage,
+                CurrentUsageCount = discount.CurrentUsage,
+
+                ReservationsUsedCount = usedCount,
+                TotalSavedAmount = Math.Round(totalSaved, 2, MidpointRounding.AwayFromZero)
+            };
+
+            return (200, "OK", dto);
+        }
+
+
         private static decimal ComputeDiscountedAmount(DiscountType type, decimal value, decimal amount)
         {
             if (type == DiscountType.FixedAmount)

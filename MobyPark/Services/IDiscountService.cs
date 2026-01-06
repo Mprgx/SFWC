@@ -7,5 +7,9 @@ namespace MobyPark.Services
         Task<(int statusCode, string message, DiscountReadDto?)> CreateDiscountAsync(DiscountPostDto dto, Guid userId);
         Task<(int statusCode, string message)> ApplyDiscountAsync(string? discountCode, string transaction, Guid userId);
         Task<(int statusCode, string message, decimal? amountWithDiscount, string? normalizedCode)> PreviewDiscountAsync(string? discountCode, Guid userId, int parkingLotId, DateTimeOffset atTime, decimal amount);
+        Task<(int statusCode, string message, List<DiscountCodeAnalyticsReadDto>? dto)> GetDiscountCodesAllAnalyticsAsync(DiscountCodeStatus status);
+        Task<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)> GetDiscountCodeAnalyticsByCodeAsync(string code);
+
+
     }
 }
