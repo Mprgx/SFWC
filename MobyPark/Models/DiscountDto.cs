@@ -38,7 +38,7 @@ namespace MobyPark.Models
 
         [Required]
         public DateTimeOffset ValidUntil { get; set; }
-        
+
         public TimeSpan? TimeWindowStart { get; set; }
         public TimeSpan? TimeWindowEnd { get; set; }
         public int? MaxUsage { get; set; }
@@ -91,7 +91,7 @@ namespace MobyPark.Models
     public class DiscountReadDto
     {
         public string Code { get; set; } = string.Empty;
-   
+
         public Guid CreatedBy { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; }
@@ -114,10 +114,38 @@ namespace MobyPark.Models
         public List<Guid> ValidForCompanies { get; set; } = [];
     }
 
+    public class DiscountCodeAnalyticsReadDto
+    {
+        // required by AC
+        public string Code { get; set; } = string.Empty;          // uppercase
+        public DiscountType Type { get; set; }
+        public decimal Value { get; set; }
+
+        public DateTimeOffset ValidFrom { get; set; }
+        public DateTimeOffset ValidUntil { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public int? MaxUsageCount { get; set; }
+        public int? CurrentUsageCount { get; set; }
+
+        // stats
+        public int ReservationsUsedCount { get; set; }
+        public decimal TotalSavedAmount { get; set; }             // rounded 2 decimals
+    }
+
     public enum DiscountType
     {
         Percentage,
         FixedAmount
+    }
+
+    public enum DiscountCodeStatus
+    {
+        Active,     // default: Active == true AND ValidUntil >= now
+        Inactive,   // Active == false
+        Expired,    // ValidUntil < now
+        All
     }
 
 }

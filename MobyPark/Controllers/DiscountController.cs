@@ -50,6 +50,34 @@ namespace MobyPark.Controllers
             return Ok(new { message });
         }
 
+        [Authorize(Roles = Roles.Admin)]
+        [HttpGet("statistics/all-codes")]
+        public async Task<ActionResult<List<DiscountCodeAnalyticsReadDto>>> GetDiscountAllCodesAnalytics(
+            [FromQuery] DiscountCodeStatus status = DiscountCodeStatus.Active)
+        {
+            var (statusCode, message, dto) = await discountService.GetDiscountCodesAllAnalyticsAsync(status);
+
+            if (statusCode == 400) return BadRequest(new { message });
+            return Ok(dto ?? new List<DiscountCodeAnalyticsReadDto>());
+        }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpGet("statistics/code/{code}")]
+        public async Task<ActionResult<DiscountCodeAnalyticsReadDto>> GetDiscountCodeAnalyticsByCode(
+    [FromRoute] string code)
+        {
+            var (statusCode, message, dto) =
+                await discountService.GetDiscountCodeAnalyticsByCodeAsync(code);
+
+            return statusCode switch
+            {
+                200 => Ok(dto),
+                404 => NotFound(new { message }),
+                _ => BadRequest(new { message })
+            };
+        }
+
+
         private bool TryGetUserId(out Guid id)
         {
             var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
