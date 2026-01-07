@@ -75,11 +75,10 @@ jobs:
           SA_PASSWORD: "Str0ngP@ssw0rd!"
           MSSQL_PID: "Express"
         options: >-
-          --user root 
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Str0ngP@ssw0rd!' -Q 'SELECT 1'"
+          --health-cmd "/bin/bash -c 'echo > /dev/tcp/127.0.0.1/1433'"
           --health-interval 10s
           --health-timeout 30s
-          --health-retries 20
+          --health-retries 30
 
     env:
       ASPNETCORE_ENVIRONMENT: Development
@@ -113,6 +112,15 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
+      - name: Wait for SQL Server to be ready
+        run: |
+          echo "Waiting for SQL Server on localhost:1433..."
+          for i in {1..60}; do
+            (echo > /dev/tcp/127.0.0.1/1433) >/dev/null 2>&1 && echo "SQL Server is listening" && break
+            echo "still waiting... ($i)"
+            sleep 2
+          done
+
       - name: Install EF Core tools
         run: dotnet tool install --global dotnet-ef
 
@@ -122,7 +130,7 @@ jobs:
       - name: Start C# API
         run: |
           nohup dotnet run --project ./MobyPark/MobyPark.csproj > server.log 2>&1 &
-          sleep 45
+          sleep 60
 
       - name: Check API health
         run: |
