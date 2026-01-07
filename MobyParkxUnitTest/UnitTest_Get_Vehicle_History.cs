@@ -4,6 +4,7 @@ using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 using Xunit;
+using System.Security.Claims;
 
 namespace MobyParkxUnitTest
 {
@@ -113,10 +114,10 @@ namespace MobyParkxUnitTest
 
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(vehicle.Id);
+            (List<VehicleHistoryDto>? dtos, string? error, int? status) result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
             Assert.NotNull(result);
-            Assert.Equal(2, result.Count);
+            Assert.Equal(2, result.dtos.Count);
         }
 
         // Alleen sessions van het opgegeven vehicle
@@ -142,9 +143,9 @@ namespace MobyParkxUnitTest
 
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(vehicle1.Id);
+            (List<VehicleHistoryDto>? dtos, string? error, int? status) = await service.GetVehicleHistoryAsync(user.Id, vehicle1.Id);
 
-            Assert.Single(result);
+            Assert.Single(dtos);
         }
 
         // Chronologisch gesorteerd (nieuw naar oud)
@@ -168,10 +169,10 @@ namespace MobyParkxUnitTest
             context.Sessions.AddRange(newer, older);
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(vehicle.Id);
+            var result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
-            Assert.Equal(newer.Started, result[0].Started);
-            Assert.Equal(older.Started, result[1].Started);
+            Assert.Equal(newer.Started, result.dtos[0].Started);
+            Assert.Equal(older.Started, result.dtos[1].Started);
         }
 
         // Vehicle bestaat maar geen history -> lege lijst
@@ -188,21 +189,25 @@ namespace MobyParkxUnitTest
             context.Vehicles.Add(vehicle);
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(vehicle.Id);
+            var result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
             Assert.NotNull(result);
-            Assert.Empty(result);
+            Assert.Empty(result.dtos);
         }
 
         // Vehicle bestaat niet -> exception
         [Fact]
-        public async Task GetVehicleHistoryAsync_ThrowsKeyNotFound_WhenVehicleDoesNotExist()
+        public async Task GetVehicleHistoryAdminAsync_Returns404_WhenVehicleDoesNotExist()
         {
-            using var context = CreateDbContext(nameof(GetVehicleHistoryAsync_ThrowsKeyNotFound_WhenVehicleDoesNotExist));
+            using var context = CreateDbContext(nameof(GetVehicleHistoryAdminAsync_Returns404_WhenVehicleDoesNotExist));
             var service = CreateService(context);
 
-            await Assert.ThrowsAsync<KeyNotFoundException>(() =>
-                service.GetVehicleHistoryAsync(999));
+            var (dtos, error, status) = await service.GetVehicleHistoryAdminAsync(vehicleId: 999);
+
+            Assert.Null(dtos);
+            Assert.Equal("Vehicle not found.", error);
+            Assert.Equal(404, status);
         }
+
     }
 }

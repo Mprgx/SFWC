@@ -10,7 +10,7 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class SessionService(UserDbContext db, IEncryptionService encryption) : ISessionService
+    public class SessionService(UserDbContext db, IEncryptionService encryption, IDiscountService discountService) : ISessionService
     {
         private static readonly Dictionary<Guid, int> RefundAttempts = new();
 
@@ -91,17 +91,29 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? userId.ToString();
 
-           
+
             session.Stopped = DateTimeOffset.UtcNow;
             session.DurationMinutes = (int)Math.Ceiling((session.Stopped.Value - session.Started).TotalMinutes);
 
             const decimal Rate = 2.00m;
             var hours = Math.Ceiling(session.DurationMinutes / 60m);
-            session.Cost = hours * Rate;
+            session.Cost = hours * Rate;            
 
-            session.PaymentStatus = PaymentStatuses.Unpaid;
+            var payment = new Payment
+            {
+                Transaction = GenerateTransactionNumber(),
+                Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
+                Initiator = username,
+                UserId = session.UserId,
+                ParkingLotId = session.ParkingLotId,
+                SessionId = session.Id,
+                Completed = null,
+                Hash = GeneratePaymentHash(),
+                T_Data = null
+            };
 
-          
             var billing = new Billing
             {
                 Id = Guid.NewGuid(),
@@ -111,33 +123,78 @@ namespace MobyPark.Services
                 Stopped = session.Stopped.Value,
                 Username = username,
                 DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
-                PaymentStatus = PaymentStatuses.Unpaid
+                Cost = payment.AmountWithDiscount,
+                PaymentStatus = PaymentStatuses.AwaitingPayment,
+                SessionId = session.Id
             };
 
-            var payment = new Payment
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            try
             {
-                Transaction = GenerateTransactionNumber(),
-                Amount = session.Cost,
-                Initiator = username,
-                UserId = userId,
-                ParkingLotId = session.ParkingLotId,
-                SessionId = session.Id,
-                Completed = null,
-                Hash = GeneratePaymentHash(),
-                T_Data = null
-            };
+                billing.PaymentStatus = PaymentStatuses.AwaitingPayment;
+                session.PaymentStatus = PaymentStatuses.AwaitingPayment;
 
-            db.Sessions.Update(session);
-            await db.Billings.AddAsync(billing);
-            await db.Payments.AddAsync(payment);
-            await db.SaveChangesAsync();
+                db.Sessions.Update(session);
+                await db.Billings.AddAsync(billing);
+                await db.Payments.AddAsync(payment);
+                await db.SaveChangesAsync();
 
-            return (ToStopSessionResponse(session, payment), null, null);
+                DiscountApplyResultDto? discountResult = null;
+
+                Reservation? matchedReservation = null;
+
+                if (string.IsNullOrWhiteSpace(dto.DiscountCode))
+                {
+                    matchedReservation = await FindReservationForDiscountAsync(
+                        userId,
+                        session.ParkingLotId,
+                        session.LicensePlate,
+                        session.Started,
+                        session.Stopped.Value);
+                }
+
+                var codeToApply = !string.IsNullOrWhiteSpace(dto.DiscountCode)
+                    ? dto.DiscountCode.Trim()
+                    : matchedReservation?.DiscountCode;
+
+                if (!string.IsNullOrWhiteSpace(codeToApply))
+                {
+                    var (sc, msg) = await discountService.ApplyDiscountAsync(codeToApply, payment.Transaction, userId);
+
+                    discountResult = new DiscountApplyResultDto
+                    {
+                        Applied = sc == 200,
+                        Message = msg,
+                        Code = codeToApply
+                    };
+
+                    if (matchedReservation is not null && sc == 200)
+                        matchedReservation.IsActive = false;
+                }
+
+                billing.Cost = payment.AmountWithDiscount;
+                session.Cost = payment.AmountWithDiscount;               
+
+                await db.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                var response = ToStopSessionResponse(session, payment, discountResult);
+                return (response, null, null);
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<(StopSessionResponseDto? dto, string? error, int? status)> StopSessionByIdAsync(Guid userId, Guid sessionId)
         {
+            if (userId == Guid.Empty)
+                return (null, "User ID is required.", 400);
+
             if (sessionId == Guid.Empty)
                 return (null, "Session ID is required.", 400);
 
@@ -147,6 +204,9 @@ namespace MobyPark.Services
 
             if (session is null)
                 return (null, "Session not found.", 404);
+
+            if (session.UserId != userId)
+                return (null, "You are not allowed to stop this session.", 403);
 
             if (session.Stopped is not null)
                 return (null, "Session is already stopped.", 409);
@@ -165,24 +225,12 @@ namespace MobyPark.Services
 
             var username = session.User?.Username ?? session.UserId.ToString();
 
-            var billing = new Billing
-            {
-                Id = Guid.NewGuid(),
-                ParkingLotId = session.ParkingLotId,
-                LicensePlate = session.LicensePlate,
-                Started = session.Started,
-                Stopped = session.Stopped.Value,
-                Username = username,
-                DurationMinutes = session.DurationMinutes,
-                Cost = session.Cost,
-                PaymentStatus = PaymentStatuses.AwaitingPayment
-            };
-
-      
             var payment = new Payment
             {
                 Transaction = GenerateTransactionNumber(),
                 Amount = session.Cost,
+                DiscountCode = null,
+                AmountWithDiscount = session.Cost,
                 Initiator = username,
                 UserId = session.UserId,
                 ParkingLotId = session.ParkingLotId,
@@ -192,12 +240,71 @@ namespace MobyPark.Services
                 T_Data = null
             };
 
-            db.Sessions.Update(session);
-            await db.Billings.AddAsync(billing);
-            await db.Payments.AddAsync(payment);
-            await db.SaveChangesAsync();
+            var billing = new Billing
+            {
+                Id = Guid.NewGuid(),
+                ParkingLotId = session.ParkingLotId,
+                LicensePlate = session.LicensePlate,
+                Started = session.Started,
+                Stopped = session.Stopped.Value,
+                Username = username,
+                DurationMinutes = session.DurationMinutes,
+                Cost = payment.AmountWithDiscount,
+                PaymentStatus = PaymentStatuses.AwaitingPayment,
+                SessionId = session.Id
+            };
 
-            return (ToStopSessionResponse(session, payment), null, null);
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            try
+            {
+                billing.PaymentStatus = PaymentStatuses.AwaitingPayment;
+                session.PaymentStatus = PaymentStatuses.AwaitingPayment;
+
+                db.Sessions.Update(session);
+                await db.Billings.AddAsync(billing);
+                await db.Payments.AddAsync(payment);
+                await db.SaveChangesAsync();
+
+                DiscountApplyResultDto? discountResult = null;
+
+                var matchedReservation = await FindReservationForDiscountAsync(
+                    session.UserId,
+                    session.ParkingLotId,
+                    session.LicensePlate,
+                    session.Started,
+                    session.Stopped.Value);
+
+                var codeToApply = matchedReservation?.DiscountCode;
+
+                if (!string.IsNullOrWhiteSpace(codeToApply))
+                {
+                    var (sc, msg) = await discountService.ApplyDiscountAsync(codeToApply, payment.Transaction, session.UserId);
+
+                    discountResult = new DiscountApplyResultDto
+                    {
+                        Applied = sc == 200,
+                        Message = msg,
+                        Code = codeToApply
+                    };
+
+                    if (sc == 200 && matchedReservation is not null)
+                        matchedReservation.IsActive = false;
+                }
+
+                billing.Cost = payment.AmountWithDiscount;
+                session.Cost = payment.AmountWithDiscount;
+
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return (ToStopSessionResponse(session, payment, discountResult), null, null);
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<(SessionReadDto? dto, string? error, int? status)> GetSessionByIdAsync(Guid userId, Guid sessionId)
@@ -395,6 +502,32 @@ namespace MobyPark.Services
             return (response, null, null);
         }
 
+        private async Task<Reservation?> FindReservationForDiscountAsync(Guid userId, int parkingLotId, string sessionEncryptedPlate, DateTimeOffset started, DateTimeOffset stopped)
+        {
+            var candidates = await db.Reservations
+                .Where(r => r.UserId == userId)
+                .Where(r => r.ParkingLotId == parkingLotId)
+                .Where(r => r.IsActive)
+                .Where(r => r.DiscountCode != null)
+                .Where(r => r.StartTime < stopped && r.EndTime > started)
+                .OrderByDescending(r => r.StartTime)
+                .ToListAsync();
+
+            if (candidates.Count == 0)
+                return null;
+
+            var sessionPlate = LicensePlateProtector.DecryptNormalized(encryption, sessionEncryptedPlate);
+
+            foreach (var r in candidates)
+            {
+                var rPlate = LicensePlateProtector.DecryptNormalized(encryption, r.LicensePlate);
+                if (string.Equals(rPlate, sessionPlate, StringComparison.Ordinal))
+                    return r;
+            }
+
+            return null;
+        }
+
         private static string GeneratePaymentHash()
         {
             return Guid.NewGuid().ToString("N");
@@ -405,7 +538,7 @@ namespace MobyPark.Services
             return Random.Shared.NextInt64(100000000, 999999999).ToString("D12");
         }
 
-        private StopSessionResponseDto ToStopSessionResponse(Session session, Payment payment)
+        private StopSessionResponseDto ToStopSessionResponse(Session session, Payment payment, DiscountApplyResultDto? discountResult = null)
         {
             return new StopSessionResponseDto
             {
@@ -413,9 +546,10 @@ namespace MobyPark.Services
                 Payment = new PaymentInitiationDto
                 {
                     Transaction = payment.Transaction,
-                    Amount = payment.Amount,                 
+                    Amount = payment.AmountWithDiscount,
                     Validation = payment.Hash
-                }
+                },
+                Discount = discountResult
             };
         }
 

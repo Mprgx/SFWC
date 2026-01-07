@@ -48,12 +48,12 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always() # Ensure results are published even if tests fail
         with:
-          files: "*/TestResults/.trx"
+          files: "TestResults/*.trx"
 
       - name: Code Coverage Summary
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: "/TestResults//coverage.cobertura.xml"
+          filename: "TestResults/coverage.cobertura.xml"
           badge: true
           format: markdown
           output: both
@@ -67,7 +67,7 @@ jobs:
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:2019-latest
         ports:
           - 1433:1433
         env:
@@ -110,6 +110,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Update database
+        run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
 
       - name: Start C# API
         run: |

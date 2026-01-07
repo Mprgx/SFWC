@@ -9,6 +9,7 @@ namespace MobyPark.Entities
 
         public int ParkingLotId { get; set; }
         public ParkingLot? ParkingLot { get; set; }
+
         [Required, MaxLength(128)]
         public string LicensePlate { get; set; } = default!;
 
@@ -22,5 +23,8 @@ namespace MobyPark.Entities
         public decimal Cost { get; set; }
 
         public string PaymentStatus { get; set; } = default!;
+
+        public Guid SessionId { get; set; }
+        public Session? Session { get; set; }
     }
 }

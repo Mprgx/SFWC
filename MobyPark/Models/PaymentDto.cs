@@ -15,6 +15,9 @@ namespace MobyPark.Models
         public string Transaction { get; init; } = "";
         public decimal Amount { get; init; }
 
+        public string? DiscountCode { get; set; } = "";
+        public decimal AmountWithDiscount { get; set; }
+
         public DateTimeOffset CreatedAt { get; init; }
         public DateTimeOffset? Completed { get; init; }
 
@@ -35,6 +38,7 @@ namespace MobyPark.Models
         public DateTimeOffset? Stopped { get; init; }
         public int DurationMinutes { get; init; }
         public decimal Cost { get; init; }
+        public decimal DiscountedCost { get; set; }
         public string PaymentStatus { get; init; } = "";
     }
 
@@ -45,6 +49,7 @@ namespace MobyPark.Models
 
         [Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; } = 0m;
+
     }
 
     public class PaymentValidationDto

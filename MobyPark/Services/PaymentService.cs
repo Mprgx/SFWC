@@ -29,10 +29,12 @@ namespace MobyPark.Services
             if (request.T_Data.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
                 return (null, "t_data field is missing.", 400);
 
+            var tx = transactionId.Trim();
+
             var payment = await context.Payments
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
-                .FirstOrDefaultAsync(p => p.Transaction == transactionId);
+                .FirstOrDefaultAsync(p => p.Transaction == tx);
 
             if (payment is null || payment.UserId != userId)
                 return (null, "Payment not found.", 404);
@@ -56,6 +58,13 @@ namespace MobyPark.Services
 
                 if (session is not null)
                     session.PaymentStatus = PaymentStatuses.Paid;
+
+                var billing = await context.Billings.FirstOrDefaultAsync(b => b.SessionId == payment.SessionId.Value);
+                if (billing is not null)
+                {
+                    billing.PaymentStatus = PaymentStatuses.Paid;
+                    billing.Cost = payment.AmountWithDiscount;
+                }
             }
 
             await context.SaveChangesAsync();
@@ -77,18 +86,20 @@ namespace MobyPark.Services
             if (paymentRequest.Amount <= 0)
                 return (null, "Amount must be a positive number.", 400);
 
+            var tx = paymentRequest.Transaction.Trim();
+
             var payment = await context.Payments
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
                 .FirstOrDefaultAsync(p =>
-                    p.Transaction == paymentRequest.Transaction &&
+                    p.Transaction == tx &&
                     p.Completed == null &&
                     p.UserId == userId);
 
             if (payment is null)
                 return (null, "Payment not found.", 404);
 
-            if (payment.Amount != paymentRequest.Amount)
+            if (payment.AmountWithDiscount != paymentRequest.Amount)
                 return (null, "Amount mismatch.", 409);
 
             payment.Completed = DateTimeOffset.UtcNow;
@@ -100,6 +111,15 @@ namespace MobyPark.Services
 
                 if (session is not null)
                     session.PaymentStatus = PaymentStatuses.Paid;
+
+                var billing = await context.Billings
+                    .FirstOrDefaultAsync(b => b.SessionId == payment.SessionId.Value);
+
+                if (billing is not null)
+                {
+                    billing.PaymentStatus = PaymentStatuses.Paid;
+                    billing.Cost = payment.AmountWithDiscount;
+                }
             }
 
             await context.SaveChangesAsync();
@@ -139,7 +159,7 @@ namespace MobyPark.Services
                 .AsNoTracking()
                 .Include(p => p.Session)
                 .Include(p => p.ParkingLot)
-                .Where(p => p.UserId == user.Id) 
+                .Where(p => p.UserId == user.Id)
                 .OrderByDescending(p => p.Created_At)
                 .ToListAsync();
 
@@ -176,6 +196,7 @@ namespace MobyPark.Services
                     Stopped = p.Session.Stopped,
                     DurationMinutes = p.Session.DurationMinutes,
                     Cost = p.Session.Cost,
+                    DiscountedCost = p.AmountWithDiscount,
                     PaymentStatus = p.Session.PaymentStatus
                 };
             }
@@ -184,7 +205,11 @@ namespace MobyPark.Services
             {
                 Transaction = p.Transaction,
                 Amount = p.Amount,
-                CreatedAt = p.Created_At, 
+
+                DiscountCode = p.DiscountCode,
+                AmountWithDiscount = p.AmountWithDiscount,
+
+                CreatedAt = p.Created_At,
                 Completed = p.Completed,
                 Status = status,
 

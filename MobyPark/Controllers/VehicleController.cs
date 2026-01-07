@@ -13,90 +13,131 @@ namespace MobyPark.Controllers
     [Authorize]
     public class VehicleController(IVehicleService vehicleService) : ControllerBase
     {
+        private bool TryGetUserId(out Guid id)
+        {
+            id = Guid.Empty;
+            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return !string.IsNullOrWhiteSpace(s) && Guid.TryParse(s, out id);
+        }
+
         [HttpPost("vehicle")]
         public async Task<ActionResult<VehicleReadDto>> CreateVehicle(VehicleCreateDto request)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!TryGetUserId(out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var vehicle = await vehicleService.CreateVehicleAsync(userId, request);
-            if (vehicle is null)
-                return Conflict("License plate may already exist.");
+            var (dto, error, status) = await vehicleService.CreateVehicleAsync(userId, request);
 
-            return Ok(vehicle);
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            if (dto is null)
+                return StatusCode(500, "Unexpected null vehicle.");
+
+            return Ok(dto);
         }
 
         [HttpGet("vehicles")]
-        public async Task<ActionResult<List<VehicleReadDto>>> GetMyVehicles()
+        public async Task<ActionResult<List<VehicleReadDto>>> GetVehicles()
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!TryGetUserId(out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var vehicles = await vehicleService.GetVehiclesForUserAsync(userId);
-            return Ok(vehicles);
+            var (dtos, error, status) = await vehicleService.GetVehiclesForUserAsync(userId);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            if (dtos is null) return StatusCode(500, "Unexpected null vehicle list.");
+            return Ok(dtos);
         }
 
         [HttpPut("vehicle/{id:int}")]
         public async Task<ActionResult<VehicleReadDto>> UpdateVehicle(int id, VehicleUpdateDto request)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!TryGetUserId(out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var updated = await vehicleService.UpdateVehicleAsync(userId, id, request);
+            var (dto, error, status) = await vehicleService.UpdateVehicleAsync(userId, id, request);
 
-            if (updated is null)
-                return NotFound("Vehicle not found or not owned by the user.");
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+            if (status.HasValue) return StatusCode(status.Value, error);
 
-            return Ok(updated);
+            if (dto is null) return StatusCode(500, "Unexpected null vehicle.");
+            return Ok(dto);
         }
 
         [HttpDelete("vehicle/{id:int}")]
         public async Task<IActionResult> DeleteVehicle(int id)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            if (!TryGetUserId(out var userId))
                 return Unauthorized("Invalid or missing user ID.");
 
-            var deleted = await vehicleService.DeleteVehicleAsync(userId, id);
+            var (error, status) = await vehicleService.DeleteVehicleAsync(userId, id);
 
-            if (!deleted)
-                return NotFound("Vehicle not found or not owned by the user.");
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
 
-            return Ok(new { status = "Deleted" });
+            if (status.HasValue)
+                return StatusCode(status.Value, error);
+
+            return StatusCode(500, "Unexpected delete result.");
+        }
+
+        [HttpGet("vehicle/{vehicleId:int}/history")]
+        public async Task<ActionResult<List<VehicleHistoryDto>>> GetMyVehicleHistory(int vehicleId)
+        {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized("Invalid or missing user ID.");
+
+            var (dtos, error, status) = await vehicleService.GetVehicleHistoryAsync(userId, vehicleId);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            if (dtos is null) return StatusCode(500, "Unexpected null history list.");
+            return Ok(dtos);
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpGet("vehicle/{username}")]
-        public async Task<ActionResult<List<VehicleReadDto>>> GetVehicleByUser(string username)
+        [HttpGet("vehicles/user/{username}")]
+        public async Task<ActionResult<List<VehicleReadDto>>> GetVehiclesByUsername(string username)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out _))
-                return Unauthorized("Invalid or missing user ID.");
+            var (dtos, error, status) = await vehicleService.GetVehiclesByUsernameAsync(username);
 
-            var vehicles = await vehicleService.GetVehiclesByUsernameAsync(username);
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+            if (status.HasValue) return StatusCode(status.Value, error);
 
-            if (vehicles.Count == 0)
-                return NoContent();
-
-            return Ok(vehicles);
+            if (dtos is null) return StatusCode(500, "Unexpected null vehicle list.");
+            return Ok(dtos);
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpGet("vehicle/{vehicleId}/history")]
-        public async Task<IActionResult> GetVehicleHistory(int vehicleId)
+        [HttpGet("vehicles/{vehicleId:int}/history")]
+        public async Task<ActionResult<List<VehicleHistoryDto>>> GetVehicleHistoryAdmin(int vehicleId)
         {
-            try
-            {
-                var history = await vehicleService.GetVehicleHistoryAsync(vehicleId);
-                return Ok(history);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            var (dtos, error, status) = await vehicleService.GetVehicleHistoryAdminAsync(vehicleId);
+
+            if (status == 400) return BadRequest(error);
+            if (status == 404) return NotFound(error);
+            if (status == 204) return NoContent();
+            if (status.HasValue) return StatusCode(status.Value, error);
+
+            if (dtos is null) return StatusCode(500, "Unexpected null history list.");
+            return Ok(dtos);
         }
     }
 }

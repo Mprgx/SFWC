@@ -10,6 +10,12 @@ namespace MobyPark.Entities
 
         public decimal Amount { get; set; }
 
+        [MaxLength(32)]
+        public string? DiscountCode { get; set; }
+        public Discount? Discount { get; set; }
+
+        public decimal AmountWithDiscount { get; set; }
+
         [MaxLength(64)]
         public required string Initiator { get; set; }
 

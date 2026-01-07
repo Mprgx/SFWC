@@ -28,6 +28,7 @@ namespace MobyPark.Controllers
             if (status == 403) return Forbid();
             if (status == 404) return NotFound(error);
             if (status == 409) return Conflict(error);
+            if (status == 422) return UnprocessableEntity(error);
             if (status.HasValue) return StatusCode(status.Value, error);
 
             if (dto is null) return StatusCode(500, "Unexpected null payment.");

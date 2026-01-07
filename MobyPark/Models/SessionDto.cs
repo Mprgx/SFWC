@@ -13,15 +13,17 @@ namespace MobyPark.Models
     public class SessionStopDto
     {
         [Required]
-        [RegularExpression(@"^(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2})$",
-        ErrorMessage = "Invalid Dutch license plate format.")]
         public string LicensePlate { get; set; } = string.Empty;
+
+        [StringLength(32)]
+        public string? DiscountCode { get; set; }
     }
 
     public class StopSessionResponseDto
     {
         public SessionReadDto Session { get; init; } = default!;
         public PaymentInitiationDto Payment { get; init; } = default!;
+        public DiscountApplyResultDto? Discount { get; init; }
     }
 
     public class CancelSessionDto
