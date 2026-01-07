@@ -66,21 +66,19 @@ jobs:
     needs: build
 
     services:
-       mssql:
+      mssql:
         image: mcr.microsoft.com/mssql/server:2022-latest
         ports:
-         - 1433:1433
-       env:
+          - 1433:1433
+        env:
           ACCEPT_EULA: "Y"
           SA_PASSWORD: "Str0ngP@ssw0rd!"
           MSSQL_PID: "Express"
         options: >-
-            --user root
-            --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Str0ngP@ssw0rd!' -Q 'SELECT 1'"
-            --health-interval 10s
-            --health-timeout 5s
-            --health-retries 10
-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Str0ngP@ssw0rd!' -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
       ASPNETCORE_ENVIRONMENT: Development
