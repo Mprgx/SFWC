@@ -9,6 +9,8 @@ __pycache__/
 .vscode/
 
 # Data folder
+DataConverter/API-V1-DATA
+DataConverter/NEW-CSV-DATA/payments.csv
 Server/data
 !Server/data/readme.md
 
