@@ -67,17 +67,13 @@ jobs:
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2019-latest
+        image: mcr.microsoft.com/mssql/server:2022-latest
         ports:
           - 1433:1433
         env:
           ACCEPT_EULA: "Y"
           SA_PASSWORD: "Str0ngP@ssw0rd!"
-        options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Str0ngP@ssw0rd!' -Q 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+
 
     env:
       ASPNETCORE_ENVIRONMENT: Development
@@ -100,6 +96,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+
+      - name: Install SQL Server tools
+        run: |
+          wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+          wget -qO- https://packages.microsoft.com/config/ubuntu/20.04/prod.list | tee /etc/apt/sources.list.d/mssql-tools.list
+          apt-get update
+          ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+
+      - name: Wait for SQL Server
+        run: |
+          until /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Str0ngP@ssw0rd!' -Q 'SELECT 1' > /dev/null 2>&1; do
+            echo "Waiting for SQL Server..."
+            sleep 5
+          done
+          echo "SQL Server is ready"
 
       - name: Install Python dependencies
         run: |
