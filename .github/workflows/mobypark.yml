@@ -139,6 +139,6 @@ jobs:
 
       - name: Run pytest integration tests
         run: |
-          pytest ./Integratietests/ --disable-warnings -q || \
+          pytest ./Integratietests/ --maxfail=1 --disable-warnings -q || \
           (echo "---- SERVER LOG ----" && cat server.log && exit 1)
 
