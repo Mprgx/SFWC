@@ -124,8 +124,8 @@ jobs:
       - name: Install EF Core tools
         run: dotnet tool install --global dotnet-ef
 
-      - name: Update database
-        run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
+      # - name: Update database
+      #   run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
 
       - name: Start C# API
         run: |
