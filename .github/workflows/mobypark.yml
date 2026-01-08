@@ -139,4 +139,4 @@ jobs:
 
       - name: Run pytest integration tests
         run: |
-          pytest ./Integratietests/ --maxfail=1 --disable-warnings -q
+          pytest ./Integratietests/ --maxfail=100000 --disable-warnings -q
