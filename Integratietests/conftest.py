@@ -34,6 +34,8 @@ def _register(
     # 200 / 201 = success
     # 400 / 409 = user already exists → fine for tests
     if response.status_code not in (200, 201, 400, 409):
+        print(response.status_code)
+        print(response.text)
         response.raise_for_status()
 
 def _login(username: str, password: str) -> dict:
