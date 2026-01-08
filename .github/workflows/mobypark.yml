@@ -124,8 +124,15 @@ jobs:
       - name: Install EF Core tools
         run: dotnet tool install --global dotnet-ef
 
-      # - name: Update database
-      #   run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
+      - name: Create test database
+        run: |
+          docker exec $(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest) \
+          /opt/mssql-tools/bin/sqlcmd \
+          -S localhost -U sa -P 'Str0ngP@ssw0rd!' \
+          -Q "IF DB_ID('MobyParkTestDb') IS NULL CREATE DATABASE MobyParkTestDb;"
+
+      - name: Update database
+        run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
 
       - name: Start C# API
         run: |
