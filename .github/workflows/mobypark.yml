@@ -126,8 +126,9 @@ jobs:
 
       - name: Create test database
         run: |
-          docker exec $(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest) \
-          /opt/mssql-tools/bin/sqlcmd \
+          CONTAINER_ID=$(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest)
+          docker exec $CONTAINER_ID \
+          /opt/mssql-tools18/bin/sqlcmd \
           -S localhost -U sa -P 'Str0ngP@ssw0rd!' \
           -Q "IF DB_ID('MobyParkTestDb') IS NULL CREATE DATABASE MobyParkTestDb;"
 
