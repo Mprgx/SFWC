@@ -143,7 +143,7 @@ jobs:
 
       - name: Publish test results
         if: always()
-        uses: actions/upload-test-results@v3
+        uses: mikeal/upload-test-results@v3
         with:
           test-results-files: 'pytest-results/results.xml'
           # optioneel, voeg een label toe in GitHub UI
