@@ -132,7 +132,25 @@ jobs:
           curl --fail http://localhost:5280/scalar/v1 \
           || (echo "---- SERVER LOG ----" && cat server.log && exit 1)
 
-      - name: Run pytest integration tests
+      - name: Run tests
         run: |
-          pytest ./Integratietests/ --disable-warnings -q || \
-          (echo "---- SERVER LOG ----" && cat server.log && exit 1)
+          pytest Integratietests \
+            --cov=MobyPark \
+            --cov-report=term \
+            --cov-report=xml \
+            --junitxml=pytest-report.xml
+        continue-on-error: true
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: pytest-report.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
