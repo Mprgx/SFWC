@@ -152,7 +152,6 @@ jobs:
         with:
           name: Integration Tests
           path: pytest-results/results.xml
-          reporter: junit
 
 
       - name: Upload coverage report
