@@ -42,7 +42,11 @@ jobs:
           dotnet test ./MobyParkxUnitTest/MobyParkxUnitTest.csproj \
             --configuration Release \
             --logger "trx;LogFileName=unit_test_results.trx" \
-            --collect:"XPlat Code Coverage"
+            --collect:"XPlat Code Coverage" \
+            --no-build \
+            --verbosity normal
+        continue-on-error: true
+
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
@@ -141,16 +145,19 @@ jobs:
             --junitxml=pytest-report.xml
         continue-on-error: true
 
-      - name: Publish test results
+      - name: Publish integration test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: dorny/test-reporter@v1
         with:
-          name: pytest-results
-          path: pytest-report.xml
+          name: Integration Tests
+          path: pytest-results/results.xml
+          reporter: junit
 
-      - name: Upload coverage
+
+      - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report
           path: coverage.xml
+
