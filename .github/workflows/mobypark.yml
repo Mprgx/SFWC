@@ -78,7 +78,7 @@ jobs:
         Password=Str0ngP@ssw0rd!;
         TrustServerCertificate=True;
 
-      AppSettings__Token: "THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789"
+      AppSettings__Token: "THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789_THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789"
       AppSettings__Issuer: "MobyPark.Test"
       AppSettings__Audience: "MobyPark.Test"
 
