@@ -47,12 +47,12 @@ jobs:
             --verbosity normal
         continue-on-error: true
 
-
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Publish Unit Test Results
         if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
         with:
-          files: "**/*.trx"
+          files: "MobyParkxUnitTest/TestResults/unit_test_results.trx"
+
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage.xml
