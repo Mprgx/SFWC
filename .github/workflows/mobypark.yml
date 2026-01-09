@@ -47,11 +47,12 @@ jobs:
             --verbosity normal
         continue-on-error: true
 
-      - name: Publish Unit Test Results
-        if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Upload unit test results
+        uses: actions/upload-artifact@v4
         with:
-          files: "MobyParkxUnitTest/TestResults/unit_test_results.trx"
+          name: unit-test-results
+          path: MobyParkxUnitTest/TestResults
+
 
 
   integration-tests:

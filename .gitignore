@@ -30,6 +30,15 @@ TestResults/
 *.coveragexml
 *.log
 
+# negeer alles in TestResults
+TestResults/
+*.trx
+
+# maar laat deze specifieke map/alle .trx bestanden toe
+!TestResults/
+!TestResults/*.trx
+
+
 # BenchmarkDotNet
 BenchmarkDotNet.Artifacts/
 
