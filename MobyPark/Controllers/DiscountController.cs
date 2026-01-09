@@ -51,9 +51,25 @@ namespace MobyPark.Controllers
         }
 
         [Authorize(Roles = Roles.Admin)]
+        [HttpPatch("{code}")]
+        public async Task<ActionResult<DiscountReadDto>> PatchDiscountAsync([FromRoute] string code,[FromBody] DiscountPatchDto dto)
+        {
+            var (statusCode, message, updated) = await discountService.UpdateDiscountAsync(code, dto);
+
+            if (statusCode == 200) return Ok(updated);
+
+            if (statusCode == 400) return BadRequest(new { message });
+
+            if (statusCode == 404) return NotFound(new { message });
+
+            if (statusCode == 409) return Conflict(new { message });
+
+            return StatusCode(500, new { message = "Unexpected error." });
+        }
+
+        [Authorize(Roles = Roles.Admin)]
         [HttpGet("statistics/all-codes")]
-        public async Task<ActionResult<List<DiscountCodeAnalyticsReadDto>>> GetDiscountAllCodesAnalytics(
-            [FromQuery] DiscountCodeStatus status = DiscountCodeStatus.Active)
+        public async Task<ActionResult<List<DiscountCodeAnalyticsReadDto>>> GetDiscountAllCodesAnalytics([FromQuery] DiscountCodeStatus status = DiscountCodeStatus.Active)
         {
             var (statusCode, message, dto) = await discountService.GetDiscountCodesAllAnalyticsAsync(status);
 
@@ -63,18 +79,14 @@ namespace MobyPark.Controllers
 
         [Authorize(Roles = Roles.Admin)]
         [HttpGet("statistics/code/{code}")]
-        public async Task<ActionResult<DiscountCodeAnalyticsReadDto>> GetDiscountCodeAnalyticsByCode(
-    [FromRoute] string code)
+        public async Task<ActionResult<DiscountCodeAnalyticsReadDto>> GetDiscountCodeAnalyticsByCode([FromRoute] string code)
         {
             var (statusCode, message, dto) =
                 await discountService.GetDiscountCodeAnalyticsByCodeAsync(code);
 
-            return statusCode switch
-            {
-                200 => Ok(dto),
-                404 => NotFound(new { message }),
-                _ => BadRequest(new { message })
-            };
+            if (statusCode == 200) return Ok(dto);
+            if (statusCode == 404) return NotFound(new { message });
+            return BadRequest(new { message });
         }
 
 
