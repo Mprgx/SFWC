@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using MobyPark.Entities;
+
 namespace MobyPark.Models
 {
     public class ApplyDiscountDto
@@ -96,6 +98,8 @@ namespace MobyPark.Models
 
         public DateTimeOffset CreatedAt { get; set; }
 
+        public bool Active { get; set; }
+
         public DiscountType Type { get; set; }
 
         public decimal Value { get; set; }
@@ -114,10 +118,89 @@ namespace MobyPark.Models
         public List<Guid> ValidForCompanies { get; set; } = [];
     }
 
+    public class DiscountPatchDto : IValidatableObject
+    {
+        public bool? Active { get; set; }
+
+        public DiscountType? Type { get; set; }
+
+        [Range(0.01, double.MaxValue)]
+        public decimal? Value { get; set; }
+
+        public DateTimeOffset? ValidFrom { get; set; }
+        public DateTimeOffset? ValidUntil { get; set; }
+
+        public TimeSpan? TimeWindowStart { get; set; }
+        public TimeSpan? TimeWindowEnd { get; set; }
+
+        public bool ClearTimeWindow { get; set; }
+
+        public int? MaxUsage { get; set; }
+
+        public bool ClearMaxUsage { get; set; }
+
+        public List<int>? AllowedLocations { get; set; }
+        public List<Guid>? ValidForUsers { get; set; }
+        public List<Guid>? ValidForCompanies { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext _)
+        {
+            if (ClearTimeWindow)
+            {
+                if (TimeWindowStart.HasValue || TimeWindowEnd.HasValue)
+                {
+                    yield return new ValidationResult(
+                        "When ClearTimeWindow is true, TimeWindowStart/TimeWindowEnd must not be set.",
+                        new[] { nameof(ClearTimeWindow), nameof(TimeWindowStart), nameof(TimeWindowEnd) });
+                }
+            }
+            else
+            {
+                if (TimeWindowStart.HasValue != TimeWindowEnd.HasValue)
+                {
+                    yield return new ValidationResult(
+                        "TimeWindowStart and TimeWindowEnd must both be set, or both be null.",
+                        new[] { nameof(TimeWindowStart), nameof(TimeWindowEnd) });
+                }
+            }
+
+            var day = TimeSpan.FromDays(1);
+
+            if (TimeWindowStart.HasValue && (TimeWindowStart.Value < TimeSpan.Zero || TimeWindowStart.Value >= day))
+                yield return new ValidationResult("TimeWindowStart must be between 00:00 and 23:59:59.", new[] { nameof(TimeWindowStart) });
+
+            if (TimeWindowEnd.HasValue && (TimeWindowEnd.Value < TimeSpan.Zero || TimeWindowEnd.Value >= day))
+                yield return new ValidationResult("TimeWindowEnd must be between 00:00 and 23:59:59.", new[] { nameof(TimeWindowEnd) });
+
+            if (ClearMaxUsage && MaxUsage is not null)
+                yield return new ValidationResult("When ClearMaxUsage is true, MaxUsage must not be set.", new[] { nameof(ClearMaxUsage), nameof(MaxUsage) });
+
+            if (!ClearMaxUsage && MaxUsage is not null && MaxUsage < 1)
+                yield return new ValidationResult("MaxUsage must be 1 or higher.", new[] { nameof(MaxUsage) });
+
+            if (Type == DiscountType.Percentage && Value is not null && Value > 100m)
+                yield return new ValidationResult("Percentage discount cannot be > 100%.", new[] { nameof(Value) });
+
+            if (ValidFrom.HasValue && ValidUntil.HasValue && ValidFrom.Value >= ValidUntil.Value)
+            {
+                yield return new ValidationResult(
+                    "ValidUntil must be after ValidFrom.",
+                    new[] { nameof(ValidFrom), nameof(ValidUntil) });
+            }
+
+            if (Type.HasValue && !Value.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Value is required when Type is set.",
+                    new[] { nameof(Type), nameof(Value) });
+            }
+        }
+    }
+
     public class DiscountCodeAnalyticsReadDto
     {
         // required by AC
-        public string Code { get; set; } = string.Empty;          // uppercase
+        public string Code { get; set; } = string.Empty;        
         public DiscountType Type { get; set; }
         public decimal Value { get; set; }
 

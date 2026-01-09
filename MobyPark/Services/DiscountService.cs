@@ -190,6 +190,160 @@ namespace MobyPark.Services
             return (200, "Discount successfully applied.");
         }
 
+        public async Task<(int statusCode, string message, DiscountReadDto?)> UpdateDiscountAsync(string code, DiscountPatchDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                return (400, "Discount code is required.", null);
+
+            var normalizedCode = NormalizeCode(code);
+
+            var discount = await context.Discounts
+                .Include(d => d.AllowedLocations)
+                .Include(d => d.ValidForUsers)
+                .Include(d => d.ValidForCompanies)
+                .FirstOrDefaultAsync(d => d.Code == normalizedCode);
+
+            if (discount is null)
+                return (404, $"Discount code '{normalizedCode}' not found.", null);
+
+            if (dto.Type.HasValue && !dto.Value.HasValue)
+                return (400, "Value is required when Type is set.", null);
+
+            var finalType = dto.Type ?? discount.Type;
+            var finalValue = dto.Value ?? discount.Value;
+
+            if (finalValue <= 0)
+                return (400, "Value must be > 0.", null);
+
+            if (finalType == DiscountType.Percentage && finalValue > 100m)
+                return (400, "Percentage discount cannot be > 100%.", null);
+
+            if (dto.Active.HasValue)
+                discount.Active = dto.Active.Value;
+
+            if (dto.Type.HasValue)
+                discount.Type = dto.Type.Value;
+
+            if (dto.Value.HasValue)
+                discount.Value = dto.Value.Value;
+
+            if (dto.ValidFrom.HasValue)
+                discount.ValidFrom = dto.ValidFrom.Value;
+
+            if (dto.ValidUntil.HasValue)
+                discount.ValidUntil = dto.ValidUntil.Value;
+
+            if (discount.ValidFrom >= discount.ValidUntil)
+                return (400, "ValidUntil must be after ValidFrom.", null);
+
+            if (dto.ClearTimeWindow)
+            {
+                discount.TimeWindowStart = null;
+                discount.TimeWindowEnd = null;
+            }
+            else if (dto.TimeWindowStart.HasValue || dto.TimeWindowEnd.HasValue)
+            {
+                if (dto.TimeWindowStart.HasValue != dto.TimeWindowEnd.HasValue)
+                    return (400, "TimeWindowStart and TimeWindowEnd must both be set, or both be null.", null);
+
+                discount.TimeWindowStart = dto.TimeWindowStart;
+                discount.TimeWindowEnd = dto.TimeWindowEnd;
+            }
+
+            if (dto.ClearMaxUsage)
+            {
+                discount.MaxUsage = null;
+                discount.CurrentUsage = null;
+            }
+            else if (dto.MaxUsage.HasValue)
+            {
+                if (dto.MaxUsage.Value < 1)
+                    return (400, "MaxUsage must be 1 or higher.", null);
+
+                var currentUsage = discount.CurrentUsage ?? 0;
+                if (currentUsage > dto.MaxUsage.Value)
+                    return (409, $"MaxUsage cannot be set below current usage ({currentUsage}).", null);
+
+                discount.MaxUsage = dto.MaxUsage.Value;
+                discount.CurrentUsage ??= 0;
+            }
+
+            if (dto.AllowedLocations is not null)
+            {
+                var allowedLocations = dto.AllowedLocations.Distinct().ToList();
+
+                if (allowedLocations.Any())
+                {
+                    var existing = await context.ParkingLots
+                        .Where(p => allowedLocations.Contains(p.Id))
+                        .Select(p => p.Id)
+                        .ToListAsync();
+
+                    var missing = allowedLocations.Except(existing).ToList();
+                    if (missing.Any())
+                        return (404, $"Parking lot(s) not found: {string.Join(", ", missing)}", null);
+                }
+
+                if (discount.AllowedLocations is not null && discount.AllowedLocations.Count > 0)
+                    context.RemoveRange(discount.AllowedLocations);
+
+                discount.AllowedLocations = allowedLocations
+                    .Select(id => new DiscountLocation { ParkingLotId = id, Code = discount.Code })
+                    .ToList();
+            }
+
+            if (dto.ValidForUsers is not null)
+            {
+                var validForUsers = dto.ValidForUsers.Distinct().ToList();
+
+                if (validForUsers.Any())
+                {
+                    var existing = await context.Users
+                        .Where(u => validForUsers.Contains(u.Id))
+                        .Select(u => u.Id)
+                        .ToListAsync();
+
+                    var missing = validForUsers.Except(existing).ToList();
+                    if (missing.Any())
+                        return (404, $"User(s) not found: {string.Join(", ", missing)}", null);
+                }
+
+                if (discount.ValidForUsers is not null && discount.ValidForUsers.Count > 0)
+                    context.RemoveRange(discount.ValidForUsers);
+
+                discount.ValidForUsers = validForUsers
+                    .Select(id => new DiscountUser { UserId = id, Code = discount.Code })
+                    .ToList();
+            }
+
+            if (dto.ValidForCompanies is not null)
+            {
+                var validForCompanies = dto.ValidForCompanies.Distinct().ToList();
+
+                if (validForCompanies.Any())
+                {
+                    var existing = await context.Companies
+                        .Where(c => validForCompanies.Contains(c.Id))
+                        .Select(c => c.Id)
+                        .ToListAsync();
+
+                    var missing = validForCompanies.Except(existing).ToList();
+                    if (missing.Any())
+                        return (404, $"Company(s) not found: {string.Join(", ", missing)}", null);
+                }
+
+                if (discount.ValidForCompanies is not null && discount.ValidForCompanies.Count > 0)
+                    context.RemoveRange(discount.ValidForCompanies);
+
+                discount.ValidForCompanies = validForCompanies
+                    .Select(id => new DiscountCompany { CompanyId = id, Code = discount.Code })
+                    .ToList();
+            }
+
+            await context.SaveChangesAsync();
+            return (200, "OK", ToDto(discount));
+        }
+
         public async Task<(int statusCode, string message, decimal? amountWithDiscount, string? normalizedCode)> PreviewDiscountAsync(string? discountCode, Guid userId, int parkingLotId, DateTimeOffset atTime, decimal amount)
         {
             var code = NormalizeCode(discountCode);
@@ -259,8 +413,7 @@ namespace MobyPark.Services
             return (200, "Discount preview OK.", discounted, discount.Code);
         }
 
-        public async Task<(int statusCode, string message, List<DiscountCodeAnalyticsReadDto>? dto)>
-            GetDiscountCodesAllAnalyticsAsync(DiscountCodeStatus status)
+        public async Task<(int statusCode, string message, List<DiscountCodeAnalyticsReadDto>? dto)> GetDiscountCodesAllAnalyticsAsync(DiscountCodeStatus status)
         {
             var now = DateTimeOffset.UtcNow;
 
@@ -348,8 +501,7 @@ namespace MobyPark.Services
             return (200, "OK", result);
         }
 
-        public async Task<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)>
-    GetDiscountCodeAnalyticsByCodeAsync(string code)
+        public async Task<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)> GetDiscountCodeAnalyticsByCodeAsync(string code)
         {
             if (string.IsNullOrWhiteSpace(code))
                 return (400, "Discount code is required.", null);
@@ -421,6 +573,7 @@ namespace MobyPark.Services
             Code = d.Code,
             CreatedBy = d.CreatedBy,
             CreatedAt = d.CreatedAt,
+            Active = d.Active,
             Type = d.Type,
             Value = d.Value,
             ValidFrom = d.ValidFrom,
