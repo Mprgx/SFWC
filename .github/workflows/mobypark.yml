@@ -135,6 +135,10 @@ jobs:
           -P 'Str0ngP@ssw0rd!' \
           -Q "IF DB_ID('MobyParkTestDb') IS NULL CREATE DATABASE MobyParkTestDb;"
 
+      - name: Restore & build API
+        run: |
+          dotnet restore ./MobyPark/MobyPark.csproj
+          dotnet build ./MobyPark/MobyPark.csproj --configuration Release
 
       - name: Update database
         run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
