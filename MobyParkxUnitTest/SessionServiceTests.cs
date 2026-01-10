@@ -14,6 +14,7 @@ namespace MobyParkxUnitTest
         {
             var options = new DbContextOptionsBuilder<UserDbContext>()
                 .UseInMemoryDatabase(name)
+                .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
                 .Options;
 
             return new UserDbContext(options);
