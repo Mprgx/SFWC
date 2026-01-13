@@ -38,20 +38,30 @@ jobs:
           dotnet-version: "9.0.x"
 
       - name: Run unit tests
+        continue-on-error: true
         run: |
+          mkdir -p test-results/unit
           dotnet test ./MobyParkxUnitTest/MobyParkxUnitTest.csproj \
             --configuration Release \
-            --logger "trx;LogFileName=unit_test_results.trx" \
+            --logger "trx;LogFileName=test-results/unit/unit.trx" \
             --collect:"XPlat Code Coverage" \
-            --no-build \
-            --verbosity normal
+            --no-build
         continue-on-error: true
 
-      - name: Upload unit test results
+      - name: Publish unit test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Tests
+          reporter: dotnet-trx
+          path: test-results/unit/unit.trx
+
+      - name: Upload unit test coverage
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-results
-          path: MobyParkxUnitTest/TestResults
+          name: unit-test-coverage
+          path: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
 
 
 
@@ -137,28 +147,28 @@ jobs:
           curl --fail http://localhost:5280/scalar/v1 \
           || (echo "---- SERVER LOG ----" && cat server.log && exit 1)
 
-      - name: Run tests
+      - name: Run integration tests
         continue-on-error: true
         run: |
-          mkdir -p test-results
+          mkdir -p test-results/integration
           pytest Integratietests \
             --cov=MobyPark \
             --cov-report=term \
-            --cov-report=xml:test-results/coverage.xml \
-            --junitxml=test-results/pytest.xml
+            --cov-report=xml:test-results/integration/coverage.xml \
+            --junitxml=test-results/integration/pytest.xml
 
       - name: Publish integration test results
         if: always()
         uses: dorny/test-reporter@v1
-        continue-on-error: true
         with:
           name: Integration Tests
           reporter: jest-junit
-          path: test-results/pytest.xml
+          path: test-results/integration/pytest.xml
 
-      - name: Upload coverage report
+      - name: Upload integration coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: test-results/coverage.xml
+          name: integration-test-coverage
+          path: test-results/integration/coverage.xml
+
