@@ -53,7 +53,7 @@ jobs:
         with:
           name: Unit Tests
           reporter: dotnet-trx
-          path: MobyParkxUnitTest/TestResults/unit.trx
+          path: MobyParkxUnitTest/TestResults/**/*.trx
 
       - name: Upload unit test coverage
         if: always()
@@ -161,7 +161,7 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: Integration Tests
-          reporter: jest-junit
+          reporter: java-junit
           path: Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Upload integration coverage
