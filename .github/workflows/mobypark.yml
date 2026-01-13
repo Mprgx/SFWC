@@ -46,7 +46,6 @@ jobs:
             --logger "trx;LogFileName=test-results/unit/unit.trx" \
             --collect:"XPlat Code Coverage" \
             --no-build
-        continue-on-error: true
 
       - name: Publish unit test results
         if: always()
