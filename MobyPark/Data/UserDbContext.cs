@@ -17,6 +17,7 @@ namespace MobyPark.Data
         public DbSet<CompanyUser> CompanyUsers => Set<CompanyUser>();
         public DbSet<Billing> Billings { get; set; }
         public DbSet<Discount> Discounts => Set<Discount>();
+        public DbSet<Invoice> Invoices => Set<Invoice>();
 
 
 
