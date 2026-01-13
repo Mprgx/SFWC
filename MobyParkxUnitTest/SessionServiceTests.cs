@@ -42,6 +42,31 @@ namespace MobyParkxUnitTest
             {
                 return Task.FromResult((statusCode: 200, message: "Preview successful.", amountWithDiscount: (decimal?)amount, normalizedCode: discountCode));
             }
+
+            public Task<(int statusCode, string message, List<DiscountCodeAnalyticsReadDto>? dto)>
+    GetDiscountCodesAllAnalyticsAsync(DiscountCodeStatus status)
+            {
+                return Task.FromResult(
+                    (200, "Analytics OK (fake)", new List<DiscountCodeAnalyticsReadDto>())
+                );
+            }
+
+            public Task<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)>
+                GetDiscountCodeAnalyticsByCodeAsync(string code)
+            {
+                return Task.FromResult<(int statusCode, string message, DiscountCodeAnalyticsReadDto?)>(
+                    (200, "Analytics OK (fake)", null)
+                );
+            }
+
+            public Task<(int statusCode, string message, DiscountReadDto?)>
+                UpdateDiscountAsync(string code, DiscountPatchDto dto)
+            {
+                return Task.FromResult<(int statusCode, string message, DiscountReadDto?)>(
+                    (200, "Discount updated (fake)", null)
+                );
+            }
+
         }
 
         private static SessionService CreateService(UserDbContext db)

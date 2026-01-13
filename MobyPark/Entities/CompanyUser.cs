@@ -8,5 +8,7 @@ namespace MobyPark.Entities
         public Guid CompanyId { get; set; }
         public Company? Company { get; set; }
 
+        public bool IsOrganisationAdmin { get; set; } = false;
+
     }
 }
