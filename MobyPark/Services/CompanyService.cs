@@ -9,13 +9,19 @@ namespace MobyPark.Services
     {
         public async Task<CompanyResponseDto?> GetCompanyByIdAsync(Guid id)
         {
-            var company = await context.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+            var company = await context.Companies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             return company == null ? null : ToDto(company);
         }
 
         public async Task<IEnumerable<CompanyResponseDto>> GetAllCompaniesAsync()
         {
-            var companies = await context.Companies.AsNoTracking().ToListAsync();
+            var companies = await context.Companies
+                .AsNoTracking()
+                .ToListAsync();
+
             return companies.Select(ToDto);
         }
 
@@ -25,14 +31,26 @@ namespace MobyPark.Services
             {
                 Id = Guid.NewGuid(),
                 CompanyName = dto.CompanyName,
-                Discount = dto.Discount,
-                Perks = dto.Perks,
+
+                // Required address fields
+                Street = dto.Street,
+                PostalCode = dto.PostalCode,
+                City = dto.City,
+                Country = dto.Country,
+
+                // Required contact fields
+                ContactEmail = dto.ContactEmail,
+                ContactPhone = dto.ContactPhone,
+                ContactPerson = dto.ContactPerson,
+
+                // Defaults / metadata
                 CreatedAt = DateTimeOffset.UtcNow,
                 IsActive = true
             };
 
             context.Companies.Add(company);
             await context.SaveChangesAsync();
+
             return ToDto(company);
         }
 
@@ -41,10 +59,32 @@ namespace MobyPark.Services
             var company = await context.Companies.FirstOrDefaultAsync(c => c.Id == id);
             if (company == null) return null;
 
-            if (dto.CompanyName != null) company.CompanyName = dto.CompanyName;
-            if (dto.Discount.HasValue) company.Discount = dto.Discount.Value;
-            if (dto.Perks != null) company.Perks = dto.Perks;
-            if (dto.IsActive.HasValue) company.IsActive = dto.IsActive.Value;
+            if (!string.IsNullOrWhiteSpace(dto.CompanyName))
+                company.CompanyName = dto.CompanyName;
+
+            if (!string.IsNullOrWhiteSpace(dto.Street))
+                company.Street = dto.Street;
+
+            if (!string.IsNullOrWhiteSpace(dto.PostalCode))
+                company.PostalCode = dto.PostalCode;
+
+            if (!string.IsNullOrWhiteSpace(dto.City))
+                company.City = dto.City;
+
+            if (!string.IsNullOrWhiteSpace(dto.Country))
+                company.Country = dto.Country;
+
+            if (!string.IsNullOrWhiteSpace(dto.ContactEmail))
+                company.ContactEmail = dto.ContactEmail;
+
+            if (!string.IsNullOrWhiteSpace(dto.ContactPhone))
+                company.ContactPhone = dto.ContactPhone;
+
+            if (!string.IsNullOrWhiteSpace(dto.ContactPerson))
+                company.ContactPerson = dto.ContactPerson;
+
+            if (dto.IsActive.HasValue)
+                company.IsActive = dto.IsActive.Value;
 
             await context.SaveChangesAsync();
             return ToDto(company);
@@ -64,8 +104,16 @@ namespace MobyPark.Services
         {
             Id = c.Id,
             CompanyName = c.CompanyName,
-            Discount = c.Discount,
-            Perks = c.Perks,
+
+            Street = c.Street,
+            PostalCode = c.PostalCode,
+            City = c.City,
+            Country = c.Country,
+
+            ContactEmail = c.ContactEmail,
+            ContactPhone = c.ContactPhone,
+            ContactPerson = c.ContactPerson,
+
             CreatedAt = c.CreatedAt,
             IsActive = c.IsActive
         };
