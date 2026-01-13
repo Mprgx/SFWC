@@ -40,13 +40,12 @@ jobs:
       - name: Run unit tests
         continue-on-error: true
         run: |
-          mkdir -p test-results/unit
           dotnet test ./MobyParkxUnitTest/MobyParkxUnitTest.csproj \
             --configuration Release \
-            --logger "trx;LogFileName=test-results/unit/unit.trx" \
+            --results-directory ./MobyParkxUnitTest/TestResults \
+            --logger "trx;LogFileName=unit.trx" \
             --collect:"XPlat Code Coverage" \
             --no-build
-        continue-on-error: true
 
       - name: Publish unit test results
         if: always()
@@ -54,7 +53,7 @@ jobs:
         with:
           name: Unit Tests
           reporter: dotnet-trx
-          path: test-results/unit/unit.trx
+          path: MobyParkxUnitTest/TestResults/**/*.trx
 
       - name: Upload unit test coverage
         if: always()
@@ -62,8 +61,6 @@ jobs:
         with:
           name: unit-test-coverage
           path: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
-
-
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -150,25 +147,54 @@ jobs:
       - name: Run integration tests
         continue-on-error: true
         run: |
-          mkdir -p test-results/integration
           pytest Integratietests \
             --cov=MobyPark \
             --cov-report=term \
-            --cov-report=xml:test-results/integration/coverage.xml \
-            --junitxml=test-results/integration/pytest.xml
+            --cov-report=xml:Integratietests/IntegratieTestResults/coverage.xml \
+            --junitxml=Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Publish integration test results
         if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Integration Tests
-          reporter: jest-junit
-          path: test-results/integration/pytest.xml
+          reporter: java-junit
+          path: Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Upload integration coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-coverage
-          path: test-results/integration/coverage.xml
+          path: Integratietests/IntegratieTestResults/coverage.xml
 
+  coverage-summary:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: always()
+    
+    steps:
+      - name: Download unit test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/unit
+
+      - name: Download integration test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-test-coverage
+          path: coverage/integration
+
+      - name: Generate coverage summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: |
+            coverage/unit/**/coverage.cobertura.xml
+            coverage/integration/coverage.xml
+          format: markdown
+          output: both
+          badge: true
+
+      - name: Publish coverage to workflow summary
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
