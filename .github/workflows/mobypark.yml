@@ -62,9 +62,6 @@ jobs:
           name: unit-test-coverage
           path: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
 
-
-
-
   integration-tests:
     runs-on: ubuntu-latest
     needs: build
@@ -171,18 +168,32 @@ jobs:
           name: integration-test-coverage
           path: Integratietests/IntegratieTestResults/coverage.xml
 
+  coverage-summary:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    steps:
+      - name: Download unit test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/unit
+
+      - name: Download integration test coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-test-coverage
+          path: coverage/integration
+
       - name: Generate coverage summary
-        if: always()
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: |
-            MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
-            Integratietests/IntegratieTestResults/coverage.xml
+            coverage/unit/**/coverage.cobertura.xml
+            coverage/integration/coverage.xml
           format: markdown
           output: both
           badge: true
 
-      - name: Add coverage to workflow summary
-        if: always()
-        run: |
-          cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+      - name: Publish coverage to workflow summary
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
