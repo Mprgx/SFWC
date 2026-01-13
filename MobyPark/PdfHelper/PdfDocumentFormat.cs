@@ -6,6 +6,7 @@ using QuestPDF.Infrastructure;
 
 public class InvoicePdfDocument : IDocument
 {
+
     private readonly Invoice _invoice;
     private readonly IReadOnlyList<Billing> _billings;
 
@@ -103,3 +104,4 @@ public class InvoicePdfDocument : IDocument
         column.Item().Text("Payment method: " + _invoice.PaymentMethod);
     }
 }
+
