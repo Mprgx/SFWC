@@ -87,7 +87,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = audience,
 
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero, 
+            ClockSkew = TimeSpan.Zero,
 
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey))
@@ -104,6 +104,7 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IParkingLotService, ParkingLotService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IDiscountService, DiscountService>();
+builder.Services.AddScoped<ICompanyService, CompanyService>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
