@@ -53,6 +53,7 @@ public class InvoiceService : IInvoiceService
             Id = Guid.NewGuid(),
             CompanyId = companyId,
             DateRequested = DateTimeOffset.UtcNow,
+            UserId = userId,
             Price = payments.Sum(p => p.AmountWithDiscount),
             PaymentStatus = "Pending",
             Month = month,
@@ -76,12 +77,15 @@ public class InvoiceService : IInvoiceService
 
         var invoiceReloaded = await _context.Invoices
             .Include(i => i.Company)
+            .Include(i => i.User)
             .FirstOrDefaultAsync(i => i.Id == invoice.Id);
 
-        var document = new InvoicePdfDocument(invoice, billingInvoices);
+        if (invoiceReloaded == null)
+            return null;
+
+        var document = new InvoicePdfDocument(invoiceReloaded, billingInvoices);
         return document.GeneratePdf();
     }
-
 
     public async Task<byte[]?> GenerateAllPdfAsync(Guid userId)
     {
@@ -122,7 +126,4 @@ public class InvoiceService : IInvoiceService
         outputDoc.Save(outStream, false);
         return outStream.ToArray();
     }
-
-
-
 }

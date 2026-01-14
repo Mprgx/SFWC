@@ -12,7 +12,7 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20260114090515_AddUserToInvoice")]
+    [Migration("20260114091440_AddUserToInvoice")]
     partial class AddUserToInvoice
     {
         /// <inheritdoc />
@@ -257,9 +257,6 @@ namespace MobyPark.Migrations
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid>("RequestedByUserId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");

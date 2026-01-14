@@ -12,13 +12,6 @@ namespace MobyPark.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<Guid>(
-                name: "RequestedByUserId",
-                table: "Invoices",
-                type: "uniqueidentifier",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddColumn<Guid>(
                 name: "UserId",
                 table: "Invoices",
                 type: "uniqueidentifier",
@@ -48,10 +41,6 @@ namespace MobyPark.Migrations
 
             migrationBuilder.DropIndex(
                 name: "IX_Invoices_UserId",
-                table: "Invoices");
-
-            migrationBuilder.DropColumn(
-                name: "RequestedByUserId",
                 table: "Invoices");
 
             migrationBuilder.DropColumn(
