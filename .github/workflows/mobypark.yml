@@ -45,7 +45,6 @@ jobs:
             --results-directory ./MobyParkxUnitTest/TestResults \
             --logger "trx;LogFileName=unit.trx" \
             --collect:"XPlat Code Coverage" \
-            --no-build
 
       - name: Publish unit test results
         if: always()
@@ -175,18 +174,21 @@ jobs:
     
     steps:
       - name: Download unit test coverage
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: unit-test-coverage
           path: coverage/unit
 
       - name: Download integration test coverage
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: integration-test-coverage
           path: coverage/integration
 
       - name: Generate coverage summary
+        continue-on-error: true
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: |
@@ -197,4 +199,5 @@ jobs:
           badge: true
 
       - name: Publish coverage to workflow summary
+        continue-on-error: true
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
