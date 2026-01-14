@@ -8,6 +8,9 @@ using MobyPark.Services;
 
 using QuestPDF.Fluent;
 
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+
 public class InvoiceService : IInvoiceService
 {
     private readonly UserDbContext _context;
@@ -78,4 +81,48 @@ public class InvoiceService : IInvoiceService
         var document = new InvoicePdfDocument(invoice, billingInvoices);
         return document.GeneratePdf();
     }
+
+
+    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId)
+    {
+        var companyId = await _context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.CompanyId)
+            .FirstOrDefaultAsync();
+
+        if (!companyId.HasValue || companyId == Guid.Empty)
+            return null;
+
+        var invoices = await _context.Invoices
+            .Where(i => i.CompanyId == companyId.Value)
+            .OrderBy(i => i.Year)
+            .ThenBy(i => i.Month)
+            .ToListAsync();
+
+        var outputDoc = new PdfDocument();
+
+        foreach (var invoice in invoices)
+        {
+            var pdfBytes = await GenerateMonthlyInvoicePdfAsync(userId, invoice.Month, invoice.Year);
+            if (pdfBytes == null) continue;
+
+            using var ms = new MemoryStream(pdfBytes);
+            var inputDoc = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
+
+            for (int i = 0; i < inputDoc.PageCount; i++)
+            {
+                outputDoc.AddPage(inputDoc.Pages[i]);
+            }
+        }
+
+        if (outputDoc.PageCount == 0)
+            return null;
+
+        using var outStream = new MemoryStream();
+        outputDoc.Save(outStream, false);
+        return outStream.ToArray();
+    }
+
+
+
 }

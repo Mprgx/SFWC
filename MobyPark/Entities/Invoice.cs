@@ -15,6 +15,10 @@ namespace MobyPark.Entities
         public DateTimeOffset DateRequested { get; set; }
 
         [Required]
+        public Guid RequestedByUserId { get; set; }
+        public User User { get; set; }
+
+        [Required]
         public decimal Price { get; set; }
 
         [Required]
