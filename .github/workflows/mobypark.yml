@@ -65,6 +65,19 @@ jobs:
           path: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
           fail-on-error: false
 
+      - name: Publish unit test coverage summary
+        if: always()
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
+          format: markdown
+          output: both
+          badge: true
+
+      - name: Add unit test coverage to summary
+        if: always()
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+
   integration-tests:
     runs-on: ubuntu-latest
     needs: build
@@ -174,38 +187,16 @@ jobs:
           name: integration-test-coverage
           path: Integratietests/IntegratieTestResults/coverage.xml
           fail-on-error: false
-
-  coverage-summary:
-    runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests]
-    if: always()
-    
-    steps:
-      - name: Download unit test coverage
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: unit-test-coverage
-          path: coverage/unit
-
-      - name: Download integration test coverage
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: integration-test-coverage
-          path: coverage/integration
-
-      - name: Generate coverage summary
-        continue-on-error: true
+      
+      - name: Publish integration test coverage summary
+        if: always()
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: |
-            coverage/unit/**/coverage.cobertura.xml
-            coverage/integration/coverage.xml
+          filename: Integratietests/IntegratieTestResults/coverage.xml
           format: markdown
           output: both
           badge: true
 
-      - name: Publish coverage to workflow summary
-        continue-on-error: true
+      - name: Add integration test coverage to summary
+        if: always()
         run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
