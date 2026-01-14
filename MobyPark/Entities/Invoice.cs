@@ -12,13 +12,19 @@ namespace MobyPark.Entities
         public Company Company { get; set; }
 
         [Required]
-        public DateTimeOffset Date { get; set; }
+        public DateTimeOffset DateRequested { get; set; }
 
         [Required]
         public decimal Price { get; set; }
 
         [Required]
         public string PaymentStatus { get; set; }
+
+        [Required]
+        public int Month { get; set; }
+
+        [Required]
+        public int Year { get; set; }
 
     }
 

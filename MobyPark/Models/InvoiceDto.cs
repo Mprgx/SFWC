@@ -56,6 +56,7 @@ namespace MobyPark.Models
     public class BillingInvoiceRowDto
     {
         public string Location { get; set; } = default!;
+        public string Name { get; set; } = default!;
         public string LicensePlate { get; set; } = default!;
         public DateTimeOffset Started { get; set; }
         public DateTimeOffset Stopped { get; set; }

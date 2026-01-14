@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 
-using MobyPark.Constants;
 using MobyPark.Data;
 using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
@@ -8,7 +7,6 @@ using MobyPark.Models;
 using MobyPark.Services;
 
 using QuestPDF.Fluent;
-
 
 public class InvoiceService : IInvoiceService
 {
@@ -23,82 +21,61 @@ public class InvoiceService : IInvoiceService
 
     public async Task<byte[]?> GenerateMonthlyInvoicePdfAsync(Guid userId, int month, int year)
     {
-        Guid? companyId = await _context.Users
+        var companyId = await _context.Users
             .Where(u => u.Id == userId)
             .Select(u => u.CompanyId)
             .FirstOrDefaultAsync();
 
-        if (!companyId.HasValue)
+        if (!companyId.HasValue || companyId == Guid.Empty)
             return null;
 
-        if (companyId == Guid.Empty)
-            return null;
-
-        var billings = await _context.Billings
-            .Include(b => b.ParkingLot)
-            .Include(b => b.Session)
+        var payments = await _context.Payments
+            .Include(p => p.Session)
                 .ThenInclude(s => s.Vehicle)
-            .Where(b =>
-                b.Session.User.CompanyId == companyId.Value &&
-                b.Started.Month == month &&
-                b.Started.Year == year)
+            .Include(p => p.Session)
+                .ThenInclude(s => s.Reservation)
+            .Include(p => p.ParkingLot)
+            .Where(p =>
+                p.Session.User.CompanyId == companyId.Value &&
+                p.Session.Started.Month == month &&
+                p.Session.Started.Year == year &&
+                p.Session.Stopped != null)
             .ToListAsync();
 
-        if (!billings.Any())
+        if (!payments.Any())
             return null;
 
         var invoice = new Invoice
         {
             Id = Guid.NewGuid(),
             CompanyId = companyId,
-            Date = DateTimeOffset.UtcNow,
-            Price = billings.Sum(b => b.Cost),
+            DateRequested = DateTimeOffset.UtcNow,
+            Price = payments.Sum(p => p.AmountWithDiscount),
             PaymentStatus = "Pending",
+            Month = month,
+            Year = year
         };
 
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
-        var billingInvoices = new List<BillingInvoiceRowDto>();
-
-        foreach (var billing in billings)
+        var billingInvoices = payments.Select(p => new BillingInvoiceRowDto
         {
-            var discountedPrice = await GetDiscountedPriceAsync(
-                billing.Cost,
-                billing.Session.Reservation?.DiscountCode ?? ""
-            );
+            Location = p.ParkingLot.Location,
+            Name = p.ParkingLot.Name,
+            LicensePlate = LicensePlateProtector.DecryptNormalized(_encryption, p.Session.Vehicle.LicensePlate),
+            Started = p.Session.Started,
+            Stopped = p.Session.Stopped.Value,
+            Cost = p.Amount,
+            DiscountCode = p.DiscountCode,
+            DiscountedCost = p.AmountWithDiscount
+        }).ToList();
 
-            billingInvoices.Add(new BillingInvoiceRowDto
-            {
-                Location = billing.ParkingLot.Location,
-                LicensePlate = LicensePlateProtector.DecryptNormalized(
-                    _encryption,
-                    billing.Session.Vehicle.LicensePlate
-                ),
-                Started = billing.Started,
-                Stopped = billing.Stopped,
-                Cost = billing.Cost,
-                DiscountCode = billing.Session.Reservation?.DiscountCode,
-                DiscountedCost = discountedPrice
-            });
-        }
+        var invoiceReloaded = await _context.Invoices
+            .Include(i => i.Company)
+            .FirstOrDefaultAsync(i => i.Id == invoice.Id);
 
         var document = new InvoicePdfDocument(invoice, billingInvoices);
         return document.GeneratePdf();
     }
-
-    private async Task<decimal> GetDiscountedPriceAsync(decimal initialPrice, string discountCode)
-    {
-        var discount = await _context.Discounts.Where(d => d.Code == discountCode).FirstOrDefaultAsync();
-
-        if (discount is null)
-            return initialPrice;
-
-        if (discount.Type == MobyPark.Models.DiscountType.Percentage)
-        {
-            return initialPrice - (initialPrice * (discount.Value / 100m));
-        }
-        else return initialPrice - discount.Value;
-    }
 }
-

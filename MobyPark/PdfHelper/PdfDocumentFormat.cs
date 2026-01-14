@@ -47,7 +47,8 @@ public class InvoicePdfDocument : IDocument
 
         column.Item().PaddingTop(5).Text($"Company: {_invoice.Company?.CompanyName ?? "None"}");
         column.Item().Text($"Invoice ID: {_invoice.Id}");
-        column.Item().Text($"Invoice date: {_invoice.Date:dd-MM-yyyy}");
+        column.Item().Text($"Invoice date: {_invoice.DateRequested:dd-MM-yyyy}");
+        column.Item().Text($"For month: {_invoice.Month}-{_invoice.Year}");
 
         column.Item().PaddingVertical(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten1);
     }
@@ -75,7 +76,7 @@ public class InvoicePdfDocument : IDocument
                 header.Cell().Element(CellStyle).Text("Stop");
                 header.Cell().Element(CellStyle).AlignRight().Text("Before");
                 header.Cell().Element(CellStyle).Text("Code");
-                header.Cell().Element(CellStyle).AlignRight().Text("After");
+                header.Cell().Element(CellStyle).AlignRight().Text("After (Excl. BTW)");
 
                 static IContainer CellStyle(IContainer container)
                 {
@@ -89,7 +90,7 @@ public class InvoicePdfDocument : IDocument
 
             foreach (var row in _rows)
             {
-                table.Cell().Element(RowStyle).Text(row.Location);
+                table.Cell().Element(RowStyle).Text(row.Name + ", " + row.Location);
                 table.Cell().Element(RowStyle).Text(row.LicensePlate);
                 table.Cell().Element(RowStyle).Text(row.Started.ToString("dd-MM HH:mm"));
                 table.Cell().Element(RowStyle).Text(row.Stopped.ToString("dd-MM HH:mm"));
