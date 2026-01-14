@@ -47,6 +47,7 @@ jobs:
             --collect:"XPlat Code Coverage" \
 
       - name: Publish unit test results
+        continue-on-error: true
         if: always()
         uses: dorny/test-reporter@v1
         with:
@@ -55,6 +56,7 @@ jobs:
           path: MobyParkxUnitTest/TestResults/**/*.trx
 
       - name: Upload unit test coverage
+        continue-on-error: true
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -153,6 +155,7 @@ jobs:
             --junitxml=Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Publish integration test results
+        continue-on-error: true
         if: always()
         uses: dorny/test-reporter@v1
         with:
@@ -161,6 +164,7 @@ jobs:
           path: Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Upload integration coverage
+        continue-on-error: true
         if: always()
         uses: actions/upload-artifact@v4
         with:
