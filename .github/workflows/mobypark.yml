@@ -45,6 +45,7 @@ jobs:
             --results-directory ./MobyParkxUnitTest/TestResults \
             --logger "trx;LogFileName=unit.trx" \
             --collect:"XPlat Code Coverage" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[MobyPark.Services]*"
 
       - name: Publish unit test results
         continue-on-error: true
@@ -160,6 +161,9 @@ jobs:
           curl --fail http://localhost:5280/scalar/v1 \
           || (echo "---- SERVER LOG ----" && cat server.log && exit 1)
 
+      - name: Prepare integration test results directory
+        run: mkdir -p Integratietests/IntegratieTestResults
+
       - name: Run integration tests
         continue-on-error: true
         run: |
@@ -186,7 +190,6 @@ jobs:
         with:
           name: integration-test-coverage
           path: Integratietests/IntegratieTestResults/coverage.xml
-          fail-on-error: false
       
       - name: Publish integration test coverage summary
         if: always()
