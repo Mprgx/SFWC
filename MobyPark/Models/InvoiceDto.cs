@@ -51,8 +51,18 @@ namespace MobyPark.Models
         [Required]
         public string PaymentMethod { get; set; }
 
-
-
     }
+
+    public class BillingInvoiceRowDto
+    {
+        public string Location { get; set; } = default!;
+        public string LicensePlate { get; set; } = default!;
+        public DateTimeOffset Started { get; set; }
+        public DateTimeOffset Stopped { get; set; }
+        public decimal Cost { get; set; }
+        public string? DiscountCode { get; set; }
+        public decimal DiscountedCost { get; set; }
+    }
+
 
 }

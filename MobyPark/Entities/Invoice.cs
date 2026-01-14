@@ -20,9 +20,6 @@ namespace MobyPark.Entities
         [Required]
         public string PaymentStatus { get; set; }
 
-        [Required]
-        public string PaymentMethod { get; set; }
-
     }
 
 }

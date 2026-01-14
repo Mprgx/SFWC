@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 using MobyPark.Constants;
 using MobyPark.Data;
+using MobyPark.EncryptionHelper;
 using MobyPark.Entities;
+using MobyPark.Models;
 using MobyPark.Services;
 
 using QuestPDF.Fluent;
@@ -11,10 +13,12 @@ using QuestPDF.Fluent;
 public class InvoiceService : IInvoiceService
 {
     private readonly UserDbContext _context;
+    private readonly IEncryptionService _encryption;
 
-    public InvoiceService(UserDbContext context)
+    public InvoiceService(UserDbContext context, IEncryptionService encryption)
     {
         _context = context;
+        _encryption = encryption;
     }
 
     public async Task<byte[]?> GenerateMonthlyInvoicePdfAsync(Guid userId, int month, int year)
@@ -50,14 +54,51 @@ public class InvoiceService : IInvoiceService
             Date = DateTimeOffset.UtcNow,
             Price = billings.Sum(b => b.Cost),
             PaymentStatus = "Pending",
-            PaymentMethod = "Invoice"
         };
 
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
-        var document = new InvoicePdfDocument(invoice, billings);
+        var billingInvoices = new List<BillingInvoiceRowDto>();
+
+        foreach (var billing in billings)
+        {
+            var discountedPrice = await GetDiscountedPriceAsync(
+                billing.Cost,
+                billing.Session.Reservation?.DiscountCode ?? ""
+            );
+
+            billingInvoices.Add(new BillingInvoiceRowDto
+            {
+                Location = billing.ParkingLot.Location,
+                LicensePlate = LicensePlateProtector.DecryptNormalized(
+                    _encryption,
+                    billing.Session.Vehicle.LicensePlate
+                ),
+                Started = billing.Started,
+                Stopped = billing.Stopped,
+                Cost = billing.Cost,
+                DiscountCode = billing.Session.Reservation?.DiscountCode,
+                DiscountedCost = discountedPrice
+            });
+        }
+
+        var document = new InvoicePdfDocument(invoice, billingInvoices);
         return document.GeneratePdf();
+    }
+
+    private async Task<decimal> GetDiscountedPriceAsync(decimal initialPrice, string discountCode)
+    {
+        var discount = await _context.Discounts.Where(d => d.Code == discountCode).FirstOrDefaultAsync();
+
+        if (discount is null)
+            return initialPrice;
+
+        if (discount.Type == MobyPark.Models.DiscountType.Percentage)
+        {
+            return initialPrice - (initialPrice * (discount.Value / 100m));
+        }
+        else return initialPrice - discount.Value;
     }
 }
 
