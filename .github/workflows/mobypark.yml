@@ -45,7 +45,7 @@ jobs:
             --results-directory ./MobyParkxUnitTest/TestResults \
             --logger "trx;LogFileName=unit.trx" \
             --collect:"XPlat Code Coverage" \
-            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[MobyPark.Services]*"
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[MobyPark]MobyPark.Services**"
 
       - name: Publish unit test results
         continue-on-error: true
