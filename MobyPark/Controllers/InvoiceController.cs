@@ -16,7 +16,7 @@ namespace MobyPark.Controllers
 
     public class InvoiceController(IInvoiceService _invoiceService) : ControllerBase
     {
-        [Authorize(Roles = Roles.OrganisationAdmin)]
+        [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
         [HttpGet("monthly-pdf")]
         public async Task<IActionResult> GetMonthlyInvoiceAsync([FromQuery] int month, [FromQuery] int year)
         {
