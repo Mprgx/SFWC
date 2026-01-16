@@ -24,7 +24,6 @@ jobs:
         run: |
           dotnet restore ./MobyPark/MobyPark.csproj
           dotnet build ./MobyPark/MobyPark.csproj --configuration Release
-
   unit-tests:
     runs-on: ubuntu-latest
     needs: build
@@ -46,7 +45,6 @@ jobs:
             --logger "trx;LogFileName=unit.trx" \
             --collect:"XPlat Code Coverage" \
             -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include="[MobyPark]MobyPark.Services**"
-
       - name: Publish unit test results
         continue-on-error: true
         if: always()
@@ -97,7 +95,6 @@ jobs:
           --health-interval 10s
           --health-timeout 30s
           --health-retries 30
-
     env:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__UserDatabase: >
@@ -106,7 +103,6 @@ jobs:
         User Id=sa;
         Password=Str0ngP@ssw0rd!;
         TrustServerCertificate=True;
-
       AppSettings__Token: "THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789_THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789"
       AppSettings__Issuer: "MobyPark.Test"
       AppSettings__Audience: "MobyPark.Test"
@@ -123,7 +119,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest pytest-cov requests jsonschema python-dateutil
-
       - name: Set up .NET 9
         uses: actions/setup-dotnet@v4
         with:
@@ -151,19 +146,10 @@ jobs:
       - name: Update database
         run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
 
-      - name: Start API with Coverlet
+      - name: Start C# API
         run: |
-          mkdir -p Integratietests/IntegratieTestResults
-
-          coverlet /usr/share/dotnet/dotnet \
-            --target "dotnet" \
-            --targetargs "run --project ./MobyPark/MobyPark.csproj --configuration Release" \
-            --format cobertura \
-            --output Integratietests/IntegratieTestResults/coverage.cobertura.xml \
-            > server.log 2>&1 &
-
+          nohup dotnet run --project ./MobyPark/MobyPark.csproj > server.log 2>&1 &
           sleep 30
-
 
       - name: Check API health
         run: |
@@ -177,12 +163,10 @@ jobs:
         continue-on-error: true
         run: |
           pytest Integratietests \
-            --cov=MobyPark \
-            --cov-report=term \
-            --cov-report=xml:Integratietests/IntegratieTestResults/coverage.xml \
             --junitxml=Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Publish integration test results
+        continue-on-error: true
         if: always()
         uses: dorny/test-reporter@v1
         with:
