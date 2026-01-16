@@ -187,7 +187,6 @@ jobs:
           sleep 5
 
       - name: Publish integration test results
-        continue-on-error: true
         if: always()
         uses: dorny/test-reporter@v1
         with:
@@ -197,18 +196,17 @@ jobs:
           fail-on-error: false
 
       - name: Upload integration coverage
-        continue-on-error: true
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-coverage
-          path: Integratietests/IntegratieTestResults/coverage.xml
-      
+          path: Integratietests/IntegratieTestResults/coverage.cobertura.xml
+
       - name: Publish integration test coverage summary
         if: always()
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: Integratietests/IntegratieTestResults/coverage.xml
+          filename: Integratietests/IntegratieTestResults/coverage.cobertura.xml
           format: markdown
           output: both
           badge: true
