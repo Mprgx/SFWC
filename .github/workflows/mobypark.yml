@@ -132,6 +132,9 @@ jobs:
       - name: Install EF Core tools (v9)
         run: dotnet tool install --global dotnet-ef --version 9.*
 
+      - name: Install Coverlet Console
+        run: dotnet tool install --global coverlet.console
+
       - name: Create test database
         run: |
           CONTAINER_ID=$(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest)
@@ -151,16 +154,17 @@ jobs:
       - name: Update database
         run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
 
-      - name: Start C# API with coverage
+      - name: Start API with Coverlet
         run: |
-          dotnet run \
-            --project ./MobyPark/MobyPark.csproj \
-            --configuration Release \
-            /p:CollectCoverage=true \
-            /p:CoverletOutput=./Integratietests/IntegratieTestResults/ \
-            /p:CoverletOutputFormat=cobertura \
-            /p:Exclude="[xunit.*]*" \
+          mkdir -p Integratietests/IntegratieTestResults
+
+          coverlet /usr/share/dotnet/dotnet \
+            --target "dotnet" \
+            --targetargs "run --project ./MobyPark/MobyPark.csproj --configuration Release" \
+            --format cobertura \
+            --output Integratietests/IntegratieTestResults/coverage.cobertura.xml \
             > server.log 2>&1 &
+
           sleep 30
 
 
@@ -182,8 +186,9 @@ jobs:
             --junitxml=Integratietests/IntegratieTestResults/pytest.xml
 
       - name: Stop API (flush coverage)
+        if: always()
         run: |
-          pkill -f "dotnet run"
+          pkill -f "coverlet"
           sleep 5
 
       - name: Publish integration test results
