@@ -37,9 +37,10 @@ namespace MobyParkxUnitTest
             return JsonDocument.Parse(json).RootElement;
         }
 
-        private static Payment CreateBasePayment(Guid userId, string transactionId, decimal amount,
-            string? hash = null, DateTimeOffset? completed = null, Guid? sessionId = null)
+        private static Payment CreateBasePayment(Guid userId, string transactionId, decimal amount, string? hash = null, DateTimeOffset? completed = null, Guid? sessionId = null, decimal? amountWithDiscount = null)
         {
+            var finalAmountWithDiscount = amountWithDiscount ?? amount;
+
             return new Payment
             {
                 UserId = userId,
@@ -47,6 +48,7 @@ namespace MobyParkxUnitTest
                 ParkingLotId = 1,
                 Transaction = transactionId,
                 Amount = amount,
+                AmountWithDiscount = finalAmountWithDiscount,
                 Hash = hash ?? "valid-default-hash",
                 Completed = completed,
                 Created_At = DateTimeOffset.UtcNow,
@@ -184,18 +186,19 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
 
             var userId = Guid.NewGuid();
-            var payment = CreateBasePayment(userId, "TX_AMOUNT", 10.00m);
+            var payment = CreateBasePayment(userId, "TX_AMOUNT", 10.00m, amountWithDiscount: 10.00m);
+
+            var request = new PaymentsDto
+            {
+                Transaction = "TX_AMOUNT",
+                Amount = 5.00m
+            };
 
             // Add ParkingLot to satisfy foreign key constraint
             db.ParkingLots.Add(new ParkingLot { Id = 1, Name = "Test Lot", Location = "Test Location", Address = "123 Main St", Capacity = 50, Tariff = 5.0, DayTariff = 25.0, Coordinates = "{}" });
             db.Payments.Add(payment);
             await db.SaveChangesAsync();
 
-            var request = new PaymentsDto
-            {
-                Transaction = "TX_AMOUNT",
-                Amount = 5.00m // Mismatch
-            };
             var result = await service.FulfillPaymentAsync(userId, request);
 
             Assert.Null(result.dto);
@@ -210,23 +213,24 @@ namespace MobyParkxUnitTest
             var service = CreateService(db);
 
             var userId = Guid.NewGuid();
-            var payment = CreateBasePayment(userId, "TX_OK", 10.00m);
+            var payment = CreateBasePayment(userId, "TX_AMOUNT", 10.00m, amountWithDiscount: 10.00m);
 
-            // Add ParkingLot to satisfy foreign key constraint
+            var request = new PaymentsDto
+            {
+                Transaction = "TX_AMOUNT",
+                Amount = 10.00m
+            };
+
             db.ParkingLots.Add(new ParkingLot { Id = 1, Name = "Test Lot", Location = "Test Location", Address = "123 Main St", Capacity = 50, Tariff = 5.0, DayTariff = 25.0, Coordinates = "{}" });
             db.Payments.Add(payment);
             await db.SaveChangesAsync();
 
-            var request = new PaymentsDto
-            {
-                Transaction = "TX_OK",
-                Amount = 10.00m
-            };
-
             var result = await service.FulfillPaymentAsync(userId, request);
 
             Assert.NotNull(result.dto);
-            Assert.Equal(PaymentStatuses.Paid, result.dto.Status);
+            Assert.Null(result.error);
+            Assert.Null(result.status);
+            Assert.Equal(PaymentStatuses.Paid, result.dto!.Status);
 
             var dbPayment = await db.Payments.FindAsync(payment.Transaction);
             Assert.NotNull(dbPayment!.Completed);

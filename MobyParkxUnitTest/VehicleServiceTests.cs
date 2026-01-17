@@ -9,322 +9,289 @@ using Xunit;
 
 namespace MobyParkxUnitTest
 {
-   public class VehicleServiceTests
-   {
-       private class FakeEncryptionService : IEncryptionService
-       {
-           public string? Encrypt(string? plaintext)
-           {
-               return plaintext is null ? null : $"ENC:{plaintext}";
-           }
+    public class VehicleServiceTests
+    {
+        private class FakeEncryptionService : IEncryptionService
+        {
+            public string? Encrypt(string? plaintext) => plaintext is null ? null : $"ENC:{plaintext}";
 
-           public string? Decrypt(string? ciphertext)
-           {
-               if (ciphertext is null)
-                   return null;
+            public string? Decrypt(string? ciphertext)
+            {
+                if (ciphertext is null) return null;
 
-               const string prefix = "ENC:";
-               if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
-                   return ciphertext[prefix.Length..];
+                const string prefix = "ENC:";
+                if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
+                    return ciphertext[prefix.Length..];
 
-               return ciphertext;
-           }
-       }
+                return ciphertext;
+            }
+        }
 
-       private static UserDbContext CreateDbContext(string dbName)
-       {
-           var options = new DbContextOptionsBuilder<UserDbContext>()
-               .UseInMemoryDatabase(databaseName: dbName)
-               .Options;
+        private static UserDbContext CreateDbContext(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<UserDbContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
 
-           return new UserDbContext(options);
-       }
+            return new UserDbContext(options);
+        }
 
-       private async Task SeedVehicle(UserDbContext db, Guid userId, string plate, int id)
-       {
-           db.Vehicles.Add(new Vehicle
-           {
-               Id = id,
-               UserId = userId,
-               LicensePlate = plate,
-               Make = "Test",
-               Model = "TestModel",
-               Color = "Red",
-               Year = 2020,
-               CreatedAt = DateTimeOffset.UtcNow
-           });
+        private static async Task SeedVehicle(UserDbContext db, Guid userId, string plate, int id)
+        {
+            db.Vehicles.Add(new Vehicle
+            {
+                Id = id,
+                UserId = userId,
+                LicensePlate = plate,
+                Make = "Test",
+                Model = "TestModel",
+                Color = "Red",
+                Year = 2020,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
 
-           await db.SaveChangesAsync();
-       }
+            await db.SaveChangesAsync();
+        }
 
-       // POST 
-       // POSITIEF - VEHICLE WORDT AANGEMAAKT
-       [Fact]
-       public async Task CreateVehicleAsync_ReturnsVehicle_WhenNewForUser()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(CreateVehicleAsync_ReturnsVehicle_WhenNewForUser));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+        [Fact]
+        public async Task CreateVehicleAsync_ReturnsVehicle_WhenNewForUser()
+        {
+            using var db = CreateDbContext(nameof(CreateVehicleAsync_ReturnsVehicle_WhenNewForUser));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           var userId = Guid.NewGuid();
-           var dto = new VehicleCreateDto
-           {
-               LicensePlate = "AA-123-AA",
-               Make = "BMW",
-               Model = "320i",
-               Color = "Black",
-               Year = 2021
-           };
+            var userId = Guid.NewGuid();
+            var dto = new VehicleCreateDto
+            {
+                LicensePlate = "AA-123-AA",
+                Make = "BMW",
+                Model = "320i",
+                Color = "Black",
+                Year = 2021
+            };
 
-           // Act
-           var result = await service.CreateVehicleAsync(userId, dto);
+            var (created, error, status) = await service.CreateVehicleAsync(userId, dto);
 
-           // Assert
-           Assert.NotNull(result);
-           Assert.Equal($"ENC:{dto.LicensePlate}", result.dto.LicensePlate);
-           Assert.Equal(userId, result.dto.UserId);
+            Assert.NotNull(created);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal(userId, created!.UserId);
+            Assert.Equal("ENC:AA-123-AA", created.LicensePlate);
 
-           var saved = await db.Vehicles.FirstAsync();
-           Assert.Equal($"ENC:{dto.LicensePlate}", saved.LicensePlate);
-       }
+            var saved = await db.Vehicles.FirstAsync();
+            Assert.Equal("ENC:AA-123-AA", saved.LicensePlate);
+        }
 
-       // POST 
-       // DUPLICATE LICENSE PLATE (ZELFDE USER)
-       [Fact]
-       public async Task CreateVehicleAsync_ReturnsNull_WhenLicensePlateAlreadyExistsForUser()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(CreateVehicleAsync_ReturnsNull_WhenLicensePlateAlreadyExistsForUser));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+        [Fact]
+        public async Task CreateVehicleAsync_Returns409_WhenLicensePlateAlreadyExistsForUser()
+        {
+            using var db = CreateDbContext(nameof(CreateVehicleAsync_Returns409_WhenLicensePlateAlreadyExistsForUser));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           var userId = Guid.NewGuid();
-           await SeedVehicle(db, userId, "AA-123-AA", 9999);
+            var userId = Guid.NewGuid();
+            await SeedVehicle(db, userId, "AA-123-AA", 9999);
 
-           var dto = new VehicleCreateDto
-           {
-               LicensePlate = "AA-123-AA",
-               Make = "BMW",
-               Model = "320i",
-               Color = "Black",
-               Year = 2021
-           };
+            var dto = new VehicleCreateDto
+            {
+                LicensePlate = "AA-123-AA",
+                Make = "BMW",
+                Model = "320i",
+                Color = "Black",
+                Year = 2021
+            };
 
-           // Act
-           var result = await service.CreateVehicleAsync(userId, dto);
+            var (created, error, status) = await service.CreateVehicleAsync(userId, dto);
 
-           // Assert
-           Assert.Null(result.dto);
-       }
+            Assert.Null(created);
+            Assert.Equal("License plate already exists.", error);
+            Assert.Equal(409, status);
+        }
 
-       // POST
-       // DUPLICATE LICENSE PLATE MAAR ANDERE USER → TOEGESTAAN
-       [Fact]
-       public async Task CreateVehicleAsync_CreatesVehicle_WhenPlateExistsButDifferentUser()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(CreateVehicleAsync_CreatesVehicle_WhenPlateExistsButDifferentUser));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+        [Fact]
+        public async Task CreateVehicleAsync_CreatesVehicle_WhenPlateExistsButDifferentUser()
+        {
+            using var db = CreateDbContext(nameof(CreateVehicleAsync_CreatesVehicle_WhenPlateExistsButDifferentUser));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           var user1 = Guid.NewGuid();
-           var user2 = Guid.NewGuid();
+            var user1 = Guid.NewGuid();
+            var user2 = Guid.NewGuid();
 
-           await SeedVehicle(db, user1, "AA-123-AA", 9999);
+            await SeedVehicle(db, user1, "AA-123-AA", 9999);
 
-           var dto = new VehicleCreateDto
-           {
-               LicensePlate = "AA-123-AA",
-               Make = "Audi",
-               Model = "A3",
-               Color = "Blue",
-               Year = 2022
-           };
+            var dto = new VehicleCreateDto
+            {
+                LicensePlate = "AA-123-AA",
+                Make = "Audi",
+                Model = "A3",
+                Color = "Blue",
+                Year = 2022
+            };
 
-           // Act
-           var result = await service.CreateVehicleAsync(user2, dto);
+            var (created, error, status) = await service.CreateVehicleAsync(user2, dto);
 
-           // Assert
-           Assert.NotNull(result.error);
-           Assert.Equal(user2, result.dto.UserId);
-       }
+            Assert.NotNull(created);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal(user2, created!.UserId);
 
-       // GET
-       // POSITIEF - ALLE VEHICLES VAN USER WORDEN OPGEHAALD
-       [Fact]
-       public async Task GetVehiclesForUserAsync_ReturnsVehicles_WhenUserHasVehicles()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(GetVehiclesForUserAsync_ReturnsVehicles_WhenUserHasVehicles));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+            var count = await db.Vehicles.CountAsync();
+            Assert.Equal(2, count);
+        }
 
-           var userId = Guid.NewGuid();
-           await SeedVehicle(db, userId, "QQ-111-QQ", 9999);
-           await SeedVehicle(db, userId, "YY-222-YY", 8888);
+        [Fact]
+        public async Task GetVehiclesForUserAsync_ReturnsVehicles_WhenUserHasVehicles()
+        {
+            using var db = CreateDbContext(nameof(GetVehiclesForUserAsync_ReturnsVehicles_WhenUserHasVehicles));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           // Act
-           var result = await service.GetVehiclesForUserAsync(userId);
+            var userId = Guid.NewGuid();
+            await SeedVehicle(db, userId, "QQ-111-QQ", 9999);
+            await SeedVehicle(db, userId, "YY-222-YY", 8888);
 
-           // Assert
-           Assert.Equal(2, result.dtos.Count);
-           //Assert.All(result, v => Assert.Equal(userId, v.UserId));
-       }
+            var (dtos, error, status) = await service.GetVehiclesForUserAsync(userId);
 
-       // GET
-       // NEGATIEF - USER HEEFT GEEN VEHICLES
-       [Fact]
-       public async Task GetVehiclesForUserAsync_ReturnsEmptyList_WhenUserHasNoVehicles()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(GetVehiclesForUserAsync_ReturnsEmptyList_WhenUserHasNoVehicles));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal(2, dtos!.Count);
+        }
 
-           var userId = Guid.NewGuid();
+        [Fact]
+        public async Task GetVehiclesForUserAsync_ReturnsEmptyList_WhenUserHasNoVehicles()
+        {
+            using var db = CreateDbContext(nameof(GetVehiclesForUserAsync_ReturnsEmptyList_WhenUserHasNoVehicles));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           // Act
-           var result = await service.GetVehiclesForUserAsync(userId);
+            var userId = Guid.NewGuid();
 
-           // Assert
-           Assert.Empty(result.dtos);
-       }
+            var (dtos, error, status) = await service.GetVehiclesForUserAsync(userId);
 
-       // PUT
-       // POSITIEF - VEHICLE WORDT GEUPDATE
-       [Fact]
-       public async Task UpdateVehicleAsync_UpdatesVehicle_WhenOwnedByUser()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(UpdateVehicleAsync_UpdatesVehicle_WhenOwnedByUser));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Empty(dtos!);
+        }
 
-           var userId = Guid.NewGuid();
-           await SeedVehicle(db, userId, "AA-123-AA", 9999);
+        [Fact]
+        public async Task UpdateVehicleAsync_UpdatesVehicle_WhenOwnedByUser()
+        {
+            using var db = CreateDbContext(nameof(UpdateVehicleAsync_UpdatesVehicle_WhenOwnedByUser));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           var updateDto = new VehicleUpdateDto
-           {
-               Make = "UpdatedMake",
-               Model = "UpdatedModel",
-               Color = "Black",
-               Year = 2024
-           };
+            var userId = Guid.NewGuid();
+            await SeedVehicle(db, userId, "AA-123-AA", 9999);
 
-           // Act
-           var result = await service.UpdateVehicleAsync(userId, 9999, updateDto);
+            var updateDto = new VehicleUpdateDto
+            {
+                Make = "UpdatedMake",
+                Model = "UpdatedModel",
+                Color = "Black",
+                Year = 2024
+            };
 
-           // Assert
-           Assert.NotNull(result);
-           Assert.Equal("UpdatedMake", result.dto.Make);
-           Assert.Equal("UpdatedModel", result.dto.Model);
-           Assert.Equal("Black", result.dto.Color);
-           Assert.Equal(2024, result.dto.Year);
-       }
+            var (updated, error, status) = await service.UpdateVehicleAsync(userId, 9999, updateDto);
 
-       // PUT
-       // NEGATIEF - VEHICLE BESTAAT NIET OF NIET VAN USER
-       [Fact]
-       public async Task UpdateVehicleAsync_ReturnsNull_WhenVehicleNotOwned()
-       {
-           // Arrange
-           var db = CreateDbContext(nameof(UpdateVehicleAsync_ReturnsNull_WhenVehicleNotOwned));
-           var service = new VehicleService(db, encryption: new FakeEncryptionService());
+            Assert.NotNull(updated);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal("UpdatedMake", updated!.Make);
+            Assert.Equal("UpdatedModel", updated.Model);
+            Assert.Equal("Black", updated.Color);
+            Assert.Equal(2024, updated.Year);
+        }
 
-           var ownerId = Guid.NewGuid();
-           var otherUserId = Guid.NewGuid();
+        [Fact]
+        public async Task UpdateVehicleAsync_Returns404_WhenVehicleNotOwned()
+        {
+            using var db = CreateDbContext(nameof(UpdateVehicleAsync_Returns404_WhenVehicleNotOwned));
+            var service = new VehicleService(db, new FakeEncryptionService());
 
-           await SeedVehicle(db, ownerId, "AA-123-AA", 9999);
+            var ownerId = Guid.NewGuid();
+            var otherUserId = Guid.NewGuid();
 
-           var updateDto = new VehicleUpdateDto
-           {
-               Make = "NewMake"
-           };
+            await SeedVehicle(db, ownerId, "AA-123-AA", 9999);
 
-           // Act
-           var result = await service.UpdateVehicleAsync(otherUserId, 9999, updateDto);
+            var updateDto = new VehicleUpdateDto
+            {
+                Make = "NewMake"
+            };
 
-           // Assert
-           Assert.Null(result.error);
-       }
+            var (updated, error, status) = await service.UpdateVehicleAsync(otherUserId, 9999, updateDto);
 
-       // DELETE
-       // POSITIEF - VEHICLE WORDT VERWIJDERD
-       [Fact]
-       public async Task DeleteVehicleAsync_ShouldDeleteVehicle_WhenOwnedByUser()
-       {
-           // Arrange
-           var context = CreateDbContext(nameof(DeleteVehicleAsync_ShouldDeleteVehicle_WhenOwnedByUser));
-           var service = new VehicleService(context, encryption: new FakeEncryptionService());
+            Assert.Null(updated);
+            Assert.Equal("Vehicle not found or not owned by the user.", error);
+            Assert.Equal(404, status);
+        }
 
-           var userId = Guid.NewGuid();
-           var vehicle = new Vehicle
-           {
-               Id = 1,
-               UserId = userId,
-               LicensePlate = "ABC123",
-               Make = "Test",
-               Model = "Car",
-               Color = "Blue",
-               Year = 2020
-           };
+        [Fact]
+        public async Task DeleteVehicleAsync_DeletesVehicle_WhenOwnedByUser()
+        {
+            using var context = CreateDbContext(nameof(DeleteVehicleAsync_DeletesVehicle_WhenOwnedByUser));
+            var service = new VehicleService(context, new FakeEncryptionService());
 
-           context.Vehicles.Add(vehicle);
-           await context.SaveChangesAsync();
+            var userId = Guid.NewGuid();
+            var vehicle = new Vehicle
+            {
+                Id = 1,
+                UserId = userId,
+                LicensePlate = "ABC123",
+                Make = "Test",
+                Model = "Car",
+                Color = "Blue",
+                Year = 2020
+            };
 
-           // Act
-           var result = await service.DeleteVehicleAsync(userId, 1);
+            context.Vehicles.Add(vehicle);
+            await context.SaveChangesAsync();
 
-           // Assert
-           Assert.Null(result.error);
-           Assert.Empty(context.Vehicles);
-       }
+            var (error, status) = await service.DeleteVehicleAsync(userId, 1);
 
-       // DELETE
-       // NEGATIEF - VEHICLE BESTAAT NIET
-       [Fact]
-       public async Task DeleteVehicleAsync_ShouldReturnFalse_WhenVehicleDoesNotExist()
-       {
-           // Arrange
-           var context = CreateDbContext(nameof(DeleteVehicleAsync_ShouldReturnFalse_WhenVehicleDoesNotExist));
-           var service = new VehicleService(context, encryption: new FakeEncryptionService());
+            Assert.Null(error);
+            Assert.Equal(204, status);
+            Assert.Empty(context.Vehicles);
+        }
 
-           var userId = Guid.NewGuid();
+        [Fact]
+        public async Task DeleteVehicleAsync_Returns404_WhenVehicleDoesNotExist()
+        {
+            using var context = CreateDbContext(nameof(DeleteVehicleAsync_Returns404_WhenVehicleDoesNotExist));
+            var service = new VehicleService(context, new FakeEncryptionService());
 
-           // Act
-           var result = await service.DeleteVehicleAsync(userId, 999); // bestaat niet
+            var userId = Guid.NewGuid();
 
-           // Assert
-           Assert.Null(result.error);
-       }
+            var (error, status) = await service.DeleteVehicleAsync(userId, 999);
 
-       // DELETE
-       // NEGATIEF - VEHICLE BEHOORT NIET TOT DE GEBRUIKER
-       [Fact]
-       public async Task DeleteVehicleAsync_ShouldReturnFalse_WhenVehicleNotOwnedByUser()
-       {
-           // Arrange
-           var context = CreateDbContext(nameof(DeleteVehicleAsync_ShouldReturnFalse_WhenVehicleNotOwnedByUser));
-           var service = new VehicleService(context, encryption: new FakeEncryptionService());
+            Assert.Equal("Vehicle not found or not owned by the user.", error);
+            Assert.Equal(404, status);
+        }
 
-           var ownerId = Guid.NewGuid();
-           var otherUserId = Guid.NewGuid(); // de gebruiker die probeert te verwijderen
+        [Fact]
+        public async Task DeleteVehicleAsync_Returns404_WhenVehicleNotOwnedByUser()
+        {
+            using var context = CreateDbContext(nameof(DeleteVehicleAsync_Returns404_WhenVehicleNotOwnedByUser));
+            var service = new VehicleService(context, new FakeEncryptionService());
 
-           var vehicle = new Vehicle
-           {
-               Id = 1,
-               UserId = ownerId,
-               LicensePlate = "XYZ999",
-               Make = "Brand",
-               Model = "Model",
-               Color = "Red",
-               Year = 2021
-           };
+            var ownerId = Guid.NewGuid();
+            var otherUserId = Guid.NewGuid();
 
-           context.Vehicles.Add(vehicle);
-           await context.SaveChangesAsync();
+            var vehicle = new Vehicle
+            {
+                Id = 1,
+                UserId = ownerId,
+                LicensePlate = "XYZ999",
+                Make = "Brand",
+                Model = "Model",
+                Color = "Red",
+                Year = 2021
+            };
 
-           // Act
-           var result = await service.DeleteVehicleAsync(otherUserId, 1);
+            context.Vehicles.Add(vehicle);
+            await context.SaveChangesAsync();
 
-           // Assert
-           Assert.Null(result.error);
-           Assert.Single(context.Vehicles); // nog steeds aanwezig
-       }
-   }
+            var (error, status) = await service.DeleteVehicleAsync(otherUserId, 1);
+
+            Assert.Equal("Vehicle not found or not owned by the user.", error);
+            Assert.Equal(404, status);
+            Assert.Single(context.Vehicles);
+        }
+    }
 }
