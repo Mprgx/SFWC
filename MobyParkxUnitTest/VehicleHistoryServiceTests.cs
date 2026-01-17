@@ -4,13 +4,11 @@ using MobyPark.Entities;
 using MobyPark.Models;
 using MobyPark.Services;
 using Xunit;
-using System.Security.Claims;
 
 namespace MobyParkxUnitTest
 {
     public class VehicleHistoryServiceTests
     {
-
         private static UserDbContext CreateDbContext(string dbName)
         {
             var options = new DbContextOptionsBuilder<UserDbContext>()
@@ -20,9 +18,23 @@ namespace MobyParkxUnitTest
             return new UserDbContext(options);
         }
 
+        private class FakeEncryptionService : IEncryptionService
+        {
+            public string? Encrypt(string? plaintext) => plaintext is null ? null : $"ENC:{plaintext}";
+
+            public string? Decrypt(string? ciphertext)
+            {
+                if (ciphertext is null) return null;
+                const string prefix = "ENC:";
+                if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
+                    return ciphertext[prefix.Length..];
+                return ciphertext;
+            }
+        }
+
         private static VehicleService CreateService(UserDbContext context)
         {
-            return new VehicleService(context, null!);
+            return new VehicleService(context, new FakeEncryptionService());
         }
 
         private static User CreateUser()
@@ -47,7 +59,7 @@ namespace MobyParkxUnitTest
             {
                 Id = id,
                 UserId = userId,
-                LicensePlate = "AA-123-B",
+                LicensePlate = "AA-12-BB",
                 Make = "Tesla",
                 Model = "Model 3",
                 Color = "Black",
@@ -70,11 +82,7 @@ namespace MobyParkxUnitTest
             };
         }
 
-        private static Session CreateSession(
-            Vehicle vehicle,
-            User user,
-            ParkingLot parkingLot,
-            DateTimeOffset started)
+        private static Session CreateSession(Vehicle vehicle, User user, ParkingLot parkingLot, DateTimeOffset started)
         {
             return new Session
             {
@@ -92,7 +100,6 @@ namespace MobyParkxUnitTest
             };
         }
 
-        // AC1: Vehicle bestaat, history wordt teruggegeven
         [Fact]
         public async Task GetVehicleHistoryAsync_ReturnsHistory_WhenVehicleExists()
         {
@@ -114,13 +121,14 @@ namespace MobyParkxUnitTest
 
             await context.SaveChangesAsync();
 
-            (List<VehicleHistoryDto>? dtos, string? error, int? status) result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
+            var (dtos, error, status) = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
-            Assert.NotNull(result);
-            Assert.Equal(2, result.dtos.Count);
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal(2, dtos!.Count);
         }
 
-        // Alleen sessions van het opgegeven vehicle
         [Fact]
         public async Task GetVehicleHistoryAsync_ReturnsOnlySessionsForGivenVehicle()
         {
@@ -143,12 +151,15 @@ namespace MobyParkxUnitTest
 
             await context.SaveChangesAsync();
 
-            (List<VehicleHistoryDto>? dtos, string? error, int? status) = await service.GetVehicleHistoryAsync(user.Id, vehicle1.Id);
+            var (dtos, error, status) = await service.GetVehicleHistoryAsync(user.Id, vehicle1.Id);
 
-            Assert.Single(dtos);
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Single(dtos!);
+            Assert.All(dtos!, d => Assert.Equal(vehicle1.Id, context.Sessions.Single(s => s.Id == d.SessionId).VehicleId));
         }
 
-        // Chronologisch gesorteerd (nieuw naar oud)
         [Fact]
         public async Task GetVehicleHistoryAsync_ReturnsSessionsOrderedByStartTime()
         {
@@ -169,13 +180,15 @@ namespace MobyParkxUnitTest
             context.Sessions.AddRange(newer, older);
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
+            var (dtos, error, status) = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
-            Assert.Equal(newer.Started, result.dtos[0].Started);
-            Assert.Equal(older.Started, result.dtos[1].Started);
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Equal(newer.Started, dtos![0].Started);
+            Assert.Equal(older.Started, dtos[1].Started);
         }
 
-        // Vehicle bestaat maar geen history -> lege lijst
         [Fact]
         public async Task GetVehicleHistoryAsync_ReturnsEmptyList_WhenVehicleHasNoSessions()
         {
@@ -189,13 +202,14 @@ namespace MobyParkxUnitTest
             context.Vehicles.Add(vehicle);
             await context.SaveChangesAsync();
 
-            var result = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
+            var (dtos, error, status) = await service.GetVehicleHistoryAsync(user.Id, vehicle.Id);
 
-            Assert.NotNull(result);
-            Assert.Empty(result.dtos);
+            Assert.NotNull(dtos);
+            Assert.Null(error);
+            Assert.Null(status);
+            Assert.Empty(dtos!);
         }
 
-        // Vehicle bestaat niet -> exception
         [Fact]
         public async Task GetVehicleHistoryAdminAsync_Returns404_WhenVehicleDoesNotExist()
         {
@@ -208,6 +222,5 @@ namespace MobyParkxUnitTest
             Assert.Equal("Vehicle not found.", error);
             Assert.Equal(404, status);
         }
-
     }
 }
