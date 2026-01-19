@@ -21,7 +21,7 @@ def test_delete_vehicle_success(login_as_user):
 
     r = requests.delete(
         login_as_user["url"] + f"vehicle/{vid}", headers=headers, verify=VERIFY)
-    assert r.status_code == 200
+    assert r.status_code == 204
 
 
 def test_delete_vehicle_not_found(login_as_user):
