@@ -43,7 +43,7 @@ def test_admin_get_vehicle_by_username_success(login_as_admin, login_as_user):
     requests.post(login_as_user["url"] + "vehicle",
                   json=payload, headers=headers_user, verify=VERIFY)
 
-    url = login_as_admin["url"] + f"vehicle/{login_as_user['username']}"
+    url = login_as_admin["url"] + f"vehicles/user/{login_as_user['username']}"
     headers_admin = {"Authorization": login_as_admin["session_token"]}
     r = requests.get(url, headers=headers_admin, verify=VERIFY)
     assert r.status_code == 200
@@ -51,28 +51,28 @@ def test_admin_get_vehicle_by_username_success(login_as_admin, login_as_user):
 
 
 def test_admin_get_vehicle_by_username_no_content(login_as_admin):
-    url = login_as_admin["url"] + "vehicle/no_such_user_999"
+    url = login_as_admin["url"] + "vehicles/user/no_such_user_999"
     headers = {"Authorization": login_as_admin["session_token"]}
     r = requests.get(url, headers=headers, verify=VERIFY)
-    assert r.status_code == 204
+    assert r.status_code == 404
 
 
 def test_admin_get_vehicle_by_username_forbidden(login_as_user, login_as_admin):
     # normale user mag niet admin endpoint
-    url = login_as_user["url"] + "vehicle/" + login_as_user["username"]
+    url = login_as_user["url"] + "vehicles/user/" + login_as_user["username"]
     headers = {"Authorization": login_as_user["session_token"]}
     r = requests.get(url, headers=headers, verify=VERIFY)
     assert r.status_code == 403
 
 
 def test_admin_get_vehicle_by_username_no_token(login_as_admin):
-    url = login_as_admin["url"] + "vehicle/testuser"
+    url = login_as_admin["url"] + "vehicles/user/testuser"
     r = requests.get(url, verify=VERIFY)
     assert r.status_code == 401
 
 
 def test_admin_get_vehicle_by_username_invalid_token(auth_headers_empty_user):
     url = auth_headers_empty_user.get(
-        "url", "https://localhost:7197/") + "vehicle/someone"
+        "url", "https://localhost:7197/") + "vehicles/user/someone"
     r = requests.get(url, headers=auth_headers_empty_user, verify=VERIFY)
     assert r.status_code in (401, 403)

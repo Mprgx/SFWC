@@ -1,3 +1,4 @@
+import uuid
 import requests
 import pytest
 
@@ -9,7 +10,7 @@ VERIFY = False  # Zelf-ondertekend cert
 def test_update_vehicle_success(login_as_user):
     # eerst vehicle aanmaken
     create_payload = {
-        "licensePlate": "UPD-001",
+        "licensePlate": f"UPD-{uuid.uuid4().hex[:6]}",
         "make": "Toyota",
         "model": "Yaris",
         "color": "Blue",

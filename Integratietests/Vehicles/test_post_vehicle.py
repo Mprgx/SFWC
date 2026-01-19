@@ -1,3 +1,4 @@
+import uuid
 import requests
 import pytest
 
@@ -8,17 +9,25 @@ VERIFY = False  # Zelf-ondertekend cert
 
 def test_create_vehicle_success(login_as_user):
     url = login_as_user["url"] + "vehicle"
+
+    license_plate = f"TST-{uuid.uuid4().hex[:6]}"
+
     payload = {
-        "licensePlate": "TST-001",
+        "licensePlate": license_plate,
         "make": "Tesla",
         "model": "Model S",
         "color": "Black",
         "year": 2022,
     }
-    headers = {"Authorization": login_as_user["session_token"]}
+
+    headers = {
+        "Authorization": f"Bearer {login_as_user['accessToken']}"
+    }
+
     r = requests.post(url, json=payload, headers=headers, verify=VERIFY)
+
     assert r.status_code == 200
-    assert r.json()["licensePlate"] == "TST-001"
+    assert r.json()["licensePlate"] == license_plate.upper()
 
 
 def test_create_vehicle_duplicate_plate(login_as_user):
