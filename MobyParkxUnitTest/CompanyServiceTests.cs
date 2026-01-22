@@ -9,6 +9,26 @@ namespace MobyParkxUnitTest
 {
     public class CompanyServiceTests
     {
+        private class FakeEncryptionService : IEncryptionService
+       {
+           public string? Encrypt(string? plaintext)
+           {
+               return plaintext is null ? null : $"ENC:{plaintext}";
+           }
+
+           public string? Decrypt(string? ciphertext)
+           {
+               if (ciphertext is null)
+                   return null;
+
+               const string prefix = "ENC:";
+               if (ciphertext.StartsWith(prefix, StringComparison.Ordinal))
+                   return ciphertext[prefix.Length..];
+
+               return ciphertext;
+           }
+       }
+       
         private static UserDbContext CreateDbContext(string dbName)
         {
             var options = new DbContextOptionsBuilder<UserDbContext>()
@@ -20,7 +40,7 @@ namespace MobyParkxUnitTest
 
         private static CompanyService CreateService(UserDbContext context)
         {
-            return new CompanyService(context);
+            return new CompanyService(context, encryption: new FakeEncryptionService());
         }
 
         private static Company CreateCompanyEntity(
