@@ -49,7 +49,7 @@ namespace MobyPark.Data
                 .HasOne(cu => cu.Company)
                 .WithMany(c => c.CompanyUsers)
                 .HasForeignKey(cu => cu.CompanyId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<CompanyUser>()
                 .HasOne(cu => cu.User)
