@@ -17,8 +17,8 @@ namespace MobyPark.Controllers
     public class InvoiceController(IInvoiceService _invoiceService) : ControllerBase
     {
         [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
-        [HttpGet("pdf")]
-        public async Task<IActionResult> GetMonthlyInvoiceAsync([FromQuery] int month, [FromQuery] int year)
+        [HttpGet("{companyId:guid}/pdf")]
+        public async Task<IActionResult> GetMonthlyInvoiceAsync(Guid companyId, [FromQuery] int month, [FromQuery] int year)
         {
             if (month < 1 || month > 12)
                 return BadRequest(new { message = "Invalid month" });
@@ -29,7 +29,7 @@ namespace MobyPark.Controllers
             if (!TryGetUserId(out var userId))
                 return Unauthorized(new { message = "User not found in token" });
 
-            var pdfBytes = await _invoiceService.GenerateMonthlyInvoicePdfAsync(userId, month, year);
+            var pdfBytes = await _invoiceService.GenerateMonthlyInvoicePdfAsync(userId, companyId, month, year);
 
             if (pdfBytes == null || pdfBytes.Length == 0)
                 return NotFound(new { message = "No invoice found for this month" });
@@ -42,13 +42,13 @@ namespace MobyPark.Controllers
         }
 
         [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
-        [HttpGet("generated")]
-        public async Task<IActionResult> GetAllGeneratedInvoicesAsync([FromQuery] DateTimeOffset? startDateInclusive = null, [FromQuery] DateTimeOffset? endDateInclusive = null)
+        [HttpGet("{companyId:guid}/generated")]
+        public async Task<IActionResult> GetAllGeneratedInvoicesAsync(Guid companyId, [FromQuery] DateTimeOffset? startDateInclusive = null, [FromQuery] DateTimeOffset? endDateInclusive = null)
         {
             if (!TryGetUserId(out var userId))
                 return Unauthorized(new { message = "User not found in token" });
 
-            var zipBytes = await _invoiceService.GenerateAllPdfAsync(userId, startDateInclusive, endDateInclusive);
+            var zipBytes = await _invoiceService.GenerateAllPdfAsync(userId, companyId, startDateInclusive, endDateInclusive);
 
             if (zipBytes == null || zipBytes.Length == 0)
                 return NotFound(new { message = "No invoices found" });

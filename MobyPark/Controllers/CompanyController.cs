@@ -60,8 +60,8 @@ namespace MobyPark.Controllers
         }
 
         [Authorize(Roles = Roles.Admin)]
-        [HttpPost]
-        public async Task<ActionResult<CreateCompanyDto>> AddUserToCompany(Guid userId, Guid companyId)
+        [HttpPost("add-user/{userId:guid}")]
+        public async Task<ActionResult<CreateCompanyDto>> AddUserToCompany(Guid userId, [FromQuery] Guid companyId)
         {
             var added = await companyService.AddUserToCompanyAsync(userId, companyId);
             if (!added)

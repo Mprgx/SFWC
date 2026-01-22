@@ -24,14 +24,15 @@ public class InvoiceService : IInvoiceService
         _encryption = encryption;
     }
 
-    public async Task<byte[]?> GenerateMonthlyInvoicePdfAsync(Guid userId, int month, int year)
+    public async Task<byte[]?> GenerateMonthlyInvoicePdfAsync(Guid userId, Guid companyIdGiven, int month, int year)
     {
-        var companyId = await _context.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.CompanyId)
+        var companyId = await _context.CompanyUsers
+            .Where(cu => cu.UserId == userId)
+            .Where(cu => cu.CompanyId == companyIdGiven)
+            .Select(cu => cu.CompanyId)
             .FirstOrDefaultAsync();
 
-        if (!companyId.HasValue || companyId == Guid.Empty)
+        if (companyId == Guid.Empty)
             return null;
 
         var payments = await _context.Payments
@@ -41,7 +42,7 @@ public class InvoiceService : IInvoiceService
                 .ThenInclude(s => s.Reservation)
             .Include(p => p.ParkingLot)
             .Where(p =>
-                p.Session.User.CompanyId == companyId.Value &&
+                p.Session.User.CompanyUsers.Any(cu => cu.CompanyId == companyId) &&
                 p.Session.Started.Month == month &&
                 p.Session.Started.Year == year &&
                 p.Session.Stopped != null)
@@ -94,18 +95,19 @@ public class InvoiceService : IInvoiceService
         return pdfBytes;
     }
 
-    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId, DateTimeOffset? startDate, DateTimeOffset? endDate)
+    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId, Guid companyIdGiven, DateTimeOffset? startDate, DateTimeOffset? endDate)
     {
-        var companyId = await _context.Users
-            .Where(u => u.Id == userId)
-            .Select(u => u.CompanyId)
+        var companyId = await _context.CompanyUsers
+            .Where(cu => cu.UserId == userId)
+            .Where(cu => cu.CompanyId == companyIdGiven)
+            .Select(cu => cu.CompanyId)
             .FirstOrDefaultAsync();
 
-        if (!companyId.HasValue || companyId == Guid.Empty)
+        if (companyId == Guid.Empty)
             return null;
 
         var invoicesQuery = _context.Invoices
-            .Where(i => i.CompanyId == companyId.Value);
+            .Where(i => i.CompanyId == companyId);
 
         if (startDate.HasValue)
             invoicesQuery = invoicesQuery.Where(i => i.DateRequested >= startDate.Value);
