@@ -30,6 +30,9 @@ namespace MobyPark.Entities
         [Required]
         public int Year { get; set; }
 
+        [Required]
+        public byte[] PdfData { get; set; } = Array.Empty<byte>();
+
     }
 
 }

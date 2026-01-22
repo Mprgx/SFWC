@@ -48,14 +48,13 @@ namespace MobyPark.Controllers
             if (!TryGetUserId(out var userId))
                 return Unauthorized(new { message = "User not found in token" });
 
-            var pdfBytes = await _invoiceService.GenerateAllPdfAsync(userId);
+            var zipBytes = await _invoiceService.GenerateAllPdfAsync(userId);
 
-            if (pdfBytes == null || pdfBytes.Length == 0)
+            if (zipBytes == null || zipBytes.Length == 0)
                 return NotFound(new { message = "No invoices found" });
 
-            return File(pdfBytes, "application/pdf", "all-invoices.pdf");
+            return File(zipBytes, "application/zip", "invoices.zip");
         }
-
 
         private bool TryGetUserId(out Guid id)
         {

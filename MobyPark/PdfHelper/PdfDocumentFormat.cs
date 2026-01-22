@@ -48,7 +48,7 @@ public class InvoicePdfDocument : IDocument
         column.Item().PaddingTop(5).Text($"Company: {_invoice.Company?.CompanyName ?? "None"}");
         column.Item().Text($"By user: {_invoice.User?.Username ?? "Unknown"}");
         column.Item().Text($"Invoice ID: {_invoice.Id}");
-        column.Item().Text($"Invoice date: {_invoice.DateRequested:dd-MM-yyyy}");
+        column.Item().Text($"Invoice requested on: {_invoice.DateRequested:dd-MM-yyyy HH:mm:ss} UTC");
         column.Item().Text($"For month: {_invoice.Month}-{_invoice.Year}");
 
         column.Item().PaddingVertical(10).LineHorizontal(1).LineColor(Colors.Grey.Lighten1);

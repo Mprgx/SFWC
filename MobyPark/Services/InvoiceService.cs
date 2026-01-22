@@ -11,6 +11,8 @@ using QuestPDF.Fluent;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
 
+using System.IO.Compression;
+
 public class InvoiceService : IInvoiceService
 {
     private readonly UserDbContext _context;
@@ -84,7 +86,12 @@ public class InvoiceService : IInvoiceService
             return null;
 
         var document = new InvoicePdfDocument(invoiceReloaded, billingInvoices);
-        return document.GeneratePdf();
+        var pdfBytes = document.GeneratePdf();
+
+        invoiceReloaded.PdfData = pdfBytes;
+        await _context.SaveChangesAsync();
+
+        return pdfBytes;
     }
 
     public async Task<byte[]?> GenerateAllPdfAsync(Guid userId)
@@ -103,27 +110,28 @@ public class InvoiceService : IInvoiceService
             .ThenBy(i => i.Month)
             .ToListAsync();
 
-        var outputDoc = new PdfDocument();
+        if (!invoices.Any())
+            return null;
 
-        foreach (var invoice in invoices)
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
         {
-            var pdfBytes = await GenerateMonthlyInvoicePdfAsync(userId, invoice.Month, invoice.Year);
-            if (pdfBytes == null) continue;
-
-            using var ms = new MemoryStream(pdfBytes);
-            var inputDoc = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
-
-            for (int i = 0; i < inputDoc.PageCount; i++)
+            foreach (var invoice in invoices)
             {
-                outputDoc.AddPage(inputDoc.Pages[i]);
+                if (invoice.PdfData == null || invoice.PdfData.Length == 0)
+                    continue;
+
+                var fileName = $"Invoice_{invoice.Id}_{invoice.Year}_{invoice.Month:D2}.pdf";
+                var zipEntry = archive.CreateEntry(fileName);
+
+                using var entryStream = zipEntry.Open();
+                await entryStream.WriteAsync(invoice.PdfData, 0, invoice.PdfData.Length);
             }
         }
 
-        if (outputDoc.PageCount == 0)
+        if (zipStream.Length == 0)
             return null;
 
-        using var outStream = new MemoryStream();
-        outputDoc.Save(outStream, false);
-        return outStream.ToArray();
+        return zipStream.ToArray();
     }
 }
