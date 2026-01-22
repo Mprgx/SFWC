@@ -6,7 +6,7 @@ using MobyPark.Models;
 
 namespace MobyPark.Services
 {
-    public class CompanyService(UserDbContext context) : ICompanyService
+    public class CompanyService(UserDbContext context, IEncryptionService encryption) : ICompanyService
     {
         public async Task<CompanyResponseDto?> GetCompanyByIdAsync(Guid id)
         {
@@ -24,6 +24,28 @@ namespace MobyPark.Services
                 .ToListAsync();
 
             return companies.Select(ToDto);
+        }
+
+        public async Task<IEnumerable<UserReadDto>?> GetAllCompanyEmployees(Guid id)
+        {
+            var companyExists = await context.Companies.AnyAsync(c => c.Id == id);
+            if (!companyExists) return null;
+
+            return await context.CompanyUsers
+                .Where(cu => cu.CompanyId == id)
+                .Select(cu => cu.User)
+                .Select(u => new UserReadDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Name = u.Name,
+                    Email = encryption.Decrypt(u.Email) ?? u.Email,
+                    PhoneNumber = encryption.Decrypt(u.PhoneNumber) ?? u.PhoneNumber,
+                    BirthYear = u.BirthYear,
+                    Role = u.Role,
+                    CreatedAt = u.CreatedAt
+                })
+                .ToListAsync();
         }
 
         public async Task<CompanyResponseDto> CreateCompanyAsync(CreateCompanyDto dto)
@@ -97,6 +119,7 @@ namespace MobyPark.Services
             if (company == null) return false;
 
             context.Companies.Remove(company);
+
             await context.SaveChangesAsync();
             return true;
         }

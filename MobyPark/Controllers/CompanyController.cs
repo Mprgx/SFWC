@@ -8,18 +8,21 @@ using MobyPark.Services;
 namespace MobyPark.Controllers
 {
     [ApiController]
-    [Route("companies")]
+    [Route("company")]
+    [Authorize]
     public class CompanyController(ICompanyService companyService) : ControllerBase
     {
 
-        [HttpGet]
+        [Authorize(Roles = Roles.Admin)]
+        [HttpGet("all")]
         public async Task<ActionResult<IEnumerable<CompanyResponseDto>>> GetAllCompanies()
         {
             var companies = await companyService.GetAllCompaniesAsync();
             return Ok(companies);
         }
 
-        [HttpGet("{id}")]
+        [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
+        [HttpGet("by-id/{id}")]
         public async Task<ActionResult<CompanyResponseDto>> GetCompanyById(Guid id)
         {
             var company = await companyService.GetCompanyByIdAsync(id);
@@ -27,6 +30,17 @@ namespace MobyPark.Controllers
                 return NotFound();
 
             return Ok(company);
+        }
+
+        [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
+        [HttpGet("{id}/users")]
+        public async Task<ActionResult<CompanyResponseDto>> GetCompanyEmployeesById(Guid id)
+        {
+            var users = await companyService.GetAllCompanyEmployees(id);
+            if (users == null)
+                return NotFound();
+
+            return Ok(users);
         }
 
         [Authorize(Roles = Roles.Admin)]
