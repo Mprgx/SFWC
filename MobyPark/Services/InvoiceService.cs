@@ -123,6 +123,7 @@ public class InvoiceService : IInvoiceService
 
                 var fileName = $"Invoice_{invoice.Id}_{invoice.Year}_{invoice.Month:D2}.pdf";
                 var zipEntry = archive.CreateEntry(fileName);
+                zipEntry.LastWriteTime = invoice.DateRequested;
 
                 using var entryStream = zipEntry.Open();
                 await entryStream.WriteAsync(invoice.PdfData, 0, invoice.PdfData.Length);
