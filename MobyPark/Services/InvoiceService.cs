@@ -94,7 +94,7 @@ public class InvoiceService : IInvoiceService
         return pdfBytes;
     }
 
-    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId)
+    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId, DateTimeOffset? startDate, DateTimeOffset? endDate)
     {
         var companyId = await _context.Users
             .Where(u => u.Id == userId)
@@ -104,11 +104,20 @@ public class InvoiceService : IInvoiceService
         if (!companyId.HasValue || companyId == Guid.Empty)
             return null;
 
-        var invoices = await _context.Invoices
-            .Where(i => i.CompanyId == companyId.Value)
+        var invoicesQuery = _context.Invoices
+            .Where(i => i.CompanyId == companyId.Value);
+
+        if (startDate.HasValue)
+            invoicesQuery = invoicesQuery.Where(i => i.DateRequested >= startDate.Value);
+
+        if (endDate.HasValue)
+            invoicesQuery = invoicesQuery.Where(i => i.DateRequested <= endDate.Value);
+
+        invoicesQuery = invoicesQuery
             .OrderBy(i => i.Year)
-            .ThenBy(i => i.Month)
-            .ToListAsync();
+            .ThenBy(i => i.Month);
+
+        var invoices = await invoicesQuery.ToListAsync();
 
         if (!invoices.Any())
             return null;
