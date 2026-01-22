@@ -24,9 +24,6 @@ namespace MobyPark.Entities
         public required int BirthYear { get; set; }
         public UserRole Role { get; set; } = UserRole.Customer;
 
-        public Guid? CompanyId { get; set; }
-        public Company? Company { get; set; }
-
         public required string PasswordHash { get; set; }
         public string? RefreshToken { get; set; }
         public DateTimeOffset? RefreshTokenExpiryTime { get; set; }
