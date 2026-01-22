@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MobyPark.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -17,8 +17,15 @@ namespace MobyPark.Migrations
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CompanyName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Discount = table.Column<int>(type: "int", nullable: false),
-                    Perks = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Street = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PostalCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    City = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Country = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ContactEmail = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ContactPhone = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ContactPerson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    KvKNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    VatNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
@@ -59,7 +66,6 @@ namespace MobyPark.Migrations
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     BirthYear = table.Column<int>(type: "int", nullable: false),
                     Role = table.Column<int>(type: "int", nullable: false),
-                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RefreshToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     RefreshTokenExpiryTime = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
@@ -67,11 +73,6 @@ namespace MobyPark.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Users_Companies_CompanyId",
-                        column: x => x.CompanyId,
-                        principalTable: "Companies",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -79,7 +80,8 @@ namespace MobyPark.Migrations
                 columns: table => new
                 {
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    IsOrganisationAdmin = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -124,6 +126,37 @@ namespace MobyPark.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Invoices",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DateRequested = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    PaymentStatus = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Month = table.Column<int>(type: "int", nullable: false),
+                    Year = table.Column<int>(type: "int", nullable: false),
+                    PdfData = table.Column<byte[]>(type: "varbinary(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Invoices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Invoices_Companies_CompanyId",
+                        column: x => x.CompanyId,
+                        principalTable: "Companies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Invoices_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -458,6 +491,16 @@ namespace MobyPark.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Invoices_CompanyId",
+                table: "Invoices",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Invoices_UserId",
+                table: "Invoices",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Payments_DiscountCode",
                 table: "Payments",
                 column: "DiscountCode");
@@ -523,11 +566,6 @@ namespace MobyPark.Migrations
                 column: "VehicleId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_CompanyId",
-                table: "Users",
-                column: "CompanyId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_UserVehicles_VehicleId",
                 table: "UserVehicles",
                 column: "VehicleId");
@@ -558,6 +596,9 @@ namespace MobyPark.Migrations
                 name: "DiscountUser");
 
             migrationBuilder.DropTable(
+                name: "Invoices");
+
+            migrationBuilder.DropTable(
                 name: "Payments");
 
             migrationBuilder.DropTable(
@@ -570,6 +611,9 @@ namespace MobyPark.Migrations
                 name: "Reservations");
 
             migrationBuilder.DropTable(
+                name: "Companies");
+
+            migrationBuilder.DropTable(
                 name: "Discounts");
 
             migrationBuilder.DropTable(
@@ -580,9 +624,6 @@ namespace MobyPark.Migrations
 
             migrationBuilder.DropTable(
                 name: "Users");
-
-            migrationBuilder.DropTable(
-                name: "Companies");
         }
     }
 }

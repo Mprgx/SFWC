@@ -12,8 +12,8 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20260114062709_RemoveMethod")]
-    partial class RemoveMethod
+    [Migration("20260122135909_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -245,19 +245,34 @@ namespace MobyPark.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTimeOffset>("Date")
+                    b.Property<DateTimeOffset>("DateRequested")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<byte[]>("PdfData")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Invoices");
                 });
@@ -488,9 +503,6 @@ namespace MobyPark.Migrations
                     b.Property<int>("BirthYear")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -526,8 +538,6 @@ namespace MobyPark.Migrations
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompanyId");
 
                     b.ToTable("Users");
                 });
@@ -706,7 +716,15 @@ namespace MobyPark.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MobyPark.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Company");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.Payment", b =>
@@ -812,15 +830,6 @@ namespace MobyPark.Migrations
                     b.Navigation("User");
 
                     b.Navigation("Vehicle");
-                });
-
-            modelBuilder.Entity("MobyPark.Entities.User", b =>
-                {
-                    b.HasOne("MobyPark.Entities.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId");
-
-                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.UserVehicle", b =>
