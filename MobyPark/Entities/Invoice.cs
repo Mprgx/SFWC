@@ -15,6 +15,10 @@ namespace MobyPark.Entities
         public DateTimeOffset DateRequested { get; set; }
 
         [Required]
+        public Guid UserId { get; set; }
+        public User User { get; set; }
+
+        [Required]
         public decimal Price { get; set; }
 
         [Required]
@@ -25,6 +29,9 @@ namespace MobyPark.Entities
 
         [Required]
         public int Year { get; set; }
+
+        [Required]
+        public byte[] PdfData { get; set; } = Array.Empty<byte>();
 
     }
 

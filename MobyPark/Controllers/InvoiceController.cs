@@ -17,13 +17,13 @@ namespace MobyPark.Controllers
     public class InvoiceController(IInvoiceService _invoiceService) : ControllerBase
     {
         [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
-        [HttpGet("monthly-pdf")]
+        [HttpGet("pdf")]
         public async Task<IActionResult> GetMonthlyInvoiceAsync([FromQuery] int month, [FromQuery] int year)
         {
             if (month < 1 || month > 12)
                 return BadRequest(new { message = "Invalid month" });
 
-            if (year > DateTime.Now.Year)
+            if (year > DateTime.Now.Year || year <= 1950)
                 return BadRequest(new { message = "Invalid year" });
 
             if (!TryGetUserId(out var userId))
@@ -41,7 +41,20 @@ namespace MobyPark.Controllers
             );
         }
 
+        [Authorize(Roles = Roles.OrganisationAdmin + "," + Roles.Admin)]
+        [HttpGet("generated")]
+        public async Task<IActionResult> GetAllGeneratedInvoicesAsync([FromQuery] DateTimeOffset? startDateInclusive = null, [FromQuery] DateTimeOffset? endDateInclusive = null)
+        {
+            if (!TryGetUserId(out var userId))
+                return Unauthorized(new { message = "User not found in token" });
 
+            var zipBytes = await _invoiceService.GenerateAllPdfAsync(userId, startDateInclusive, endDateInclusive);
+
+            if (zipBytes == null || zipBytes.Length == 0)
+                return NotFound(new { message = "No invoices found" });
+
+            return File(zipBytes, "application/zip", "invoices.zip");
+        }
 
         private bool TryGetUserId(out Guid id)
         {

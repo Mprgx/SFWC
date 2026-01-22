@@ -8,6 +8,11 @@ using MobyPark.Services;
 
 using QuestPDF.Fluent;
 
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+
+using System.IO.Compression;
+
 public class InvoiceService : IInvoiceService
 {
     private readonly UserDbContext _context;
@@ -50,6 +55,7 @@ public class InvoiceService : IInvoiceService
             Id = Guid.NewGuid(),
             CompanyId = companyId,
             DateRequested = DateTimeOffset.UtcNow,
+            UserId = userId,
             Price = payments.Sum(p => p.AmountWithDiscount),
             PaymentStatus = "Pending",
             Month = month,
@@ -73,9 +79,69 @@ public class InvoiceService : IInvoiceService
 
         var invoiceReloaded = await _context.Invoices
             .Include(i => i.Company)
+            .Include(i => i.User)
             .FirstOrDefaultAsync(i => i.Id == invoice.Id);
 
-        var document = new InvoicePdfDocument(invoice, billingInvoices);
-        return document.GeneratePdf();
+        if (invoiceReloaded == null)
+            return null;
+
+        var document = new InvoicePdfDocument(invoiceReloaded, billingInvoices);
+        var pdfBytes = document.GeneratePdf();
+
+        invoiceReloaded.PdfData = pdfBytes;
+        await _context.SaveChangesAsync();
+
+        return pdfBytes;
+    }
+
+    public async Task<byte[]?> GenerateAllPdfAsync(Guid userId, DateTimeOffset? startDate, DateTimeOffset? endDate)
+    {
+        var companyId = await _context.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.CompanyId)
+            .FirstOrDefaultAsync();
+
+        if (!companyId.HasValue || companyId == Guid.Empty)
+            return null;
+
+        var invoicesQuery = _context.Invoices
+            .Where(i => i.CompanyId == companyId.Value);
+
+        if (startDate.HasValue)
+            invoicesQuery = invoicesQuery.Where(i => i.DateRequested >= startDate.Value);
+
+        if (endDate.HasValue)
+            invoicesQuery = invoicesQuery.Where(i => i.DateRequested <= endDate.Value);
+
+        invoicesQuery = invoicesQuery
+            .OrderBy(i => i.Year)
+            .ThenBy(i => i.Month);
+
+        var invoices = await invoicesQuery.ToListAsync();
+
+        if (!invoices.Any())
+            return null;
+
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+        {
+            foreach (var invoice in invoices)
+            {
+                if (invoice.PdfData == null || invoice.PdfData.Length == 0)
+                    continue;
+
+                var fileName = $"Invoice_{invoice.Id}_{invoice.Year}_{invoice.Month:D2}.pdf";
+                var zipEntry = archive.CreateEntry(fileName);
+                zipEntry.LastWriteTime = invoice.DateRequested;
+
+                using var entryStream = zipEntry.Open();
+                await entryStream.WriteAsync(invoice.PdfData, 0, invoice.PdfData.Length);
+            }
+        }
+
+        if (zipStream.Length == 0)
+            return null;
+
+        return zipStream.ToArray();
     }
 }
