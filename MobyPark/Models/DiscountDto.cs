@@ -199,7 +199,6 @@ namespace MobyPark.Models
 
     public class DiscountCodeAnalyticsReadDto
     {
-        // required by AC
         public string Code { get; set; } = string.Empty;        
         public DiscountType Type { get; set; }
         public decimal Value { get; set; }
@@ -212,9 +211,8 @@ namespace MobyPark.Models
         public int? MaxUsageCount { get; set; }
         public int? CurrentUsageCount { get; set; }
 
-        // stats
         public int ReservationsUsedCount { get; set; }
-        public decimal TotalSavedAmount { get; set; }             // rounded 2 decimals
+        public decimal TotalSavedAmount { get; set; }           
     }
 
     public enum DiscountType
@@ -225,9 +223,9 @@ namespace MobyPark.Models
 
     public enum DiscountCodeStatus
     {
-        Active,     // default: Active == true AND ValidUntil >= now
-        Inactive,   // Active == false
-        Expired,    // ValidUntil < now
+        Active,   
+        Inactive, 
+        Expired,   
         All
     }
 

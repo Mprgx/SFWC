@@ -209,7 +209,6 @@ namespace MobyParkxUnitTest
                 CompanyName = "New Name",
                 City = "Den Haag",
                 IsActive = false
-                // rest intentionally null (should remain unchanged)
             };
 
             var updated = await service.UpdateCompanyAsync(company.Id, updateDto);
