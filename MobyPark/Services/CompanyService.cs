@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+
 using MobyPark.Data;
 using MobyPark.Entities;
 using MobyPark.Models;
@@ -99,6 +100,33 @@ namespace MobyPark.Services
             await context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<bool> AddUserToCompanyAsync(Guid userId, Guid companyId)
+        {
+            if (!await context.Users.AnyAsync(u => u.Id == userId))
+                return false;
+
+            if (!await context.Companies.AnyAsync(c => c.Id == companyId))
+                return false;
+
+            bool alreadyLinked = await context.CompanyUsers
+                .AnyAsync(cu => cu.UserId == userId && cu.CompanyId == companyId);
+
+            if (alreadyLinked)
+                return false;
+
+            await context.CompanyUsers.AddAsync(
+                new CompanyUser
+                {
+                    UserId = userId,
+                    CompanyId = companyId
+                }
+            );
+
+            await context.SaveChangesAsync();
+            return true;
+        }
+
 
         private static CompanyResponseDto ToDto(Company c) => new()
         {

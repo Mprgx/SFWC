@@ -9,7 +9,13 @@ using Microsoft.OpenApi.Models;
 using MobyPark.Data;
 using MobyPark.Services;
 
+using QuestPDF.Fluent;
+using QuestPDF.Infrastructure;
+
 using Scalar.AspNetCore;
+
+QuestPDF.Settings.License = LicenseType.Community;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,6 +111,8 @@ builder.Services.AddScoped<IParkingLotService, ParkingLotService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IDiscountService, DiscountService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+
 
 builder.WebHost.ConfigureKestrel(options =>
 {

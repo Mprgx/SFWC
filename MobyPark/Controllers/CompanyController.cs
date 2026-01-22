@@ -58,5 +58,17 @@ namespace MobyPark.Controllers
 
             return NoContent();
         }
+
+        [Authorize(Roles = Roles.Admin)]
+        [HttpPost("add-user/{userId:guid}")]
+        public async Task<ActionResult<CreateCompanyDto>> AddUserToCompany(Guid userId, [FromQuery] Guid companyId)
+        {
+            var added = await companyService.AddUserToCompanyAsync(userId, companyId);
+            if (!added)
+            {
+                return NotFound(new { message = "User is already apart of the company, or the user and/or company does not exist." });
+            }
+            return Ok(new { message = "User successfully added to company" });
+        }
     }
 }
