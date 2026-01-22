@@ -17,12 +17,12 @@ namespace MobyPark.Services
         public async Task<TokenResponseDto?> LoginAsync(LoginRequestDto request)
         {
             var uname = request.Username.Trim().ToLowerInvariant();
+
             var user = await context.Users.FirstOrDefaultAsync(u => u.Username == uname);
             if (user is null) return null;
 
-            var result = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-
-            if (result == false) return null;
+            var ok = await VerifyPasswordAndUpgradeIfNeededAsync(user, request.Password);
+            if (!ok) return null;
 
             return await CreateTokenResponse(user);
         }
@@ -177,5 +177,43 @@ namespace MobyPark.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        private async Task<bool> VerifyPasswordAndUpgradeIfNeededAsync(User user, string inputPassword)
+        {
+            if (!string.IsNullOrWhiteSpace(user.PasswordHash))
+            {
+                if (BCrypt.Net.BCrypt.Verify(inputPassword, user.PasswordHash))
+                    return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.LegacyPasswordHash))
+            {
+                if (!VerifyLegacyMd5(inputPassword, user.LegacyPasswordHash))
+                    return false;
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(inputPassword);
+                user.LegacyPasswordHash = null;
+                user.LegacyPasswordAlgo = null; // optional (if you keep this column)
+
+                await context.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool VerifyLegacyMd5(string inputPassword, string legacyHash)
+        {
+            var computed = ComputeMd5Hex(inputPassword);
+            return computed == legacyHash.Trim().ToLowerInvariant();
+        }
+
+        private static string ComputeMd5Hex(string input)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+            var hashBytes = System.Security.Cryptography.MD5.HashData(bytes);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
     }
 }

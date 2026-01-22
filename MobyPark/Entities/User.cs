@@ -17,10 +17,10 @@ namespace MobyPark.Entities
         [Required, MaxLength(70)]
         public string Name { get; set; } = string.Empty;
 
-        [Required, MaxLength(320)]
+        [Required, MaxLength(500)]
         public string Email { get; set; } = string.Empty;
 
-        [Required, MaxLength(30)]
+        [Required, MaxLength(500)]
         public string PhoneNumber { get; set; } = string.Empty;
 
         public DateTimeOffset CreatedAt { get; set; } = DateTime.UtcNow;
