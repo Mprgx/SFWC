@@ -23,6 +23,11 @@ namespace MobyPark.Services
 
                 if (dto.StartTime.Offset != TimeSpan.Zero || dto.EndTime.Offset != TimeSpan.Zero)
                     throw new ValidationException("StartTime and EndTime must be UTC (offset +00:00).");
+                if (dto.StartTime < DateTimeOffset.UtcNow)
+                    throw new ValidationException("StartTime cannot be in the past.");
+                if (dto.StartTime > dto.EndTime)
+                    throw new ValidationException("StartTime cannot be after EndTime");
+
 
                 var estimatedCost = CalculateEstimatedCost(parkingLot, dto.StartTime, dto.EndTime);
 
@@ -35,7 +40,7 @@ namespace MobyPark.Services
                         dto.DiscountCode,
                         userId,
                         dto.ParkingLotId,
-                        dto.StartTime,  
+                        dto.StartTime,
                         estimatedCost);
 
                     if (preview.statusCode == 404)
@@ -83,7 +88,7 @@ namespace MobyPark.Services
 
                 if (reservedCount >= parkingLot.Capacity)
                     throw new ParkingLotFullException("No spots available for the selected time slot.");
-         
+
                 var userOverlap = await _context.Reservations
                     .Where(r => r.IsActive)
                     .Where(r => r.UserId == userId)
@@ -94,13 +99,13 @@ namespace MobyPark.Services
                 if (userOverlap)
                     throw new ValidationException("There is already an overlapping reservation for this user at this time.");
 
-             
+
                 var reservation = new Reservation
                 {
                     ParkingLotId = dto.ParkingLotId,
-                    UserId = userId,                
-                    VehicleId = vehicle.Id,         
-                    LicensePlate = vehicle.LicensePlate, 
+                    UserId = userId,
+                    VehicleId = vehicle.Id,
+                    LicensePlate = vehicle.LicensePlate,
                     StartTime = dto.StartTime,
                     EndTime = dto.EndTime,
                     IsActive = true,
