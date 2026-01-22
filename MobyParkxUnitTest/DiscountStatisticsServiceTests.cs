@@ -8,9 +8,6 @@ namespace MobyParkxUnitTest
 {
     public class DiscountStatisticsServiceTests
     {
-        // --------------------------------------------------------
-        // Helpers
-        // --------------------------------------------------------
 
         private static UserDbContext CreateDbContext(string dbName)
         {
@@ -68,9 +65,9 @@ namespace MobyParkxUnitTest
         {
             return new Payment
             {
-                Transaction = transaction,                 // required
-                Initiator = "unit-test",                   // required :contentReference[oaicite:1]{index=1}
-                Hash = "hash-unit-test",                   // required :contentReference[oaicite:2]{index=2}
+                Transaction = transaction,               
+                Initiator = "unit-test",                  
+                Hash = "hash-unit-test",                  
 
                 UserId = userId,
 
@@ -84,10 +81,6 @@ namespace MobyParkxUnitTest
                 SessionId = Guid.NewGuid()
             };
         }
-
-        // --------------------------------------------------------
-        // Tests - Filtering
-        // --------------------------------------------------------
 
         [Fact]
         public async Task GetDiscountCodesAllAnalyticsAsync_DefaultActive_ReturnsOnlyActiveAndNotExpired()
@@ -191,10 +184,6 @@ namespace MobyParkxUnitTest
             Assert.NotNull(dto);
             Assert.Empty(dto!);
         }
-
-        // --------------------------------------------------------
-        // Tests - Response fields + Statistics
-        // --------------------------------------------------------
 
         [Fact]
         public async Task GetDiscountCodesAllAnalyticsAsync_ReturnsRequiredFields_PerCode()
@@ -304,7 +293,7 @@ namespace MobyParkxUnitTest
 
             await context.SaveChangesAsync();
 
-            var (statusCode, message, dto) = await service.GetDiscountCodeAnalyticsByCodeAsync("save10"); // lower-case on purpose
+            var (statusCode, message, dto) = await service.GetDiscountCodeAnalyticsByCodeAsync("save10");
 
             Assert.Equal(200, statusCode);
             Assert.NotNull(dto);
