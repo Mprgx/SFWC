@@ -49,7 +49,7 @@ jobs:
       - name: Publish unit test results
         continue-on-error: true
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: Unit Tests
           reporter: dotnet-trx
@@ -169,7 +169,7 @@ jobs:
       - name: Publish integration test results
         continue-on-error: true
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: Integration Tests
           reporter: java-junit
