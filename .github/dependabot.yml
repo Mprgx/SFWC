@@ -1,21 +1,21 @@
 version: 2
 updates:
-  # 1. GitHub Actions - Keeps your CI/CD workflows up to date
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
 
-  # 2. Python - Monitors requirements.txt, setup.py, or pipfile
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/Integratietests"
     schedule:
       interval: "daily"
-    open-pull-requests-limit: 5
 
-  # 3. C# / .NET - Monitors .csproj, .vbproj, or packages.config
   - package-ecosystem: "nuget"
-    directory: "/"
+    directory: "/MobyPark"
     schedule:
       interval: "daily"
-    open-pull-requests-limit: 5
+
+  - package-ecosystem: "nuget"
+    directory: "/MobyParkxUnitTest"
+    schedule:
+      interval: "daily"
