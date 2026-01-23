@@ -25,6 +25,8 @@ jobs:
         run: |
           dotnet restore ./MobyPark/MobyPark.csproj
           dotnet build ./MobyPark/MobyPark.csproj --configuration Release
+          dotnet list package --vulnerable
+          
   unit-tests:
     runs-on: ubuntu-latest
     needs: build
@@ -74,6 +76,8 @@ jobs:
           output: both
           badge: true
           title: summary
+          threshold: 50
+          fail_below_min: true
 
       - name: Add unit test coverage to summary
         if: always()
@@ -99,12 +103,7 @@ jobs:
           --health-retries 30
     env:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__UserDatabase: >
-        Server=localhost,1433;
-        Database=MobyParkTestDb;
-        User Id=sa;
-        Password=${{ secrets.DB_PASS }};
-        TrustServerCertificate=True;
+      ConnectionStrings__UserDatabase: ${{secrets.DB_CONN}}
       AppSettings__Token: ${{ secrets.API_KEY }}
       AppSettings__Issuer: "MobyPark.Test"
       AppSettings__Audience: "MobyPark.Test"
@@ -177,3 +176,27 @@ jobs:
           reporter: java-junit
           path: Integratietests/IntegratieTestResults/pytest.xml
           fail-on-error: false
+  
+  deploy-simulation:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Publish
+        run: dotnet publish ./MobyPark/MobyPark.csproj -c Release -o ./publish-folder
+
+      - name: Simulate SSH Upload
+        env:
+          DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "Connecting to server"
+          echo "Published program"
