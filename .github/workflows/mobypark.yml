@@ -89,7 +89,7 @@ jobs:
           - 1433:1433
         env:
           ACCEPT_EULA: "Y"
-          SA_PASSWORD: "Str0ngP@ssw0rd!"
+          SA_PASSWORD: "${{ secrets.DB_PASS }}"
           MSSQL_PID: "Express"
         options: >-
           --health-cmd "/bin/bash -c 'echo > /dev/tcp/127.0.0.1/1433'"
@@ -102,9 +102,9 @@ jobs:
         Server=localhost,1433;
         Database=MobyParkTestDb;
         User Id=sa;
-        Password=Str0ngP@ssw0rd!;
+        Password=${{ secrets.DB_PASS }};
         TrustServerCertificate=True;
-      AppSettings__Token: "THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789_THIS_IS_A_SUPER_SECRET_TEST_KEY_123456789"
+      AppSettings__Token: ${{ secrets.API_KEY }}
       AppSettings__Issuer: "MobyPark.Test"
       AppSettings__Audience: "MobyPark.Test"
 
@@ -137,7 +137,7 @@ jobs:
             -C \
             -S localhost \
             -U sa \
-            -P 'Str0ngP@ssw0rd!' \
+            -P '${{ secrets.DB_PASS }}' \
             -Q "IF DB_ID('MobyParkTestDb') IS NULL CREATE DATABASE MobyParkTestDb;"
 
       - name: Restore & build API
