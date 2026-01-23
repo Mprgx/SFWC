@@ -5,7 +5,7 @@ namespace MobyPark.Entities
     public class Payment
     {
         [Key]
-        [MaxLength(12)]
+        [MaxLength(50)]
         public required string Transaction { get; set; }
 
         public decimal Amount { get; set; }
