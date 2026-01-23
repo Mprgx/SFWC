@@ -129,6 +129,19 @@ jobs:
       - name: Install EF Core tools (v9)
         run: dotnet tool install --global dotnet-ef --version 9.*
 
+      - name: Wait for SQL Server
+        run: |
+          echo "Waiting for SQL Server"
+          for i in {1..30}; do
+            if docker exec $(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest) \
+              /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P '${{ secrets.DB_PASS }}' -Q "SELECT 1" > /dev/null 2>&1; then
+              echo "SQL Server started"
+              break
+            fi
+            echo "Attempt $i/30"
+            sleep 2
+          done
+
       - name: Create test database
         run: |
           CONTAINER_ID=$(docker ps -q --filter ancestor=mcr.microsoft.com/mssql/server:2022-latest)
