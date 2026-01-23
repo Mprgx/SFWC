@@ -6,6 +6,7 @@ __pycache__/
 *conftest.py
 
 # VSCode
+# VSCode
 .vscode/
 
 # Data folder
