@@ -417,7 +417,6 @@ namespace MobyPark.Services
         {
             var now = DateTimeOffset.UtcNow;
 
-            // 1) base query discounts
             var q = context.Discounts.AsNoTracking().AsQueryable();
 
             q = status switch
@@ -437,11 +436,8 @@ namespace MobyPark.Services
             if (discounts.Count == 0)
                 return (200, "OK", new List<DiscountCodeAnalyticsReadDto>());
 
-            // 2) load stats from Payments in 1 go
             var codes = discounts.Select(d => d.Code).Distinct().ToList();
 
-            // NOTE: if your Payment has a Completed field, include it as needed:
-            // .Where(p => p.Completed != null)
             var paymentStats = await context.Payments
                 .AsNoTracking()
                 .Where(p => p.DiscountCode != null && codes.Contains(p.DiscountCode))
@@ -464,7 +460,6 @@ namespace MobyPark.Services
                     }
                 );
 
-            // 3) map dto
             var result = discounts
                 .Select(d =>
                 {
@@ -475,7 +470,7 @@ namespace MobyPark.Services
 
                     return new DiscountCodeAnalyticsReadDto
                     {
-                        Code = d.Code, // already normalized in Create
+                        Code = d.Code,
                         Type = d.Type,
                         Value = d.Value,
 
@@ -489,11 +484,9 @@ namespace MobyPark.Services
 
                         ReservationsUsedCount = s?.UsedCount ?? 0,
 
-                        // round 2 decimals (AC)
                         TotalSavedAmount = Math.Round(saved, 2, MidpointRounding.AwayFromZero),
                     };
                 })
-                // predictable ordering
                 .OrderBy(x => x.ValidUntil)
                 .ThenBy(x => x.Code)
                 .ToList();
@@ -516,7 +509,6 @@ namespace MobyPark.Services
             if (discount is null)
                 return (404, $"Discount code '{normalizedCode}' not found.", null);
 
-            // Load payment stats
             var payments = await context.Payments
                 .AsNoTracking()
                 .Where(p => p.DiscountCode == normalizedCode)
