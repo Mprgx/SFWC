@@ -102,9 +102,9 @@ jobs:
     env:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__UserDatabase: >
-        Server=localhost,1433;
+        Server=${{secrets.IP_ADRESS}},1433;
         Database=MobyParkTestDb;
-        User Id=sa;
+        User Id=${{secrets.DB_USER}};
         Password=${{ secrets.DB_PASS }};
         TrustServerCertificate=True;
       AppSettings__Token: ${{ secrets.API_KEY }}
@@ -138,8 +138,8 @@ jobs:
           docker exec $CONTAINER_ID \
             /opt/mssql-tools18/bin/sqlcmd \
             -C \
-            -S localhost \
-            -U sa \
+            -S ${{secrets.IP_ADRESS}} \
+            -U ${{secrets.DB_USER}} \
             -P '${{ secrets.DB_PASS }}' \
             -Q "IF DB_ID('MobyParkTestDb') IS NULL CREATE DATABASE MobyParkTestDb;"
 
