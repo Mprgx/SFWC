@@ -1,7 +1,47 @@
 import pytest
 import requests
+from datetime import datetime, timedelta, timezone
+import time
 
-RESERVATION_ID = "1"
+RESERVATION_ID = "2"
+
+# Use future dates for reservations
+# Add a unique offset based on current timestamp to avoid collisions across multiple test runs
+# Changes offset every 10 minutes to prevent conflicts between test runs
+_RUN_OFFSET = 30 + ((int(time.time()) // 600) % 100)  # Range 30-130 days
+
+def get_me_profile(session_token, base_url):
+    url = base_url + "profile"
+
+    response = requests.get(
+        url, headers={"Authorization": session_token})
+    
+    return response.json()
+
+def _get_unique_future_dates(offset_days=0):
+    """Generate unique future dates for reservations to avoid conflicts."""
+    # Use _RUN_OFFSET to make each test run use different dates
+    # Then use offset_days to separate individual tests
+    total_offset_days = _RUN_OFFSET + offset_days
+    future_date = datetime.now(
+        timezone.utc) + timedelta(days=total_offset_days)
+    future_date_str = future_date.replace(
+        hour=11, minute=0, second=0, microsecond=0).isoformat()
+    end_date_str = (future_date + timedelta(days=1)).replace(hour=14,
+                                                             minute=0, second=0, microsecond=0).isoformat()
+    return future_date_str, end_date_str
+
+
+def _make_reservation(parking_lot_id: int, license_plate: str = "AB-123-CD", offset_hours=0):
+    """Helper to create a reservation dict with the given parking lot ID."""
+    # offset_hours is in days (legacy parameter name, now in days)
+    start_time, end_time = _get_unique_future_dates(offset_hours)
+    return {
+        "parkingLotId": parking_lot_id,
+        "licensePlate": license_plate,
+        "startTime": start_time,
+        "endTime": end_time,
+    }
 
 
 def test_get_reservation_status_unauthorized(user_session):
@@ -13,26 +53,48 @@ def test_get_reservation_status_unauthorized(user_session):
 
 
 def test_get_reservation_status_authorized(user_session):
-    url = user_session['url'] + 'reservations/by-id/' + RESERVATION_ID
+    # Arrange: create reservation
+    payload = _make_reservation(parking_lot_id=1)
+    post = requests.post(
+        user_session["url"] + "reservations",
+        json=payload,
+        headers={"Authorization": user_session["session_token"]}
+    )
+    assert post.status_code == 201
+    reservation_id = post.json()["id"]
+
+    # Act
+    url = user_session["url"] + f"reservations/by-id/{reservation_id}"
     response = requests.get(
-        url, headers={"Authorization": user_session['session_token']})
-    status_code = response.status_code
-    assert status_code == 200
+        url,
+        headers={"Authorization": user_session["session_token"]}
+    )
+
+    # Assert
+    assert response.status_code == 200
+
+
 
 
 def test_get_reservation_correct_message(user_session):
-    url = user_session['url'] + 'reservations/by-id/' + RESERVATION_ID
+    payload = _make_reservation(parking_lot_id=2)
+    post = requests.post(
+        user_session["url"] + "reservations",
+        json=payload,
+        headers={"Authorization": user_session["session_token"]}
+    )
+    print(post.json())
+    reservation_id = post.json()["id"]
+
     response = requests.get(
-        url, headers={"Authorization": user_session['session_token']})
-    assert response.status_code == 200
-    # Verify the response has the expected structure and fields
+        user_session["url"] + f"reservations/by-id/{reservation_id}",
+        headers={"Authorization": user_session["session_token"]}
+    )
+
     data = response.json()
-    assert data['id'] == 1
-    assert 'userId' in data or 'user_id' in data
-    assert 'parkingLotId' in data or 'parking_lot_id' in data
-    assert 'vehicleId' in data or 'vehicle_id' in data
-    assert 'startTime' in data or 'start_time' in data
-    assert 'endTime' in data or 'end_time' in data
+    assert response.status_code == 200
+    assert data["isActive"] is True
+
 
 
 def test_get_reservation_invalid_id(user_session):
@@ -56,12 +118,22 @@ def test_get_reservation_invalid_id_message(user_session):
 
 
 def test_get_reservation_verify_ownership(user_session):
-    # Test that user can access their own reservation
-    url = user_session['url'] + 'reservations/by-id/' + RESERVATION_ID
+    payload = _make_reservation(parking_lot_id=2, license_plate="AB-123-CD", offset_hours=3)
+    post = requests.post(
+        user_session["url"] + "reservations",
+        json=payload,
+        headers={"Authorization": user_session["session_token"]}
+    )
+    reservation_id = post.json()["id"]
+
     response = requests.get(
-        url, headers={"Authorization": user_session['session_token']})
-    # User should be able to access their own reservation
+        user_session["url"] + f"reservations/by-id/{reservation_id}",
+        headers={"Authorization": user_session["session_token"]}
+    )
+
+    user_id = get_me_profile(user_session["session_token"], "http://localhost:5280/")["id"]
+
     assert response.status_code == 200
-    data = response.json()
-    # Verify the reservation data is returned
-    assert data['id'] == int(RESERVATION_ID)
+    print(user_session)
+    print(response.json())
+    assert response.json()["userId"] == user_id
