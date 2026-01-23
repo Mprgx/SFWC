@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MobyPark.Data;
 
@@ -11,9 +12,11 @@ using MobyPark.Data;
 namespace MobyPark.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260123055034_ChangeMaxLengthUsernameAgain")]
+    partial class ChangeMaxLengthUsernameAgain
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -233,74 +236,6 @@ namespace MobyPark.Migrations
                     b.ToTable("DiscountUser");
                 });
 
-            modelBuilder.Entity("MobyPark.Entities.DuplicateUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("BirthYear")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("DuplicateReason")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid?>("ExistingUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("ImportedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("LegacyId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("LegacyPasswordAlgo")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("LegacyPasswordHash")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(70)
-                        .HasColumnType("nvarchar(70)");
-
-                    b.Property<string>("OriginalJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExistingUserId");
-
-                    b.ToTable("DuplicateUsers");
-                });
-
             modelBuilder.Entity("MobyPark.Entities.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -386,8 +321,8 @@ namespace MobyPark.Migrations
             modelBuilder.Entity("MobyPark.Entities.Payment", b =>
                 {
                     b.Property<string>("Transaction")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(12)
+                        .HasColumnType("nvarchar(12)");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
@@ -785,15 +720,6 @@ namespace MobyPark.Migrations
                     b.Navigation("Discount");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MobyPark.Entities.DuplicateUser", b =>
-                {
-                    b.HasOne("MobyPark.Entities.User", "ExistingUser")
-                        .WithMany()
-                        .HasForeignKey("ExistingUserId");
-
-                    b.Navigation("ExistingUser");
                 });
 
             modelBuilder.Entity("MobyPark.Entities.Invoice", b =>

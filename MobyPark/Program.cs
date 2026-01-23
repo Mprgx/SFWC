@@ -113,6 +113,7 @@ builder.Services.AddScoped<IDiscountService, DiscountService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<DataMigrationService>();
+builder.Services.AddScoped<IDuplicateUsersService, DuplicateUsersService>();
 
 
 builder.WebHost.ConfigureKestrel(options =>
