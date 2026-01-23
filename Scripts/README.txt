@@ -85,39 +85,3 @@ for manual fixing via the API later.
    dotnet run -- "..\MobyPark.Tools\SplitResults\users.duplicates.by_username.jsonl"
 
    dotnet run -- "..\MobyPark.Tools\SplitResults\users.duplicates.unknown.jsonl"
-
-------------------------------------
-DATABASE SAFETY
-------------------------------------
-
-- Users table = clean users only
-- DuplicateUsers table = users that need fixing
-- No existing data is deleted
-- Original JSON values are preserved
-
-------------------------------------
-PASSWORD HANDLING
-------------------------------------
-
-- Legacy passwords are stored as MD5 in LegacyPasswordHash
-- PasswordHash uses bcrypt
-- On first successful login:
-  → legacy password is verified
-  → password is upgraded to bcrypt automatically
-
-------------------------------------
-TROUBLESHOOTING
-------------------------------------
-
-If you see build errors:
-- Run `dotnet restore`
-- Check appsettings.json connection string
-- Make sure DuplicateUsers.csproj references MobyPark.csproj
-
-------------------------------------
-DONE
-------------------------------------
-
-After this:
-- Use the DuplicateUsers API to resolve duplicates
-- Resolved users are automatically added to Users table
