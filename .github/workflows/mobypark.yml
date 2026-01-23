@@ -25,7 +25,7 @@ jobs:
         run: |
           dotnet restore ./MobyPark/MobyPark.csproj
           dotnet build ./MobyPark/MobyPark.csproj --configuration Release
-          dotnet list package --vulnerable
+          dotnet list ./MobyPark/MobyPark.csproj package --vulnerable
           
   unit-tests:
     runs-on: ubuntu-latest
