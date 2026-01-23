@@ -73,6 +73,7 @@ jobs:
           format: markdown
           output: both
           badge: true
+          title: summary
 
       - name: Add unit test coverage to summary
         if: always()
