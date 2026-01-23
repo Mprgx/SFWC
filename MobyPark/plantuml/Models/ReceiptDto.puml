@@ -1,0 +1,8 @@
+@startuml
+class ReceiptDto {
+    + Transaction : string <<get>> <<set>>
+    + Amount : decimal <<get>> <<set>>
+    + ParkingLotName : string <<get>> <<set>>
+}
+ReceiptDto --> "CompletedAt" DateTimeOffset
+@enduml

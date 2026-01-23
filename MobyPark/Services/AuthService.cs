@@ -1,0 +1,219 @@
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+
+using MobyPark.Data;
+using MobyPark.Entities;
+using MobyPark.Models;
+
+namespace MobyPark.Services
+{
+    public class AuthService(UserDbContext context, IConfiguration configuration, IEncryptionService encryption) : IAuthService
+    {
+        public async Task<TokenResponseDto?> LoginAsync(LoginRequestDto request)
+        {
+            var uname = request.Username.Trim().ToLowerInvariant();
+
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Username == uname);
+            if (user is null) return null;
+
+            var ok = await VerifyPasswordAndUpgradeIfNeededAsync(user, request.Password);
+            if (!ok) return null;
+
+            return await CreateTokenResponse(user);
+        }
+
+        public async Task<bool> LogoutAsync(Guid userId)
+        {
+            var user = await context.Users.FindAsync(userId);
+            if (user is null) return false;
+
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
+            await context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<UserReadDto?> RegisterAsync(RegisterRequestDto request)
+        {
+            var username = request.Username.Trim().ToLowerInvariant();
+            var name = request.Name.Trim();
+            var emailPlain = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var phonePlain = (request.PhoneNumber ?? string.Empty).Trim();
+            var birth = request.BirthYear ?? 0;
+
+            if (await context.Users.AnyAsync(u => u.Username == username))
+                return null;
+
+            if (!string.IsNullOrEmpty(emailPlain))
+            {
+                var users = await context.Users
+                    .Where(u => u.Email != null && u.Email != "")
+                    .ToListAsync();
+
+                var emailTaken = users.Any(u =>
+                {
+                    var existingPlain = encryption.Decrypt(u.Email);
+                    if (string.IsNullOrEmpty(existingPlain)) return false;
+
+                    return string.Equals(
+                        existingPlain.Trim().ToLowerInvariant(),
+                        emailPlain,
+                        StringComparison.OrdinalIgnoreCase);
+                });
+
+                if (emailTaken) return null;
+            }
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                Name = name,
+                Email = string.IsNullOrEmpty(emailPlain) ? string.Empty : encryption.Encrypt(emailPlain)!,
+                PhoneNumber = string.IsNullOrEmpty(phonePlain) ? string.Empty : encryption.Encrypt(phonePlain)!,
+                BirthYear = birth,
+                CreatedAt = DateTimeOffset.UtcNow,
+                Role = request.Role ?? UserRole.Customer,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            };
+
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+
+            return new UserReadDto
+            {
+                Id = user.Id,
+                Username = user.Username,
+                Name = user.Name,
+                Email = emailPlain,
+                PhoneNumber = phonePlain,
+                BirthYear = user.BirthYear,
+                Role = user.Role,
+                CreatedAt = user.CreatedAt
+            };
+        }
+
+        public async Task<TokenResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto request)
+        {
+            var user = await ValidateRefreshTokenAsync(request.UserId, request.RefreshToken);
+            if (user is null)
+                return null;
+
+            return await CreateTokenResponse(user);
+        }
+
+        private async Task<User?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
+        {
+            var user = await context.Users.FindAsync(userId);
+            if (user is null || user.RefreshTokenExpiryTime <= DateTimeOffset.UtcNow)
+                return null;
+
+            if (string.IsNullOrEmpty(user.RefreshToken))
+                return null;
+
+            var storedPlain = encryption.Decrypt(user.RefreshToken)!;
+
+            if (!string.Equals(storedPlain, refreshToken, StringComparison.Ordinal))
+                return null;
+
+            return user;
+        }
+
+        private async Task<TokenResponseDto> CreateTokenResponse(User user)
+        {
+            return new TokenResponseDto
+            {
+                AccessToken = CreateToken(user),
+                RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
+            };
+        }
+
+        private string GenerateRefreshToken()
+        {
+            var bytes = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(bytes);
+            return Convert.ToBase64String(bytes);
+        }
+
+        private async Task<string> GenerateAndSaveRefreshTokenAsync(User user)
+        {
+            var refreshToken = GenerateRefreshToken();
+            var protectedToken = encryption.Encrypt(refreshToken)!;
+
+            user.RefreshToken = protectedToken;
+            user.RefreshTokenExpiryTime = DateTimeOffset.UtcNow.AddDays(7);
+
+            await context.SaveChangesAsync();
+            return refreshToken;
+        }
+
+        private string CreateToken(User user)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+
+            var token = new JwtSecurityToken(
+                issuer: configuration["AppSettings:Issuer"],
+                audience: configuration["AppSettings:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddDays(1),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private async Task<bool> VerifyPasswordAndUpgradeIfNeededAsync(User user, string inputPassword)
+        {
+            if (!string.IsNullOrWhiteSpace(user.PasswordHash))
+            {
+                if (BCrypt.Net.BCrypt.Verify(inputPassword, user.PasswordHash))
+                    return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.LegacyPasswordHash))
+            {
+                if (!VerifyLegacyMd5(inputPassword, user.LegacyPasswordHash))
+                    return false;
+
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(inputPassword);
+                user.LegacyPasswordHash = null;
+                user.LegacyPasswordAlgo = null; // optional (if you keep this column)
+
+                await context.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool VerifyLegacyMd5(string inputPassword, string legacyHash)
+        {
+            var computed = ComputeMd5Hex(inputPassword);
+            return computed == legacyHash.Trim().ToLowerInvariant();
+        }
+
+        private static string ComputeMd5Hex(string input)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+            var hashBytes = System.Security.Cryptography.MD5.HashData(bytes);
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        }
+
+    }
+}

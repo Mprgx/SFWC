@@ -1,0 +1,16 @@
+@startuml
+class "Dictionary`2"<T1,T2> {
+}
+class "OfType`1"<T> {
+}
+class "List`1"<T> {
+}
+class "Empty`1"<T> {
+}
+class "AddDbContext`1"<T> {
+}
+class "AddSingleton`2"<T1,T2> {
+}
+class "AddScoped`2"<T1,T2> {
+}
+@enduml

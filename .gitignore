@@ -1,11 +1,105 @@
+# -------------------------
 # Python
 __pycache__/
 *.py[cod]
 .venv/
+*conftest.py
 
+# VSCode
 # VSCode
 .vscode/
 
 # Data folder
-data
-!data/readme.md
+DataConverter/API-V1-DATA
+DataConverter/NEW-CSV-DATA/payments.csv
+Server/data
+!Server/data/readme.md
+
+# -------------------------
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# .NET/C# build outputs
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+*.log
+
+# negeer alles in TestResults
+TestResults/
+*.trx
+
+# maar laat deze specifieke map/alle .trx bestanden toe
+!TestResults/
+!TestResults/*.trx
+
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# -------------------------
+# IDE / tooling
+# Visual Studio
+.vs/
+
+# Rider / ReSharper
+.idea/
+.ReSharper*/
+*_Resharper.*/
+*.DotSettings.user
+
+# VS user-specific
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NUKE build (if any)
+.nuke/
+
+# -------------------------
+# NuGet
+*.nupkg
+*.snupkg
+# If using packages.config:
+# packages/           # uncomment if you check in packages via packages.config
+
+# -------------------------
+# EF / local DBs / misc
+*.mdf
+*.ldf
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# -------------------------
+# Publish / temp
+# Keep .pubxml (team-specific), but ignore user variants
+*.pubxml.user
+*.publishsettings
+
+# -------------------------
+# Appsettings: ignore all environment files EXCEPT the two you want
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# -------------------------
+# Script json outputs
+Scripts\MobyPark.Tools\users.duplicates.jsonl
+Scripts\MobyPark.Tools\users.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_email.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_email.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_username.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.unknown.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.unknown.rejected.jsonl

@@ -1,0 +1,11 @@
+@startuml
+scale 3000 * 200
+!include .\\Controllers\AuthController.puml
+!include .\\Controllers\BillingController.puml
+!include .\\Controllers\ParkingLotController.puml
+!include .\\Controllers\PaymentController.puml
+!include .\\Controllers\ProfileController.puml
+!include .\\Controllers\ReservationsController.puml
+!include .\\Controllers\SessionController.puml
+!include .\\Controllers\VehicleController.puml
+@enduml

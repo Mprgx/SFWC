@@ -1,0 +1,11 @@
+@startuml
+class AuthController {
+    + <<async>> Register(request:RegisterRequestDto) : Task<ActionResult<UserReadDto>>
+    + <<async>> Login(request:LoginRequestDto) : Task<ActionResult<TokenResponseDto>>
+    + <<async>> Logout() : Task<IActionResult>
+    + <<async>> RefreshToken(request:RefreshTokenRequestDto) : Task<ActionResult<TokenResponseDto>>
+    + AuthenticatedOnlyEndpoint() : IActionResult
+    + AdminOnlyEndpoint() : IActionResult
+}
+ControllerBase <|-- AuthController
+@enduml

@@ -1,0 +1,17 @@
+@startuml
+class ParkingLot {
+    + <<required>> Id : int <<get>> <<set>>
+    + <<required>> Name : string <<get>> <<set>>
+    + <<required>> Location : string <<get>> <<set>>
+    + <<required>> Address : string <<get>> <<set>>
+    + <<required>> Capacity : int <<get>> <<set>>
+    + <<required>> Tariff : double <<get>> <<set>>
+    + <<required>> DayTariff : double <<get>> <<set>>
+    + <<required>> Coordinates : string <<get>> <<set>> = "{&#125;"
+}
+class "ICollection`1"<T> {
+}
+ParkingLot o-> "CreatedAt" DateTime
+ParkingLot o-> "ParkingSessions<Session>" "ICollection`1"
+ParkingLot o-> "Reservations<Reservation>" "ICollection`1"
+@enduml

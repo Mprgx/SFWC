@@ -1,0 +1,17 @@
+@startuml
+class Payment {
+    + <<required>> Transaction : string <<get>> <<set>>
+    + <<required>> Amount : decimal <<get>> <<set>>
+    + <<required>> Initiator : string <<get>> <<set>>
+    + <<required>> Hash : string <<get>> <<set>>
+    + <<required>> T_Data : string <<get>> <<set>>
+    + ParkingLotId : int <<get>> <<set>>
+}
+Payment --> "UserId" Guid
+Payment --> "User" User
+Payment o-> "Created_At" DateTimeOffset
+Payment --> "Completed" DateTimeOffset
+Payment --> "SessionId" Guid
+Payment --> "Session" Session
+Payment --> "ParkingLot" ParkingLot
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+class UserRequestDto {
+    + <<required>> Username : string <<get>> <<set>>
+    + <<required>> Name : string <<get>> <<set>>
+    + <<required>> Email : string <<get>> <<set>>
+    + <<required>> PhoneNumber : string <<get>> <<set>>
+    + <<required>> BirthYear : int <<get>> <<set>>
+}
+class UserReadDto {
+    + <<required>> Username : string <<get>> <<set>>
+    + <<required>> Name : string <<get>> <<set>>
+    + <<required>> Email : string <<get>> <<set>>
+    + <<required>> PhoneNumber : string <<get>> <<set>>
+    + <<required>> BirthYear : int <<get>> <<set>>
+}
+UserReadDto --> "Id" Guid
+UserReadDto --> "Role" UserRole
+UserReadDto --> "CreatedAt" DateTimeOffset
+@enduml

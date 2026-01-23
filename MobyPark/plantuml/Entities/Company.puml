@@ -1,0 +1,14 @@
+@startuml
+class Company {
+    + <<required>> CompanyName : string <<get>> <<set>>
+    + Discount : int <<get>> <<set>>
+    + Perks : string <<get>> <<set>> = ""
+    + IsActive : bool <<get>> <<set>> = true
+}
+class "ICollection`1"<T> {
+}
+Company o-> "Id" Guid
+Company --> "CreatedAt" DateTimeOffset
+Company o-> "CompanyUsers<CompanyUser>" "ICollection`1"
+Company o-> "Reservations<Reservation>" "ICollection`1"
+@enduml

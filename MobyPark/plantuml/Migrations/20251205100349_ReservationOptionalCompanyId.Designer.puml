@@ -1,0 +1,4 @@
+@startuml
+class ReservationOptionalCompanyId <<partial>> {
+}
+@enduml

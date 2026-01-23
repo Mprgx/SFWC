@@ -1,0 +1,5 @@
+@startuml
+class AddBilling <<partial>> {
+}
+Migration <|-- AddBilling
+@enduml

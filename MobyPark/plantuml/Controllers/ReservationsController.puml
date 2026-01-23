@@ -1,0 +1,10 @@
+@startuml
+class ReservationsController {
+    + <<async>> GetById(reservationid:int) : Task<ActionResult<GetReservationDto>>
+    + <<async>> GetByVehicleId(vehicleid:int) : Task<ActionResult<GetReservationDto>>
+    + <<async>> CreateReservation(dto:PostReservationDto) : Task<ActionResult<GetReservationDto>>
+    + <<async>> DeleteReservation(reservationid:int) : Task<IActionResult>
+    + <<async>> UpdateReservation(reservationid:int, dto:PutReservationDto) : Task<ActionResult<GetReservationDto>>
+}
+ControllerBase <|-- ReservationsController
+@enduml

@@ -1,0 +1,9 @@
+@startuml
+class AuthService {
+    + <<async>> LoginAsync(request:LoginRequestDto) : Task<TokenResponseDto?>
+    + <<async>> LogoutAsync(userId:Guid) : Task<bool>
+    + <<async>> RegisterAsync(request:RegisterRequestDto) : Task<UserReadDto?>
+    + <<async>> RefreshTokensAsync(request:RefreshTokenRequestDto) : Task<TokenResponseDto?>
+}
+IAuthService <|-- AuthService
+@enduml

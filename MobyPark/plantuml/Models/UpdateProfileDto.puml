@@ -1,0 +1,13 @@
+@startuml
+class UpdateProfileDto {
+    + Name : string? <<get>> <<set>>
+    + Email : string? <<get>> <<set>>
+    + PhoneNumber : string? <<get>> <<set>>
+    + BirthYear : int? <<get>> <<set>>
+    + Username : string? <<get>> <<set>>
+}
+class UpdatePasswordRequestDto {
+    + CurrentPassword : string? <<get>> <<set>>
+    + NewPassword : string? <<get>> <<set>>
+}
+@enduml

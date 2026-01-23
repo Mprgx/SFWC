@@ -1,0 +1,28 @@
+@startuml
+class SessionStartDto {
+    + VehicleId : int <<get>> <<set>>
+    + ParkingLotId : int <<get>> <<set>>
+}
+class SessionReadDto <<record>> {
+    + VehicleId : int <<get>> <<init>>
+    + ParkingLotId : int <<get>> <<init>>
+    + LicensePlate : string <<get>> <<init>>
+    + Stopped : DateTimeOffset? <<get>> <<init>>
+    + DurationMinutes : int <<get>> <<init>>
+    + Cost : decimal <<get>> <<init>>
+    + PaymentStatus : string <<get>> <<init>>
+    + IsCancelled : bool <<get>> <<init>>
+    + CancelledAt : DateTimeOffset? <<get>> <<init>>
+    + IsRefunded : bool <<get>> <<init>>
+    + RefundDate : DateTimeOffset? <<get>> <<init>>
+}
+class SessionStopDto {
+    + LicensePlate : string <<get>> <<set>>
+}
+class CancelSessionDto {
+    + Reason : string? <<get>> <<set>>
+}
+SessionReadDto --> "Id" Guid
+SessionReadDto --> "UserId" Guid
+SessionReadDto --> "Started" DateTimeOffset
+@enduml
