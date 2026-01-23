@@ -146,7 +146,10 @@ jobs:
           dotnet build ./MobyPark/MobyPark.csproj --configuration Release
 
       - name: Update database
-        run: dotnet ef database update --project ./MobyPark/MobyPark.csproj
+        run: |
+          dotnet ef database update \
+            --project ./MobyPark/MobyPark.csproj \
+            --connection "${{ secrets.DB_CONN }}"
 
       - name: Start C# API
         run: |
