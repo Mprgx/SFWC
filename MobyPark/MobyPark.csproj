@@ -20,7 +20,7 @@
     <PackageReference Include="QuestPDF" Version="2025.12.2" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.10.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 
 </Project>
