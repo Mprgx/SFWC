@@ -74,6 +74,8 @@ jobs:
           output: both
           badge: true
           title: summary
+          threshold: 50
+          fail_below_min: true
 
       - name: Add unit test coverage to summary
         if: always()
@@ -177,3 +179,18 @@ jobs:
           reporter: java-junit
           path: Integratietests/IntegratieTestResults/pytest.xml
           fail-on-error: false
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Deploying
+        run: echo "Deploying to server... (we do not have a server so this will have to do for now just imagine a ssh connection here)"
+
+      - uses: actions/checkout@v4
+
+
+
