@@ -235,7 +235,7 @@ class Program
                 return;
             }
 
-            if (username.Length > 20 || name.Length > 70)
+            if (username.Length > 40 || name.Length > 70)
             {
                 rejected++;
                 await rejectWriter.WriteLineAsync(JsonSerializer.Serialize(new { reason = "Field too long (Username>20 or Name>70)", record = j }));

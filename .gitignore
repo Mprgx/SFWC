@@ -92,3 +92,13 @@ BenchmarkDotNet.Artifacts/
 appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
+
+# -------------------------
+# Script json outputs
+Scripts\MobyPark.Tools\users.duplicates.jsonl
+Scripts\MobyPark.Tools\users.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_email.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_email.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.by_username.rejected.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.unknown.jsonl
+Scripts\MobyPark.Tools\SplitResults\users.duplicates.unknown.rejected.jsonl

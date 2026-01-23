@@ -51,7 +51,7 @@ namespace MobyPark.Controllers
                 return Unauthorized(new
                 {
                     status = "error",
-                    message = "Invalid username or password."
+                    message = "Invalid username or password. Or account may be disabled. Check Duplicate Accounts for more info."
                 });
             }
 

@@ -11,10 +11,10 @@ namespace MobyPark.Entities
         [MaxLength(50)]
         public string? LegacyId { get; set; }
 
-        [Required, MaxLength(20)]
+        [Required, MaxLength(40)]
         public string Username { get; set; } = string.Empty;
 
-        [Required, MaxLength(70)]
+        [Required, MaxLength(80)]
         public string Name { get; set; } = string.Empty;
 
         [Required, MaxLength(500)]
