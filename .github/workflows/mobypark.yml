@@ -59,7 +59,7 @@ jobs:
       - name: Upload unit test coverage
         continue-on-error: true
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unit-test-coverage
           path: MobyParkxUnitTest/TestResults/**/coverage.cobertura.xml
