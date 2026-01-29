@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up .NET 9
         uses: actions/setup-dotnet@v4
@@ -30,7 +30,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up .NET 9
         uses: actions/setup-dotnet@v4
@@ -112,7 +112,7 @@ jobs:
       AppSettings__Audience: "MobyPark.Test"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -190,7 +190,7 @@ jobs:
       - name: Deploying
         run: echo "Deploying to server... (we do not have a server so this will have to do for now just imagine a ssh connection here)"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
 
 
